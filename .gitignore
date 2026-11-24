@@ -1,4 +1,6 @@
+# Lists are personal data; only the synthetic test fixtures are tracked.
 *.bsxm
+!tests/fixtures/bsxm/edge_cases*.bsxm
 *.pipit
 datapacks/
 __pycache__/

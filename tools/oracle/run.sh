@@ -56,3 +56,19 @@ java -cp "$CLASSPATH" tools/oracle/Oracle.java "$FILES/taxon.xml" \
     "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" "$FIXTURES/corpus.txt" \
     "$FILES/multilingual" "$WORK/out"
 "$PY" -I tools/oracle/summarize.py "$WORK/out" "$PACK" "$FIXTURES"
+
+# .bsxm round-trip expectations: Scythebill's own load-upgrade-save (RoundTrip.java).
+round_trip() {
+    java -cp "$CLASSPATH" tools/oracle/RoundTrip.java "$FILES/taxon.xml" \
+        "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$1" "$2"
+}
+BSXM=tests/fixtures/bsxm
+round_trip "$BSXM/edge_cases.bsxm" "$BSXM/edge_cases.expected.bsxm"
+round_trip "$BSXM/edge_cases.expected.bsxm" "$BSXM/edge_cases.expected2.bsxm"
+round_trip "$SCYTHEBILL/mobile/app/src/androidDeviceTest/assets/large_sample.bsxm" "$WORK/large_sample.bsxm"
+gzip -9 -n -c "$WORK/large_sample.bsxm" > "$BSXM/large_sample.scythebill.bsxm.gz"
+# Your own list, if you want the private test to require Scythebill's exact output:
+#   round_trip ~/path/List.bsxm "$WORK/private.expected.bsxm"
+#   PIPIT_PRIVATE_BSXM=~/path/List.bsxm PIPIT_PRIVATE_EXPECTED="$WORK/private.expected.bsxm" \
+#       .venv/bin/python -m pytest -m private

@@ -29,6 +29,13 @@ CORE_MODULES = [
     "packbuild.build",
     "packbuild.validate",
     "packbuild.cli",
+    "domain.report",
+    "bsxm.reader",
+    "bsxm.writer",
+    "bsxm.upgrades",
+    "storage.database",
+    "storage.lists",
+    "storage.cli",
 ]
 
 

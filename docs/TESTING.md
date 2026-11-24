@@ -29,6 +29,18 @@ python3 -m venv --system-site-packages .venv
 - **Data pack** (`tests/packbuild/`): readers, building, validation, determinism, loading, and the CLI.
 - **Against Scythebill** (`tests/search/test_against_scythebill.py`): exact agreement with answers recorded from Scythebill itself, and the 10 ms search budget. See [DATA_PACK.md](DATA_PACK.md).
 
+- **Values** (`tests/domain/`): partial dates, counts, times, coordinates, and Java's float formatting and parsing (ground truth recorded from Java in `tests/fixtures/java/floats.tsv`).
+- **.bsxm** (`tests/bsxm/`): reading and writing compared byte for byte with Scythebill's own re-saves of an edge-case file and its 30,000-sighting sample, plus everything Scythebill refuses.
+- **Lists** (`tests/storage/`): lossless import and export through the database, the speed budgets, all-or-nothing imports, undo and redo back to the exact earlier state, repair mode for damaged lists, backups, rotation and restore, and the `pipit-list` command. See [LISTS.md](LISTS.md).
+
+## Your own list
+
+```bash
+PIPIT_PRIVATE_BSXM=~/Projects/scythebill-birdlist/List-Eric.bsxm .venv/bin/python -m pytest -m private
+```
+
+This imports, exports, re-imports and re-exports the file in a temporary folder, and requires a fixed point. Set `PIPIT_PRIVATE_EXPECTED` to Scythebill's re-save of the same file (see the end of `tools/oracle/run.sh`) to also require Scythebill's exact output. The file is only read; nothing derived from it is kept.
+
 ## Markers
 
 | Marker | Meaning |

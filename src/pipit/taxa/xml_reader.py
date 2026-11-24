@@ -8,9 +8,11 @@ Ported from Scythebill ``model/src/commonMain/kotlin/com/scythebill/birdlist/mod
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import IO
 from xml.etree import ElementTree
+from xml.etree.ElementTree import Element
 
 from pipit.taxa.mapped import MappedTaxonomy
 from pipit.taxa.model import IUCN_STATUSES, Taxon, Taxonomy, TaxonType
@@ -18,6 +20,10 @@ from pipit.taxa.sighting_taxon import SightingTaxon, SightingTaxonType
 
 NAMESPACE = "http://www.adamwiner.com/checklist/1.0"
 _TAXON_ELEMENTS = {t.xml_name for t in TaxonType}
+_KNOWN_CHILDREN = {
+    "common-name", "metadata", "checklists", "map", "spmap", "sspmap", "nomap",
+    "additional-credit",
+}  # fmt: skip
 _METADATA_FIELDS = {
     "alternate-names",
     "alternate-common-names",
@@ -36,9 +42,27 @@ def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def own_text(element: Element) -> str:
+    """All of an element's own text, as Scythebill's ``StringParser`` collects it: the text
+    before, between and after child elements, but not the children's text."""
+    return (element.text or "") + "".join(child.tail or "" for child in element)
+
+
+def walk_events(element: Element) -> Iterator[tuple[str, Element]]:
+    """("start", e) / ("end", e) events for an already-parsed element, like iterparse."""
+    yield "start", element
+    for child in element:
+        yield from walk_events(child)
+    yield "end", element
+
+
+def _file_events(source: Path | IO[bytes]) -> Iterator[tuple[str, Element]]:
+    yield from ElementTree.iterparse(source, events=("start", "end"))
+
+
 def read_taxonomy(source: Path | IO[bytes]) -> Taxonomy:
     """A base or extended taxonomy. Mapping elements, if any, are an error."""
-    taxonomy, mappings = _read(source, base=None)
+    taxonomy, mappings = _read(_file_events(source), base=None)
     if mappings:
         raise TaxonomyFormatError(f"{taxonomy.id} has mappings but no base taxonomy")
     return taxonomy
@@ -47,22 +71,39 @@ def read_taxonomy(source: Path | IO[bytes]) -> Taxonomy:
 def read_mapped_taxonomy(source: Path | IO[bytes], base: Taxonomy) -> MappedTaxonomy:
     """A mapped taxonomy (AviList) over ``base``: registers mappings, then disables
     every subtree without one, exactly as Scythebill's ``importMappedTaxa``."""
-    taxonomy, mappings = _read(source, base=base)
+    taxonomy, mappings = _read(_file_events(source), base=base)
     assert isinstance(taxonomy, MappedTaxonomy)
     taxonomy.set_mappings(mappings)
     taxonomy.disable_unmapped_taxa()
     return taxonomy
 
 
+def embedded_taxonomy(element: Element, warnings: list[str]) -> Taxonomy:
+    """An extended taxonomy embedded in a ``.bsxm`` file. Unknown elements are skipped
+    and reported in ``warnings``, as Scythebill does."""
+    taxonomy, mappings = _read(walk_events(element), base=None, warnings=warnings)
+    if mappings:
+        warnings.append(f"mappings in embedded taxonomy {taxonomy.id} ignored")
+    return taxonomy
+
+
 def _read(  # noqa: PLR0915
-    source: Path | IO[bytes], base: Taxonomy | None
+    events: Iterable[tuple[str, Element]],
+    base: Taxonomy | None,
+    warnings: list[str] | None = None,
 ) -> tuple[Taxonomy, dict[Taxon, SightingTaxon]]:
+    """Strict unless ``warnings`` is given; then unknown elements are skipped."""
     taxonomy: Taxonomy | None = None
     stack: list[Taxon] = []
     in_metadata = False
     mappings: dict[Taxon, SightingTaxon] = {}
+    skipping: Element | None = None
 
-    for event, element in ElementTree.iterparse(source, events=("start", "end")):
+    for event, element in events:
+        if skipping is not None:
+            if event == "end" and element is skipping:
+                skipping = None
+            continue
         name = _local(element.tag)
         if event == "start":
             if taxonomy is None:
@@ -84,6 +125,15 @@ def _read(  # noqa: PLR0915
                     taxonomy.account_link_title = attributes.get("accountLinkTitle")
             elif name == "metadata":
                 in_metadata = True
+            elif (
+                warnings is not None
+                and not in_metadata
+                and stack
+                and name not in _TAXON_ELEMENTS
+                and name not in _KNOWN_CHILDREN
+            ):
+                warnings.append(f"unknown element <{name}> in taxonomy {taxonomy.id} skipped")
+                skipping = element
             elif name in _TAXON_ELEMENTS and not in_metadata:
                 attributes = element.attrib
                 taxon = taxonomy.add(
@@ -99,7 +149,7 @@ def _read(  # noqa: PLR0915
 
         # event == "end"
         assert taxonomy is not None
-        text = element.text or ""
+        text = own_text(element)
         if name == "metadata":
             in_metadata = False
         elif in_metadata and name in _METADATA_FIELDS:

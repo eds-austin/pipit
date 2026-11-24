@@ -28,6 +28,7 @@ qt-wheel = ["PySide6>=6.6"]
 [project.scripts]
 pipit = "pipit.app:main"
 pipit-build-pack = "pipit.packbuild.cli:main"
+pipit-list = "pipit.storage.cli:main"
 
 [dependency-groups]
 dev = [

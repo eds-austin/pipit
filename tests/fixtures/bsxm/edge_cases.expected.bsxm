@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report-set version="21.5.0" taxonomy="clements2026">
+  <taxonomy xmlns="http://www.adamwiner.com/checklist/1.0" id="test-mammals" name="Test Mammals" accountUrlFormat="https://example.org/taxa/{id}" accountLinkTitle="Example">
+    <additional-credit>Made for tests</additional-credit>
+    <class name="Mammalia" id="clMam">
+      <common-name>Mammals</common-name>
+      <order name="Carnivora" id="orCar">
+        <common-name>Carnivores</common-name>
+        <family name="Felidae" id="faFel">
+          <common-name>Cats</common-name>
+          <genus name="Panthera" id="gePan">
+            <species name="leo" id="spPanleo" accountId="41964">
+              <common-name>Lion</common-name>
+              <metadata>
+                <status>VU</status>
+                <range>Africa, India</range>
+              </metadata>
+              <checklists>ID-Asia,ID-Australasia,IN(R),KE,TZ(I),ZA(RI)</checklists>
+              <subspecies name="persica" id="sspPanleoper">
+                <common-name>Asiatic Lion</common-name>
+                <metadata>
+                  <range>Gir</range>
+                </metadata>
+              </subspecies>
+            </species>
+            <species name="spelaea" id="spPanspe">
+              <common-name>Cave Lion</common-name>
+              <metadata>
+                <status>EX</status>
+              </metadata>
+              <checklists>FR(EX),RU-Asia(EX),RU-Europe(EX)</checklists>
+            </species>
+            <species name="onca" id="spPanonc">
+              <common-name>Jaguar</common-name>
+              <checklists>BR(E)</checklists>
+            </species>
+            <species name="tigris" id="spPantig">
+              <common-name>Tiger</common-name>
+              <metadata>
+                <taxonomy>Notes on &amp; taxonomy</taxonomy>
+                <alternate-names>Felis tigris</alternate-names>
+                <alternate-common-names>Bengal Tiger - in part</alternate-common-names>
+                <miscellaneous>Big</miscellaneous>
+              </metadata>
+              <checklists>BT(EX),CN(E),IN,MM(P),NP(ES),zz(R)</checklists>
+            </species>
+          </genus>
+        </family>
+      </order>
+    </class>
+  </taxonomy>
+  <locations>
+    <region id="tland" name="Testland">
+      <country id="fredo" name="Freedonia" ebirdCode="ZZ">
+        <state id="nstate" name="North State" ebirdCode="ZZ-NS">
+          <county id="cnty" name="Marshes County">
+            <location id="ptreyes" name="Point Wobble" ebirdLocId="L123" lat="38.0682000" long="-122.8806000">
+              <description>  Lighthouse &amp; headlands&#x9;tab </description>
+              <location id="ptrl" name="Lighthouse"/>
+            </location>
+            <park id="pk1" name="Tomales Bay" lat="38.1000000" long="-122.9000000" private="true"/>
+            <town id="tw1" name="Inverness"/>
+            <city id="ct1" name="(Unnamed)"/>
+            <location id="dup1" name="Spot"/>
+            <location id="dup2" name="Spot duplicate"/>
+            <location id="dup3" name="Spot duplicate 1"/>
+            <location id="weird" name="&#xdc;n&#xef;c&#xf8;d&#xe9; &#x1f426; &quot;q&quot; &lt;x&gt;" lat="-0.0000000" long="12.3456790"/>
+            <location id="sci" name="Sci"/>
+            <location id="sci2" name="Sci 2" lat="5.0000000" long="0.2250000"/>
+          </county>
+        </state>
+      </country>
+    </region>
+    <location id="root2" name="High Seas"/>
+    <location id="missingTripLoc" name="RESTORED LOCATION &quot;missingTripLoc&quot;"/>
+    <location id="missingLoc" name="RESTORED LOCATION &quot;missingLoc&quot;"/>
+  </locations>
+  <user id="ew" name="Eric W" abbrev="EW"/>
+  <user id="jd" abbrev="JD"/>
+  <user id="nn" name="No Abbrev"/>
+  <user id="zz" abbrev="zz"/>
+  <trip id="trip1" loc="ptreyes" startDate="2025-05-01" startTime="18:30" endDate="2025-05-03" name="Spring &amp; fun">
+    <notes>Line one
+Line two&#x9;tab</notes>
+    <link>https://example.org/page</link>
+    <link>file:/home/x/photo.xmp</link>
+    <photo favorite="true" name="Best">https://example.org/a.jpg</photo>
+    <photo name="Album">https://www.flickr.com/photos/someone/12345</photo>
+    <photo>https://example.org/pic.JPG</photo>
+    <photo>file:/home/x/photo.cr2</photo>
+  </trip>
+  <trip id="trip2" loc="missingTripLoc" startDate="2024" endDate="2024-06"/>
+  <trip id="trip3" startDate="M05" startTime="05:00" endDate="M06"/>
+  <sighting taxon="spAnaspla" loc="ptreyes" date="2025-05-01" time="07:05" count="12" male="true" heardOnly="true" users="ew,jd">Notes with trailing space</sighting>
+  <sighting sp="spAnaspla,spAnasrub" loc="ptrl" date="2025-05-02" count="~5"/>
+  <sighting hybrid="spAnasful,spAnaspla" loc="pk1" date="M05-12" count="&gt;100" popStatus="intro" breeding="FL" users="zz"/>
+  <sighting taxonSsp="spAnaspla|zzsubspecies" loc="tw1" date="2025" trip="trip1"/>
+  <sighting taxon="grAnaspla(Do" loc="ct1"/>
+  <sighting taxon="sspAnasplacon" loc="missingLoc" date="2025-07-04" female="true" immature="true" adult="true" photo="true">
+    firstbetween
+    <photo favorite="true">https://example.org/p1.jpg</photo>
+  </sighting>
+  <sighting taxon="spArdeaalb" date="2020-d05"/>
+  <sighting taxon="spStrutcam" loc="weird" date="2025-02-30" time="12:00" users="ew">
+    <photo>https://example.org/only.jpg</photo>
+  </sighting>
+  <sighting taxonomy="test-mammals" taxon="spPanleo" loc="weird" date="2024-01-01" count="1"/>
+  <sighting taxon="spEgretthu" loc="dup2" date="2025-06-01" trip="trip2" count="x7">Tabs&#x9;and &lt;tags&gt; and &#xfc;n&#xef;code &#x1f986; and "quotes"</sighting>
+  <sighting taxon="spHirun2rus" loc="dup3" date="2025-06-02"/>
+  <sighting taxon="spButeo1jam" loc="sci" date="1999-12-31" time="23:59" count="+3"/>
+  <sighting taxon="spButeo1jam" loc="sci2" date="2000" count="~4"/>
+  <checklist loc="ptreyes">
+    <entry taxon="spAnaspla" status="endemic"/>
+    <entry sp="spAnasful,spAnasrub" status="rarity"/>
+    <entry taxon="spArdeaalb"/>
+  </checklist>
+  <checklist loc="pk1">
+    <entry taxon="spEgretthu" status="introduced"/>
+  </checklist>
+  <visit-info loc="ptreyes" date="2025-05-01" time="07:00" observationType="stationary">
+    <duration>15</duration>
+    <partySize>4</partySize>
+  </visit-info>
+  <visit-info loc="ptrl" date="2025-05-02" time="08:00" observationType="historical">
+    <duration>30</duration>
+  </visit-info>
+  <visit-info loc="pk1" date="2025-05-03" observationType="historical">
+    <duration>10</duration>
+    <partySize>1</partySize>
+  </visit-info>
+  <visit-info loc="tw1" date="2025-05-04" time="09:15" observationType="area">
+    <area>0.405</area>
+    <duration>45</duration>
+    <partySize>3</partySize>
+  </visit-info>
+  <visit-info loc="ct1" date="2025-05-05" observationType="incidental">
+    <complete/>
+  </visit-info>
+  <visit-info loc="dup1" date="2025-05-06" time="10:00" observationType="historical">
+    <area>0.0</area>
+  </visit-info>
+  <visit-info loc="nowhere" date="2025-01-01" observationType="historical">
+    <comments>orphan</comments>
+  </visit-info>
+  <visit-info loc="weird" date="2025-05-07" time="06:30" observationType="pelagic">
+    <distance>1.2345679E7</distance>
+    <duration>120</duration>
+    <partySize>10</partySize>
+    <photo name="boat">https://example.org/boat.png</photo>
+  </visit-info>
+  <visit-info loc="weird" date="2025-05-08" time="06:30" observationType="nocturnal">
+    <distance>0.001</distance>
+    <duration>60</duration>
+  </visit-info>
+  <visit-info loc="weird" date="2025-05-09" time="21:00" observationType="flight_call">
+    <duration>60</duration>
+    <partySize>1</partySize>
+  </visit-info>
+  <visit-info loc="weird" date="2025-05-10" time="05:00" observationType="banding">
+    <duration>200</duration>
+    <partySize>2</partySize>
+  </visit-info>
+  <visit-info loc="weird" date="2025-05-11" time="05:00" observationType="random">
+    <distance>1.5</distance>
+    <duration>5</duration>
+    <partySize>1</partySize>
+  </visit-info>
+  <visit-info loc="sci" date="2025-05-12" observationType="historical">
+    <area>1234567.8</area>
+    <distance>0.3</distance>
+    <duration>7</duration>
+    <partySize>12</partySize>
+  </visit-info>
+  <prefs>{"a": "b&#xe9;", "n": [1, 2]}</prefs>
+  <one-time-upgrade>TaxonFixesForIoc101</one-time-upgrade>
+  <one-time-upgrade>CountryNames2019</one-time-upgrade>
+  <one-time-upgrade>CountryNames2023</one-time-upgrade>
+  <one-time-upgrade>CountryNames2024</one-time-upgrade>
+  <one-time-upgrade>CountryNames2025</one-time-upgrade>
+  <one-time-upgrade>VinBreastedAmazonIoc</one-time-upgrade>
+  <one-time-upgrade>IocCentralisAfricanGreyWoodpecker</one-time-upgrade>
+  <one-time-upgrade>EBird2026States</one-time-upgrade>
+  <one-time-upgrade>OldThing</one-time-upgrade>
+  <one-time-upgrade>moveImageTripLinksToPhotos</one-time-upgrade>
+</report-set>
