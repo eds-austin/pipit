@@ -1,0 +1,5 @@
+*.bsxm
+*.pipit
+datapacks/
+__pycache__/
+.venv/
