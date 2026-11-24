@@ -23,10 +23,17 @@ class AppSettings:
     ui_scale: float = 1.15  # 1.15 gives 15px body text (Scythebill's text is too small)
     sidebar_collapsed: bool = False
     last_list: str = ""
+    display_taxonomy: str = "avilist"  # "avilist" or "clements"
 
     def validated(self) -> AppSettings:
         """Clamp or replace invalid values (hand-edited files)."""
-        return replace(self, ui_scale=min(MAX_UI_SCALE, max(MIN_UI_SCALE, self.ui_scale)))
+        return replace(
+            self,
+            ui_scale=min(MAX_UI_SCALE, max(MIN_UI_SCALE, self.ui_scale)),
+            display_taxonomy=self.display_taxonomy
+            if self.display_taxonomy in ("avilist", "clements")
+            else "avilist",
+        )
 
 
 def settings_path() -> Path:

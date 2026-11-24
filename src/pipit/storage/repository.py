@@ -259,7 +259,7 @@ def load_report(connection: sqlite3.Connection) -> ReportSet:
         raise ValueError("the list has no taxonomy recorded")
     report = ReportSet(taxonomy_id, _meta(connection, "loaded_version") or None)
     report.extended_taxonomies = _load_taxonomies(connection)
-    report.roots = _load_locations(connection)
+    report.roots = load_locations(connection)
     report.users = [
         User(xml_id, name, abbreviation)
         for xml_id, name, abbreviation in connection.execute(
@@ -348,7 +348,8 @@ def _load_taxonomies(connection: sqlite3.Connection) -> list[Taxonomy]:
     return taxonomies
 
 
-def _load_locations(connection: sqlite3.Connection) -> list[Location]:
+def load_locations(connection: sqlite3.Connection) -> list[Location]:
+    """The location tree (roots in order)."""
     by_row: dict[int, Location] = {}
     roots: list[Location] = []
     pending: list[tuple[int | None, int, Location]] = []

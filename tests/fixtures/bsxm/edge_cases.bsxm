@@ -62,7 +62,7 @@
             <park id="pk1" name="Tomales Bay" private="true" lat="38,1" long="-122,9"/>
             <town id="tw1" name="Inverness" lat="1.5E2" long="0"/>
             <city id="ct1" name=""/>
-            <location id="dup1" name="Spot"/>
+            <location id="dup1" name="Spot"><description></description></location>
             <location id="dup2" name="Spot"/>
             <location id="dup3" name="Spot"/>
             <location id="weird" name="&#xdc;n&#xef;c&#xf8;d&#xe9; &#x1f426; &quot;q&quot; &lt;x&gt;" lat="-0.00000001" long="12.345678951"/>

@@ -1,6 +1,7 @@
 # Lists are personal data; only the synthetic test fixtures are tracked.
 *.bsxm
 !tests/fixtures/bsxm/edge_cases*.bsxm
+!tests/fixtures/bsxm/new_list.scythebill.bsxm
 *.pipit
 datapacks/
 __pycache__/

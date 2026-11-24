@@ -213,7 +213,7 @@ def test_statement_splitting_respects_comments() -> None:
 
 def test_changed_migrations_are_detected(edge_list: Path) -> None:
     connection = sqlite3.connect(edge_list)
-    connection.execute("UPDATE schema_migrations SET sha256 = 'x'")
+    connection.execute("UPDATE schema_migrations SET sha256 = 'x' WHERE version = 1")
     connection.commit()
     assert integrity.check(connection) == ["migration 1 changed after it was applied"]
     connection.close()

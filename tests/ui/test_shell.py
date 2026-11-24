@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
-from qt_wait import wait_until
+from qt_wait import add_app_context, wait_until
 
 from pipit.config.settings import AppSettings
 
@@ -22,7 +23,7 @@ class Running:
 
 
 @pytest.fixture
-def running(qapp: object) -> Iterator[Running]:
+def running(qapp: object, tmp_path: Path) -> Iterator[Running]:
     from PySide6.QtQml import QQmlApplicationEngine
 
     from pipit.app import QML_DIR
@@ -35,6 +36,7 @@ def running(qapp: object) -> Iterator[Running]:
     engine.addImportPath(str(QML_DIR))
     engine.addImageProvider("icon", IconProvider())
     engine.rootContext().setContextProperty("shell", shell)
+    keep = add_app_context(engine, tmp_path)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
     engine.warnings.connect(lambda warnings: errors.extend(w.toString() for w in warnings))
@@ -44,9 +46,9 @@ def running(qapp: object) -> Iterator[Running]:
     window.requestActivate()
     wait_until(window.isActive)
     yield Running(shell, window, saved)
-    assert not errors, "\n".join(errors)
     window.close()
-    del engine
+    del engine, keep
+    assert not errors, "\n".join(errors)
 
 
 def press(window: Any, key: Any, modifier: Any = None) -> None:
@@ -114,7 +116,7 @@ def test_ctrl_b_collapses_sidebar_and_saves(running: Running) -> None:
     assert running.saved[-1].sidebar_collapsed is True
 
 
-def test_window_opens_maximized(qapp: object) -> None:
+def test_window_opens_maximized(qapp: object, tmp_path: Path) -> None:
     from PySide6.QtGui import QWindow
     from PySide6.QtQml import QQmlApplicationEngine
 
@@ -125,9 +127,10 @@ def test_window_opens_maximized(qapp: object) -> None:
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
     engine.rootContext().setContextProperty("shell", shell)
+    keep = add_app_context(engine, tmp_path)
     engine.setInitialProperties({"appVersion": "test", "maximized": True})
     engine.load(QML_DIR / "Main.qml")
     window = engine.rootObjects()[0]
     wait_until(lambda: window.visibility() == QWindow.Visibility.Maximized)
     window.close()
-    del engine
+    del engine, keep

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
 from pipit.datapack.schema import APPLICATION_ID, PACK_FORMAT
+from pipit.domain.locations import PredefinedLocations
 from pipit.taxa.mapped import MappedTaxonomy
 from pipit.taxa.model import Taxonomy, TaxonType
 from pipit.taxa.sighting_taxon import SightingTaxon, SightingTaxonType
@@ -196,6 +198,28 @@ class DataPack:
                 "SELECT DISTINCT locale FROM names ORDER BY locale"
             )
         ]
+
+    def location_rows(self, source: str) -> list[list[str]]:
+        """Rows of one of Scythebill's predefined-location CSVs, header first."""
+        return [
+            json.loads(fields)
+            for (fields,) in self._connection.execute(
+                "SELECT fields FROM location_rows WHERE source = ? ORDER BY ord", (source,)
+            )
+        ]
+
+    def predefined_locations(self) -> PredefinedLocations:
+        return PredefinedLocations.from_rows(
+            self.location_rows("all-states.csv"), self.location_rows("us-counties.csv")
+        )
+
+    def base_taxon_ids(self) -> set[str]:
+        return {
+            taxon_id
+            for (taxon_id,) in self._connection.execute(
+                "SELECT id FROM taxa WHERE taxonomy_id = ?", (self.base_taxonomy_id,)
+            )
+        }
 
     def iter_upgrade_mappings(self, from_taxonomy: str) -> Iterator[tuple[str, str, str]]:
         """(from id, kind, to id) with "same ID" rows expanded."""

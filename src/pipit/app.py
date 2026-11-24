@@ -41,6 +41,9 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--screen", default="", help=argparse.SUPPRESS)
     parser.add_argument("--overlay", choices=OVERLAYS, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--palette-query", default="", help=argparse.SUPPRESS)
+    parser.add_argument("--list", type=Path, default=None, help="open this Pipit list")
+    parser.add_argument("--pack", type=Path, default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--today", default="", help=argparse.SUPPRESS)  # YYYY-MM-DD
     # Unknown args (e.g. Qt's -platform) are passed through to Qt.
     args, _unknown = parser.parse_known_args(argv)
     return args
@@ -61,6 +64,9 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
         return 0
 
     # Qt is imported lazily so `--version`/`--help` work without a display.
+    from datetime import date
+    from tempfile import mkdtemp
+
     from PySide6.QtCore import QTimer
     from PySide6.QtGui import QIcon
     from PySide6.QtQml import QQmlApplicationEngine
@@ -68,6 +74,8 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     from PySide6.QtWidgets import QApplication
 
     from pipit.config.settings import AppSettings, load_settings
+    from pipit.ui.backend.app_controller import AppController
+    from pipit.ui.backend.entry_backend import EntryBackend
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.theme import IconProvider, apply_theme
 
@@ -87,6 +95,21 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     shell = Shell(settings, save=lambda _settings: None) if testing else Shell(settings)
     if args.screen:
         shell.go(args.screen)
+    if testing:
+        controller = AppController(
+            settings,
+            save=lambda _settings: None,
+            pack_path=args.pack,
+            backups_root=Path(mkdtemp(prefix="pipit-backups-")),
+            load_in_background=False,
+        )
+    else:
+        controller = AppController(settings, pack_path=args.pack)
+    if args.list is not None:
+        controller.open_path(args.list)
+    elif not testing:
+        controller.reopen_last()
+    entry = EntryBackend(controller, date.fromisoformat(args.today) if args.today else None)
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -96,6 +119,8 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     context.setContextProperty("pipitMonoFamily", mono)
     context.setContextProperty("pipitUiScale", settings.ui_scale)
     context.setContextProperty("shell", shell)
+    context.setContextProperty("app", controller)
+    context.setContextProperty("entry", entry)
     engine.setInitialProperties({"appVersion": __version__, "maximized": not args.size})
     engine.warnings.connect(
         lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings]

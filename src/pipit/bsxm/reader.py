@@ -191,7 +191,8 @@ class _Reader:
         tag = _local(element.tag)
         if tag == "description":
             if parent is not None:
-                parent.description = own_text(element)
+                # An empty description is no description (LocationImpl drops "").
+                parent.description = own_text(element) or None
             return
         if tag != "location" and tag not in LOCATION_TYPES:
             self.warn(f"unknown location element <{tag}> skipped")

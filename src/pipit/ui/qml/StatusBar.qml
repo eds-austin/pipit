@@ -6,6 +6,12 @@ import Pipit
 Rectangle {
     id: root
     required property string appVersion
+    property string message: ""
+    Connections {
+        target: app
+        function onMessage(text) { root.message = text; clearTimer.restart() }
+    }
+    Timer { id: clearTimer; interval: 6000; onTriggered: root.message = "" }
     implicitHeight: Theme.statusBarH
     color: Theme.surface
 
@@ -18,7 +24,12 @@ Rectangle {
         PIcon { name: "database"; size: Theme.iconSm; color: Theme.textFaint }
         PLabel {
             kind: "caption"
-            text: qsTr("No list open · changes are saved as you make them")
+            objectName: "statusMessage"
+            text: root.message !== "" ? root.message
+                : !app.hasList ? qsTr("No list open · Ctrl+O opens one")
+                : qsTr("%1 · %2 sightings · saved as you go%3").arg(app.listName)
+                      .arg(app.sightingCount.toLocaleString(Qt.locale(), "f", 0))
+                      .arg(app.undoLabel ? qsTr(" · Ctrl+Z undoes “%1”").arg(app.undoLabel) : "")
         }
         Item { Layout.fillWidth: true }
         PLabel { kind: "caption"; text: qsTr("Keyboard shortcuts") }

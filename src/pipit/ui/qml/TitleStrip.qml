@@ -27,8 +27,9 @@ Rectangle {
             text: shell.screens[shell.currentIndex].title
         }
         StatusChip {
-            kind: "neutral"
-            text: qsTr("No list open")
+            kind: !app.hasList ? "neutral" : app.readOnly ? "warning" : "info"
+            text: !app.hasList ? qsTr("No list open")
+                : app.readOnly ? qsTr("%1 · read-only").arg(app.listName) : app.listName
         }
         Item { Layout.fillWidth: true }
 

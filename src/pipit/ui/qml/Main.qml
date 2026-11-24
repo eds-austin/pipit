@@ -3,6 +3,7 @@
 // Styling comes only from the Pipit theme (design tokens).
 import QtQuick
 import QtQuick.Controls.Basic as B
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import Pipit
 
@@ -44,12 +45,37 @@ B.ApplicationWindow {
     Shortcut { sequence: "F1"; context: Qt.ApplicationShortcut; onActivated: win.openOverlay("keys", "") }
     Shortcut { sequence: "Alt+Left"; context: Qt.ApplicationShortcut; onActivated: shell.back() }
     Shortcut { sequence: "Ctrl+Q"; context: Qt.ApplicationShortcut; onActivated: Qt.quit() }
+    Shortcut { sequence: "Ctrl+O"; context: Qt.ApplicationShortcut; onActivated: openDialog.open() }
+    // Undo/redo of saved changes. Text fields keep Ctrl+Z for their own typing.
+    Shortcut { sequences: [StandardKey.Undo]; context: Qt.ApplicationShortcut; onActivated: app.undo() }
+    Shortcut { sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]; context: Qt.ApplicationShortcut; onActivated: app.redo() }
+
+    FileDialog {
+        id: openDialog
+        title: qsTr("Open a Pipit list")
+        nameFilters: [qsTr("Pipit lists (*.pipit)")]
+        onAccepted: app.openList(selectedFile)
+    }
+    FileDialog {
+        id: importDialog
+        title: qsTr("Import a Scythebill list")
+        nameFilters: [qsTr("Scythebill lists (*.bsxm)")]
+        onAccepted: app.importScythebill(selectedFile)
+    }
 
     Connections {
         target: shell
         function onActionRequested(key) {
             if (key === "app.keyboard")
                 win.openOverlay("keys", "")
+            else if (key === "app.undo")
+                app.undo()
+            else if (key === "app.redo")
+                app.redo()
+            else if (key === "app.open-list")
+                openDialog.open()
+            else if (key === "app.import-scythebill")
+                importDialog.open()
             else if (key === "app.quit")
                 Qt.quit()
         }

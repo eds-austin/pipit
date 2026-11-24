@@ -33,6 +33,8 @@ python3 -m venv --system-site-packages .venv
 - **.bsxm** (`tests/bsxm/`): reading and writing compared byte for byte with Scythebill's own re-saves of an edge-case file and its 30,000-sighting sample, plus everything Scythebill refuses.
 - **Lists** (`tests/storage/`): lossless import and export through the database, the speed budgets, all-or-nothing imports, undo and redo back to the exact earlier state, repair mode for damaged lists, backups, rotation and restore, and the `pipit-list` command. See [LISTS.md](LISTS.md).
 
+- **Entering** (`tests/entry/`, `tests/ui/test_enter_screen.py`): input parsing, problems, drafts, ranking for a place, saving (built-in counties, new places, update in place, one-step undo), and the real window driven only by the keyboard through a two-location day of 41 species with an sp. and a new place. Entry tests start from `tests/fixtures/bsxm/new_list.scythebill.bsxm`, an empty list exactly as Scythebill creates one (`tools/oracle/NewList.java`).
+
 ## Your own list
 
 ```bash

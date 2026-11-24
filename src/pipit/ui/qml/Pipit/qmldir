@@ -18,3 +18,4 @@ SectionHeader 1.0 SectionHeader.qml
 EmptyState 1.0 EmptyState.qml
 KeyHint 1.0 KeyHint.qml
 SidebarItem 1.0 SidebarItem.qml
+SuggestField 1.0 SuggestField.qml

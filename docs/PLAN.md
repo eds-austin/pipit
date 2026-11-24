@@ -146,6 +146,7 @@ The build prompt is in [BUILD_PROMPT.md](BUILD_PROMPT.md).
 | M0 | Done | App shell, tokens, palette, keyboard navigation. |
 | M1 | Done | Data pack (110.6 MB, deterministic); search and AviList mapping identical to Scythebill on every oracle case. |
 | M2 | Done | `.bsxm` import/export byte-identical to Scythebill (your list, its 30,000-sighting sample, an edge-case file); SQLite storage, undo/redo, integrity checks with repair mode, rotating backups, `pipit-list`. See docs/LISTS.md. |
-| M3 | Next | Enter sightings, including multi-location days. Needs the predefined-location tables interpreted (port `PredefinedLocations.kt`), which also unlocks `ReassignNewBuiltInLocations`. |
+| M3 | Done | Enter sightings with up to four locations per day, keyboard only (acceptance test drives the real window); built-in places and Scythebill IDs (`PredefinedLocations.kt` port); ranked species search with checklist badges; checklist walking; sp./hybrid entry; drafts; one-undo save; Scythebill's own re-save of entered data is identical. See docs/ENTERING.md. |
+| M4 | Next | Browse species, locations and trips; edit existing visits (then Pipit can replace a visit's sightings as Scythebill does); `ReassignNewBuiltInLocations`. |
 
 Deferred from M2, by design: files in an older taxonomy or needing an unported Scythebill upgrade are refused with a message to open and save them in Scythebill first (taxonomy upgrades are M8); `ReassignNewBuiltInLocations` waits for the predefined-location port; app UI for opening and importing lists comes with M3.

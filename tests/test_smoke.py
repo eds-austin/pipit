@@ -36,6 +36,12 @@ CORE_MODULES = [
     "storage.database",
     "storage.lists",
     "storage.cli",
+    "storage.drafts",
+    "domain.locations",
+    "entry.session",
+    "entry.commit",
+    "entry.taxa",
+    "entry.context",
 ]
 
 
