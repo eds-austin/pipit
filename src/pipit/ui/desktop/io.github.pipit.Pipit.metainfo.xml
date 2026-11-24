@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.pipit.Pipit</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>Pipit</name>
+  <summary>Keep your bird and wildlife lists with fast keyboard entry</summary>
+  <description>
+    <p>
+      Pipit records bird and wildlife sightings, builds life, year and location lists,
+      and exchanges data with eBird. It reads and writes Scythebill .bsxm files.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.pipit.Pipit.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+</component>

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Pipit
+GenericName=Bird List
+Comment=Keep your bird and wildlife lists with fast keyboard entry
+Exec=pipit %f
+Icon=io.github.pipit.Pipit
+Terminal=false
+Categories=Education;Science;Biology;Qt;
+Keywords=birding;birds;list;checklist;ebird;scythebill;wildlife;
+StartupNotify=true
+StartupWMClass=pipit
+SingleMainWindow=true

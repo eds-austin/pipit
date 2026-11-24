@@ -1,0 +1,14 @@
+Pipit
+Copyright 2026 Eric Stager
+
+This product includes software ported from Scythebill
+(https://bitbucket.org/scythebill/scythebill-birdlist), copyright Adam Winer,
+licensed under the Apache License, Version 2.0.
+
+Bundled third-party assets:
+- Inter and JetBrains Mono fonts, SIL Open Font License 1.1
+  (src/pipit/ui/assets/fonts/*-OFL.txt)
+- Lucide icons, ISC License (src/pipit/ui/assets/icons/LICENSE-lucide.txt)
+
+Taxonomy and checklist data (Clements/eBird, AviList) are not part of this
+repository. Data packs built from them carry their own attributions.

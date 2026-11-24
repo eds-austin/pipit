@@ -1,0 +1,92 @@
+[project]
+name = "pipit"
+version = "0.1.0.dev0"
+description = "A fast, keyboard-first bird list for the Linux desktop, compatible with Scythebill"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0 AND OFL-1.1 AND ISC"
+license-files = [
+    "LICENSE",                                    # Pipit: Apache-2.0 (see NOTICE)
+    "NOTICE",
+    "src/pipit/ui/assets/fonts/*-OFL.txt",        # bundled Inter, JetBrains Mono
+    "src/pipit/ui/assets/icons/LICENSE-lucide.txt",  # bundled Lucide icons
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+# PySide6 is intentionally NOT a hard dependency: on Fedora KDE we use the distro's
+# python3-pyside6 so the app runs on the system Qt. Use the `qt-wheel` extra elsewhere.
+dependencies = []
+
+[project.optional-dependencies]
+qt-wheel = ["PySide6>=6.6"]
+
+[project.scripts]
+pipit = "pipit.app:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pipit"]
+
+# ---------------------------------------------------------------- tooling
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "N", "PL"]
+ignore = [
+    "PLR2004",  # magic numbers: format codes and fixed sizes are common in ported code
+    "PLR0911",  # parsers naturally have many returns/branches
+    "PLR0912",
+    "PLR0913",  # keyword-only constructors with injectable dependencies
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLC0415", "PLR0917"]  # late imports after pytest.importorskip
+"src/pipit/app.py" = ["PLC0415"]  # Qt imported lazily so --version works headless
+# Qt/QML naming: signals, slots and properties are camelCase.
+"src/pipit/ui/backend/**" = ["N802", "N815", "PLR0915"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["pipit"]
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# Fedora's PySide6 has no stubs, so Qt base classes and @Slot/@Property look untyped.
+# Core packages stay fully strict; only these two checks are relaxed for the UI.
+module = ["pipit.ui.*"]
+disallow_subclassing_any = false
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+# Fedora's python3-pyside6 ships without py.typed/stubs (the PyPI wheel has them).
+module = ["PySide6.*", "shiboken6.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -p no:anyio"  # anyio plugin leaks in from system site-packages
+markers = [
+    "ui: launches the Qt/QML user interface (offscreen)",
+    "private: needs Eric's real .bsxm via PIPIT_PRIVATE_BSXM (never in CI)",
+]

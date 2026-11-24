@@ -1,0 +1,20 @@
+module Pipit
+singleton Theme 1.0 Theme.qml
+PIcon 1.0 PIcon.qml
+PLabel 1.0 PLabel.qml
+Card 1.0 Card.qml
+Badge 1.0 Badge.qml
+StatusChip 1.0 StatusChip.qml
+PButton 1.0 PButton.qml
+PIconButton 1.0 PIconButton.qml
+PTextField 1.0 PTextField.qml
+PCheckBox 1.0 PCheckBox.qml
+PSwitch 1.0 PSwitch.qml
+PComboBox 1.0 PComboBox.qml
+PProgressBar 1.0 PProgressBar.qml
+KpiCard 1.0 KpiCard.qml
+PDialog 1.0 PDialog.qml
+SectionHeader 1.0 SectionHeader.qml
+EmptyState 1.0 EmptyState.qml
+KeyHint 1.0 KeyHint.qml
+SidebarItem 1.0 SidebarItem.qml
