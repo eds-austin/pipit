@@ -24,12 +24,18 @@ python3 -m venv --system-site-packages .venv
 - **Rendering** (`tests/test_smoke.py`): every screen and overlay is rendered offscreen to a screenshot. Any QML warning fails the test, because a broken binding still "loads".
 - **Keyboard** (`tests/ui/test_shell.py`): the real main window is driven by key events. Ctrl+1…8, Ctrl+, and Ctrl+N switch screens, Alt+Left goes back, the palette runs commands from typed text and arrow keys, and Ctrl+B collapses the sidebar and saves the setting.
 
+- **Taxonomy** (`tests/taxa/`): the mapping rules on a small hand-made taxonomy (exact, lumped, duplicate, from children, more than three subspecies, families, base species plus AviList subspecies, disabling).
+- **Search** (`tests/search/`): Scythebill's normalization and splitting rules, the fast engine against a literal port on random data, and Scythebill's own indexer test cases.
+- **Data pack** (`tests/packbuild/`): readers, building, validation, determinism, loading, and the CLI.
+- **Against Scythebill** (`tests/search/test_against_scythebill.py`): exact agreement with answers recorded from Scythebill itself, and the 10 ms search budget. See [DATA_PACK.md](DATA_PACK.md).
+
 ## Markers
 
 | Marker | Meaning |
 |---|---|
 | `ui` | Launches the Qt/QML interface offscreen. |
 | `private` | Needs Eric's real `.bsxm` through `PIPIT_PRIVATE_BSXM`. Never runs in CI, never copies the file. |
+| `scythebill` | Needs a Scythebill checkout: `PIPIT_SCYTHEBILL`, or `~/Projects/scythebill-birdlist`. Builds a data pack once per session (about 10 s). Skipped when there is no checkout. |
 
 ## Screenshots
 

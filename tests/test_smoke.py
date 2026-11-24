@@ -19,6 +19,16 @@ CORE_MODULES = [
     "config.settings",
     "navigation",
     "desktop_install",
+    "taxa.model",
+    "taxa.mapped",
+    "taxa.xml_reader",
+    "taxa.avilist_names",
+    "search.indexer",
+    "search.taxon_index",
+    "datapack.pack",
+    "packbuild.build",
+    "packbuild.validate",
+    "packbuild.cli",
 ]
 
 

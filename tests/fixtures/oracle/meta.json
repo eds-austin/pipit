@@ -1,0 +1,25 @@
+{
+  "source": {
+    "pack_id": "2026.1",
+    "source_sha256": "e62a9cd6a936192050457d4a874a648591ab1822e1c26bf2b78f8ae153fd8def",
+    "source_revision": "404060a8827473fb56e04602007790471958bc24"
+  },
+  "avilist_names": {
+    "de": {
+      "count": 11384,
+      "sha1": "826e0363c90c74a5a90c4f455bd8b19c94b30628"
+    },
+    "en_GB": {
+      "count": 663,
+      "sha1": "027365e2399267a7ed52dd861ca29d09fe063cd2"
+    },
+    "fr": {
+      "count": 11469,
+      "sha1": "26091a8993b0799488b8eda52468e7a1bb7cee50"
+    },
+    "ja": {
+      "count": 10574,
+      "sha1": "6c621a79f2eeae031f27f1edc85ce854643b4575"
+    }
+  }
+}

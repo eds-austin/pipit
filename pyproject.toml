@@ -27,6 +27,7 @@ qt-wheel = ["PySide6>=6.6"]
 
 [project.scripts]
 pipit = "pipit.app:main"
+pipit-build-pack = "pipit.packbuild.cli:main"
 
 [dependency-groups]
 dev = [
@@ -59,7 +60,8 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLC0415", "PLR0917"]  # late imports after pytest.importorskip
+"tests/**" = ["PLC0415", "PLR0917", "RUF001"]  # late imports; non-ASCII search cases
+"tools/**" = ["RUF001", "T201"]  # the oracle corpus has deliberate non-ASCII edge cases
 "src/pipit/app.py" = ["PLC0415"]  # Qt imported lazily so --version works headless
 # Qt/QML naming: signals, slots and properties are camelCase.
 "src/pipit/ui/backend/**" = ["N802", "N815", "PLR0915"]
@@ -89,4 +91,5 @@ addopts = "-ra --strict-markers -p no:anyio"  # anyio plugin leaks in from syste
 markers = [
     "ui: launches the Qt/QML user interface (offscreen)",
     "private: needs Eric's real .bsxm via PIPIT_PRIVATE_BSXM (never in CI)",
+    "scythebill: needs a Scythebill checkout (PIPIT_SCYTHEBILL); builds a data pack",
 ]

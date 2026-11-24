@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
-from conftest import wait_until
+from qt_wait import wait_until
 
 from pipit.config.settings import AppSettings
 
