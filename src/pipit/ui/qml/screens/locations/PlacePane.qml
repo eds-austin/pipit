@@ -14,6 +14,14 @@ ColumnLayout {
     signal moveRequested()
     signal mergeRequested()
     signal deleteRequested()
+    signal visitChosen(string dateRaw, string start)
+    signal back()
+    function focusVisits() {
+        if (visitList.count === 0) return false
+        if (visitList.currentIndex < 0) visitList.currentIndex = 0
+        visitList.forceActiveFocus()
+        return true
+    }
     spacing: Theme.s2
 
     PLabel {
@@ -136,7 +144,11 @@ ColumnLayout {
     }
 
     Rectangle { Layout.fillWidth: true; Layout.topMargin: Theme.s2; Layout.preferredHeight: 1; color: Theme.border }
-    SectionHeader { text: qsTr("Visits here · %1").arg(visitList.count) }
+    RowLayout {
+        Layout.fillWidth: true
+        SectionHeader { Layout.fillWidth: true; text: qsTr("Visits here · %1").arg(visitList.count) }
+        KeyHint { visible: visitList.count > 0; keys: "Ctrl+E"; subtle: true }
+    }
     PLabel {
         Layout.fillWidth: true
         visible: visitList.count === 0
@@ -153,9 +165,18 @@ ColumnLayout {
         spacing: Theme.s1
         model: locations.visits
         boundsBehavior: Flickable.StopAtBounds
+        keyNavigationEnabled: true
+        highlightMoveDuration: 0
         B.ScrollBar.vertical: B.ScrollBar {}
+        Accessible.name: qsTr("Visits here: Enter opens one for editing")
+        Keys.onReturnPressed: if (currentItem) currentItem.open()
+        Keys.onEnterPressed: if (currentItem) currentItem.open()
+        Keys.onEscapePressed: root.back()
         delegate: Rectangle {
             id: visit
+            required property int index
+            required property string dateRaw
+            function open() { root.visitChosen(visit.dateRaw, visit.start) }
             required property string date
             required property string start
             required property string protocol
@@ -167,7 +188,13 @@ ColumnLayout {
             width: ListView.view.width
             height: column.implicitHeight + 2 * Theme.s2
             radius: Theme.radiusMd
-            color: Theme.surface2
+            readonly property bool current: ListView.isCurrentItem && visitList.activeFocus
+            color: current ? Theme.tint(Theme.accent, Theme.selectedAlpha, Theme.surface2)
+                 : visitHover.hovered ? Theme.surface3 : Theme.surface2
+            border.width: current ? 1 : 0
+            border.color: Theme.accent
+            HoverHandler { id: visitHover }
+            TapHandler { onTapped: visit.open() }
             ColumnLayout {
                 id: column
                 anchors.fill: parent

@@ -7,6 +7,7 @@
 //   F2            edit the place (name for your own places, coordinates, notes)
 //   Ctrl+M        move it into another place; Ctrl+Shift+M merge it into another place
 //   Delete        delete it (its sightings and visits move to the place it is in)
+//   Ctrl+E        into its visits: Enter opens one in Enter sightings to edit, Esc back
 // Every change is one step of Ctrl+Z.
 import QtQuick
 import QtQuick.Controls.Basic as B
@@ -47,6 +48,11 @@ Item {
 
     Shortcut { enabled: root.shown && root.working && !root.dialogOpen; sequence: "Ctrl+F"; onActivated: root.startFilter("") }
     Shortcut { enabled: root.shown && root.working; sequence: "Ctrl+M"; onActivated: root.openPick("move") }
+    Shortcut {
+        enabled: root.shown && root.working && !root.dialogOpen
+        sequence: "Ctrl+E"
+        onActivated: if (!placePane.focusVisits()) app.message(qsTr("No visits recorded at this place itself"))
+    }
     Shortcut { enabled: root.shown && root.working; sequence: "Ctrl+Shift+M"; onActivated: root.openPick("merge") }
 
     EmptyState {
@@ -178,7 +184,12 @@ Item {
             B.SplitView.preferredWidth: Theme.grid(280)
             B.SplitView.minimumWidth: Theme.grid(240)
             PlacePane {
+                id: placePane
                 anchors.fill: parent
+                onBack: root.focusTree()
+                onVisitChosen: (dateRaw, start) => {
+                    if (entry.openVisit(root.place.xmlId, dateRaw, start)) shell.go("enter")
+                }
                 onAddRequested: root.openAdd()
                 onEditRequested: root.openEdit()
                 onMoveRequested: root.openPick("move")

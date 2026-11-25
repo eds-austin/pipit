@@ -66,7 +66,7 @@ class LocationsBackend(QObject):
         )
         self.visits_model = DictListModel(
             ["visitId", "date", "start", "protocol", "duration", "distance", "party",
-             "complete", "comments", "sightings"]
+             "complete", "comments", "sightings", "dateRaw"]
         )  # fmt: skip
         self.choices_model = DictListModel(["row", "name", "path"])
         self._species_timer = QTimer(self)
@@ -261,7 +261,8 @@ class LocationsBackend(QObject):
         else:
             reason = location_ops.can_delete(connection, row)
             self._details = {
-                "row": details.row, "name": details.name, "kind": details.type or "",
+                "row": details.row, "xmlId": details.xml_id, "name": details.name,
+                "kind": details.type or "",
                 "path": PATH_SEPARATOR.join(details.path), "code": details.ebird_code or "",
                 "hotspot": details.hotspot or "", "latitude": details.latitude or "",
                 "longitude": details.longitude or "", "private": details.private,
@@ -278,7 +279,7 @@ class LocationsBackend(QObject):
                  "distance": "" if visit.distance_km is None else f"{visit.distance_km} km",
                  "party": "" if visit.party_size is None else str(visit.party_size),
                  "complete": visit.complete, "comments": visit.comments,
-                 "sightings": visit.sightings}
+                 "sightings": visit.sightings, "dateRaw": visit.date_raw}
                 for visit in visits_at(connection, details.xml_id)
             ])  # fmt: skip
         self.selectionChanged.emit()

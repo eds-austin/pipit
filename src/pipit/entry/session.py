@@ -56,6 +56,12 @@ class Slot:
     party_size: int | None = None
     complete: bool = False
     comments: str = ""
+    # Editing a recorded visit (``pipit.entry.existing``): the sightings saving replaces,
+    # the visit they were loaded from, and the slot as loaded (to tell whether it was
+    # edited). None when nothing was loaded: saving then only adds and updates.
+    replaces: list[int] | None = None
+    loaded_key: str | None = None
+    loaded_signature: str | None = None
 
 
 @dataclass(slots=True)
@@ -72,6 +78,7 @@ class SlotSighting:
     status: str = "none"
     breeding: str = ""
     notes: str = ""
+    source_id: int | None = None  # the recorded sighting this was loaded from
 
 
 @dataclass(slots=True)
@@ -219,7 +226,8 @@ class EntrySession:
             found.append(Problem(error, "Enter a date."))
         elif not self.date.is_full_date and len(self.slots) > 1:
             found.append(Problem(error, "Several locations need a full date."))
-        if not self.rows:
+        replacing = any(slot.replaces for slot in self.slots)
+        if not self.rows and not replacing:
             found.append(Problem(error, "Enter at least one species."))
         used = {letter for row in self.rows for letter in row.seen}
         keys: dict[tuple[str, time | None], str] = {}
@@ -229,10 +237,26 @@ class EntrySession:
             if slot.location is None:
                 found.append(Problem(error, f"Location {letter} has no place.", letter))
             else:
-                if letter not in used:
+                if letter not in used and slot.replaces:
+                    count = len(slot.replaces)
+                    found.append(Problem(
+                        ProblemKind.WARNING,
+                        f"Saving removes the {count} recorded sighting{'s' * (count != 1)} "
+                        f"at location {letter}.",
+                        letter,
+                    ))  # fmt: skip
+                elif letter not in used:
                     found.append(
                         Problem(ProblemKind.WARNING, f"No species at location {letter}.", letter)
                     )
+                if slot.replaces and slot.loaded_key != self.slot_key(letter):
+                    count = len(slot.replaces)
+                    found.append(Problem(
+                        ProblemKind.WARNING,
+                        f"Saving moves the {count} recorded sighting{'s' * (count != 1)} "
+                        f"loaded at location {letter} to this place, date and time.",
+                        letter,
+                    ))  # fmt: skip
                 choice = slot.location
                 identity = choice.xml_id or f"{choice.parent_xml_id}/{choice.name}"
                 key = (identity, slot.start_time)
@@ -259,6 +283,28 @@ class EntrySession:
             if not row.seen:
                 found.append(Problem(error, "A species is not ticked at any location.", row=index))
         return found
+
+    def slot_key(self, letter: str) -> str | None:
+        """Place, date and start time of an existing place: which recorded visit the slot
+        is (``existing.visit_key``); None until all are known."""
+        slot = self.slot(letter)
+        choice = slot.location
+        if self.date is None or choice is None or choice.xml_id is None:
+            return None
+        start = format_time(slot.start_time) if slot.start_time else ""
+        return "|".join((choice.xml_id, format_partial_date(self.date), start))
+
+    def slot_signature(self, letter: str) -> str:
+        """The slot's species and details, to tell whether loaded data was edited."""
+        slot = self.slot(letter)
+        visit = (slot.observation_type.type_id, slot.duration_minutes, slot.distance_km,
+                 slot.area_hectares, slot.party_size, slot.complete, slot.comments)  # fmt: skip
+        rows = [
+            (row.taxonomy_id, row.taxon_id, repr(row.seen[letter]))
+            for row in self.rows
+            if letter in row.seen
+        ]
+        return repr((visit, rows))
 
     def can_save(self) -> bool:
         return not any(problem.kind is ProblemKind.ERROR for problem in self.problems())
@@ -316,6 +362,8 @@ class EntrySession:
                     duration_minutes=raw["duration_minutes"], distance_km=raw["distance_km"],
                     area_hectares=raw["area_hectares"], party_size=raw["party_size"],
                     complete=raw["complete"], comments=raw["comments"],
+                    replaces=raw.get("replaces"), loaded_key=raw.get("loaded_key"),
+                    loaded_signature=raw.get("loaded_signature"),
                 )
             )  # fmt: skip
         rows = []

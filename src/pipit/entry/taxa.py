@@ -17,7 +17,7 @@ from pipit.search.taxon_index import IndexKind, TaxonIndex
 from pipit.search.word_separator import MAX_LENGTH_TO_SPLIT, boundaries
 from pipit.taxa.mapped import MappedTaxonomy
 from pipit.taxa.model import Taxon, Taxonomy, TaxonType, full_name
-from pipit.taxa.sighting_taxon import SightingTaxon
+from pipit.taxa.sighting_taxon import Resolved, SightingTaxon, SightingTaxonType
 
 #: Checklist statuses that mean "expected here" (ranked first).
 _EXPECTED = frozenset({"", "endemic", "introduced"})
@@ -65,7 +65,9 @@ class EntryTaxa:
                         return None
                 else:
                     base = chosen
-                return StoredTaxon(base, None, min(self._order[part] for part in parts))
+                positions = tuple(self._order[part] for part in parts)
+                return StoredTaxon(base, None, min(positions), positions,
+                                   "sp" if separator == "/" else "hybrid")  # fmt: skip
         taxon = self.display.get(taxon_id)
         if taxon is None:
             return None
@@ -76,11 +78,33 @@ class EntryTaxa:
             base_taxon = mapping
         else:
             base_taxon = SightingTaxon.single(taxon_id)
-        return StoredTaxon(base_taxon, None, self._order[taxon_id])
+        return StoredTaxon(
+            base_taxon, None, self._order[taxon_id], (self._order[taxon_id],), "single"
+        )
 
     def order(self, taxon_id: str) -> int:
         parts = taxon_id.replace("+", "/").split("/")
         return min(self._order.get(part, len(self._order)) for part in parts)
+
+    def row_id(self, stored: SightingTaxon) -> str | None:
+        """The row ID in this display taxonomy for a stored (base) sighting taxon: one
+        taxon's ID, "a/b" for a sp., "a+b" for a hybrid (the reverse of ``stored``,
+        ``SightingTaxon.resolve`` in Scythebill). None if it can't be shown."""
+        display = self.display
+        resolved: Resolved | None
+        try:
+            if isinstance(display, MappedTaxonomy):
+                resolved = display.resolve_into(stored)
+            else:
+                resolved = stored.resolve_internal(display)
+        except (KeyError, ValueError):
+            return None
+        if resolved is None:
+            return None
+        if resolved.type is SightingTaxonType.SINGLE:
+            return resolved.taxon.id
+        separator = "+" if resolved.type is SightingTaxonType.HYBRID else "/"
+        return separator.join(taxon.id for taxon in resolved.taxa)
 
     def names(self, taxon_id: str) -> tuple[str, str]:
         """(common, scientific) for a row: one taxon, a sp. ("a/b") or a hybrid ("a x b",

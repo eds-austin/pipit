@@ -63,9 +63,17 @@ Each location becomes its own Scythebill visit (`SingleLocationEdit.apply`):
 
 Everything is one transaction. Scythebill's own load and save leaves an exported list unchanged after entry. That was checked for built-in counties, new places with coordinates, sp. and hybrid sightings, flags, statuses, breeding codes and every visit field (see TESTING.md).
 
-### One deliberate difference
+### Editing a recorded visit
 
-Scythebill's entry screen loads a visit's existing sightings and then replaces them all when you save. Pipit doesn't show existing sightings yet, so it never deletes on save. A bird already recorded at the same place, date and start time is updated in place, and everything else is added. Saving can therefore never lose a record. Editing existing visits comes with the browse screens (M4).
+As in Scythebill, a recorded visit opens for editing as soon as a location's place, date and start time name it. From the Locations screen, Ctrl+E then Enter (or a click on a visit) opens it at location A. The card shows **Editing recorded visit**.
+
+- **What loads** (`SingleLocationEdit.snapshotExistingSightings`): sightings at that place and date whose time equals the start time. If there are none, the ones with no time load instead, so you can add a start time to an untimed visit. Each shows in the display taxonomy; in AviList, Ruddy Duck appears as an AviList subspecies, exactly as Scythebill shows it. If two sightings show as the same bird, only the first loads, and the other is left alone. The visit record (protocol, effort, comments) loads too, unless you've already typed visit details.
+- **Saving replaces exactly what loaded**, as Scythebill does. Birds still in the grid are saved again at the end of the list, in Scythebill's order (`ResolvedComparator`, ported). Birds you removed are deleted. Each kept bird keeps its database row, so observers and photos stay attached. The status line says how many were removed, and one Ctrl+Z restores everything.
+- **Changing the place, date or time** before editing anything swaps in that visit instead. After an edit, the loaded sightings stay, and the "Before saving" list warns that saving moves them.
+- **Typed first, place chosen later**: recorded birds are added to what you typed, and what you typed wins.
+- Locations that loaded nothing behave as before: a bird already recorded at that visit is updated in place, and everything else is added.
+
+Six cases are checked byte for byte against Scythebill's own edit of the same visit: unchanged re-saves in Clements and AviList, edits in both, adding a time to an untimed visit, and removing every bird (see TESTING.md). Sightings of an embedded taxonomy (mammals) load and save, and are ordered after the birds as in Scythebill's `syncTaxa`. That path isn't covered by an oracle case yet.
 
 ## Not yet in this milestone
 

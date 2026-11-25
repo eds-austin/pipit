@@ -71,6 +71,13 @@ Card {
                 onEscaped: { root.newPlaceName = ""; root.rebindPlace() }
                 Accessible.name: qsTr("Place %1").arg(root.letter)
             }
+            Badge {
+                objectName: "editingBadge"
+                visible: root.slot.editing >= 0
+                text: qsTr("Editing recorded visit")
+                tone: Theme.warning
+                iconName: "pencil"
+            }
             PLabel { kind: "caption"; text: qsTr("%n species", "", root.slot.speciesCount) }
             PIconButton {
                 visible: entry.slotCount > 1

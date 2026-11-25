@@ -88,3 +88,20 @@ location_ops delete delete:lighth
 location_ops merge merge:lakmer:bayare
 location_ops move move:bayare1:_usst_califo
 location_ops merge_recursive merge:coast:poirey
+
+# Editing an existing visit (EditVisit.java: SingleLocationEdit snapshot, edit, apply).
+"$PY" -I tools/oracle/make_visits_fixture.py "$BSXM/visits.bsxm"
+edit_visit() {
+    local name="$1"; shift
+    java -cp "$CLASSPATH" tools/oracle/EditVisit.java "$FILES/taxon.xml" \
+        "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$BSXM/visits.bsxm" \
+        "$BSXM/visits.$name.scythebill.bsxm" "$@"
+}
+edit_visit unchanged clements lakmer 2026-08-08 08:00
+edit_visit unchanged_avilist avilist lakmer 2026-08-08 08:00
+edit_visit edit clements lakmer 2026-08-08 08:00 count:spAnaspla:7 remove:spArdeaalb \
+    add:spEgretthu:2 heard:spOxyurjam "comments:Calm, then windy"
+edit_visit edit_avilist avilist lakmer 2026-08-08 08:00 count:spAnaspla:7 add:spEgretthu:2
+edit_visit add_time clements muiwoo 2026-09-09 06:30 add:spAnasrub:1
+edit_visit remove_all clements _scyco_GB-ENG-KEN 2026-06-06 - remove:spAnaspla  # Kent becomes built-in on load

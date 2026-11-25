@@ -41,7 +41,8 @@ PDialog {
         ["F2", qsTr("Edit the place")],
         ["Delete", qsTr("Delete it (sightings move up a level)")],
         ["Ctrl+M", qsTr("Move it into another place")],
-        ["Ctrl+Shift+M", qsTr("Merge it into another place")]
+        ["Ctrl+Shift+M", qsTr("Merge it into another place")],
+        ["Ctrl+E", qsTr("Its visits: Enter opens one to edit")]
     ]
 
     GridLayout {

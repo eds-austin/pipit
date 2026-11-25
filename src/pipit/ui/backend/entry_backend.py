@@ -16,8 +16,15 @@ from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from pipit.domain.partial_date import PartialDate, format_partial_date, parse_partial_date
 from pipit.domain.report import ObservationType
-from pipit.domain.values import java_float_to_string, kotlin_int_or_none, parse_float32
-from pipit.entry.commit import CommitError, commit_session
+from pipit.domain.values import (
+    java_float_to_string,
+    kotlin_int_or_none,
+    parse_float32,
+    parse_time,
+)
+from pipit.entry.commit import CommitError, StoredTaxon, commit_session
+from pipit.entry.context import location_label
+from pipit.entry.existing import is_unedited, sync_slot
 from pipit.entry.session import (
     SLOT_LETTERS,
     EntrySession,
@@ -32,6 +39,7 @@ from pipit.entry.session import (
 )
 from pipit.entry.taxa import Match
 from pipit.taxa.model import TaxonType, full_name
+from pipit.taxa.sighting_taxon import SightingTaxon
 from pipit.ui.backend.app_controller import AppController
 from pipit.ui.backend.list_model import DictListModel
 
@@ -100,7 +108,7 @@ class EntryBackend(QObject):
         self.slots_model = DictListModel([
             "letter", "label", "hasLocation", "protocol", "protocolLabel", "startTime",
             "duration", "distance", "area", "party", "complete", "comments", "speciesCount",
-            "needs", "hides", "active",
+            "needs", "hides", "active", "editing",
         ])  # fmt: skip
         self.rows_model = DictListModel(
             ["name", "scientific", "rank", "counts", "details", "badges", "notes"]
@@ -149,8 +157,45 @@ class EntryBackend(QObject):
         return self._session is not None and bool(self._session.rows)
 
     def _touch(self) -> None:
+        self._sync_existing()
         self._refresh()
         self._draft_timer.start()
+
+    def _sync_existing(self) -> None:
+        """Load what is already recorded for each slot's place, date and start time, so
+        a recorded visit opens for editing (Scythebill's snapshot of existing sightings)."""
+        session = self._session
+        database = self._app.database
+        taxa = self._app.entry_taxa
+        if session is None or database is None or taxa is None:
+            return
+        for letter in session.letters():
+            loaded = sync_slot(database.connection, taxa, session, letter)
+            if loaded:
+                slot = session.slot(letter)
+                place = slot.location.name if slot.location else ""
+                self._app.message.emit(
+                    f"Location {letter}: {loaded} recorded sighting{'s' * (loaded != 1)} at "
+                    f"{place} loaded; saving replaces them"
+                )
+
+    def _resolve(self, taxonomy_id: str, taxon_id: str) -> StoredTaxon | None:
+        taxa = self._app.entry_taxa
+        if taxa is None:
+            return None
+        if taxonomy_id != taxa.display.id:  # another taxonomy (mammals), stored as it is
+            return StoredTaxon(SightingTaxon.single(taxon_id), taxonomy_id, 10**9)
+        return taxa.stored(taxon_id)
+
+    def _other_names(self, taxonomy_id: str, taxon_id: str) -> tuple[str, str]:
+        database = self._app.database
+        found = None if database is None else database.connection.execute(
+            "SELECT common_name, name FROM ext_taxa WHERE taxonomy_id = ? AND taxon_id = ?",
+            (taxonomy_id, taxon_id),
+        ).fetchone()  # fmt: skip
+        if found is None:
+            return taxon_id, ""
+        return found[0] or found[1], found[1]
 
     @Slot()
     def save_draft_now(self) -> None:
@@ -174,6 +219,48 @@ class EntryBackend(QObject):
         self._session.date = parsed
         self._touch()
         return True
+
+    @Slot(str, str, str, result=bool)
+    def openVisit(self, xml_id: str, date_text: str, start: str) -> bool:
+        """Start editing a recorded visit (from the Locations screen): a fresh day with the
+        visit's place, date and start time at location A, its sightings loaded. Refused
+        while typed, unsaved sightings are in the grid."""
+        session = self._session
+        taxa = self._app.entry_taxa
+        context = self._app.context
+        if session is None or taxa is None or context is None or self._app.readOnly:
+            return False
+        if self._has_typed_work(session):
+            self._app.message.emit(
+                "Save (Ctrl+Enter) or clear the day being entered before opening a visit"
+            )
+            return False
+        location = context.location(xml_id)
+        if location is None:
+            return False
+        try:
+            date_value = parse_partial_date(date_text)
+        except ValueError:
+            return False
+        fresh = EntrySession(taxa.display.id, date_value)
+        fresh.slot("A").location = LocationChoice(
+            LocationKind.EXISTING, location.name, location_label(location), xml_id=xml_id
+        )
+        fresh.slot("A").start_time = parse_time(start) if start else None
+        self._session = fresh
+        self._active = "A"
+        self._touch()
+        return True
+
+    @staticmethod
+    def _has_typed_work(session: EntrySession) -> bool:
+        """Anything in the grid besides visits loaded and left as they were."""
+        for letter in session.letters():
+            in_use = any(letter in row.seen for row in session.rows)
+            slot = session.slot(letter)
+            if in_use and not (slot.replaces is not None and is_unedited(session, letter)):
+                return True
+        return False
 
     # ------------------------------------------------------------ slots
 
@@ -452,9 +539,7 @@ class EntryBackend(QObject):
         if session is None or database is None or taxa is None:
             return False
         try:
-            result = commit_session(
-                database, session, lambda _taxonomy, taxon_id: taxa.stored(taxon_id)
-            )
+            result = commit_session(database, session, self._resolve)
         except CommitError as error:
             self._app.message.emit(str(error))
             return False
@@ -463,7 +548,11 @@ class EntryBackend(QObject):
         self._active = "A"
         self._app.changed()
         visits = f"{result.visits} visit{'s' if result.visits != 1 else ''}"
-        text = f"Saved {result.sightings + result.updated} sightings, {visits}. Ctrl+Z undoes."
+        removed = f", removed {result.removed}" if result.removed else ""
+        text = (
+            f"Saved {result.sightings + result.updated} sightings{removed}, {visits}. "
+            "Ctrl+Z undoes."
+        )
         self._app.message.emit(text)
         self.saved.emit(text)
         self._refresh()
@@ -510,6 +599,8 @@ class EntryBackend(QObject):
                 "needs": [f.value for f in protocol.required],
                 "hides": [f.value for f in protocol.hidden],
                 "active": letter == self._active,
+                # Recorded sightings saving replaces; -1 when not editing a recorded visit.
+                "editing": -1 if slot.replaces is None else len(slot.replaces),
             })  # fmt: skip
         self.slots_model.reset(slots)
         seen = context.seen_species(taxa.display)
@@ -521,7 +612,17 @@ class EntryBackend(QObject):
         for row in session.rows:
             first_part = row.taxon_id.replace("+", "/").split("/")[0]
             taxon = taxa.display.get(first_part)
-            if taxon is None:
+            if row.taxonomy_id != taxa.display.id or taxon is None:
+                # Another taxonomy (loaded with a visit): shown, never dropped, so grid
+                # rows stay in step with the session's.
+                name, scientific = self._other_names(row.taxonomy_id, row.taxon_id)
+                rows.append({
+                    "name": name, "scientific": scientific, "rank": "",
+                    "counts": [_count_text(row.seen.get(letter)) for letter in SLOT_LETTERS[:4]],
+                    "details": [_details(row.seen.get(letter)) for letter in SLOT_LETTERS[:4]],
+                    "badges": [],
+                    "notes": " / ".join(s.notes for s in row.seen.values() if s.notes),
+                })  # fmt: skip
                 continue
             name, scientific = taxa.names(row.taxon_id)
             single = first_part == row.taxon_id

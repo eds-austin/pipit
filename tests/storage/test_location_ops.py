@@ -234,7 +234,8 @@ def test_migration_fills_the_closure_for_older_lists(location_list: ListDatabase
     ).fetchall():
         connection.execute(f'DROP TRIGGER "{name}"')
     connection.execute("DROP TABLE location_closure")
-    connection.execute("DELETE FROM schema_migrations WHERE version = 3")
+    connection.execute("DROP INDEX sightings_place_date")  # schema 4, applied again too
+    connection.execute("DELETE FROM schema_migrations WHERE version >= 3")
     connection.execute("PRAGMA user_version = 2")
     connection.commit()
     location_list.close()

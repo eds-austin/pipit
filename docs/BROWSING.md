@@ -8,7 +8,7 @@ Three panes: the place tree, what was seen in the chosen place, and the place it
 
 - **Tree.** Every place in list order, with the number of sightings in it and in every place inside it. Continents start open. Filter with Ctrl+F or `/`, or just start typing: matches stay visible with the places they are in.
 - **Seen in.** One row per species in the display taxonomy (AviList or Clements, from Settings), in taxonomic order, with its number of sightings and the first and latest dates. Subspecies and groups count as their species. A sp. or hybrid row stays its own row and doesn't add to the species total. Species of an embedded taxonomy (mammals) are listed after the birds and counted separately ("+ 32 in other taxonomies"). The pane refreshes 120 ms after the selection settles, so holding an arrow key stays smooth.
-- **The place.** Kind, built-in status, eBird code, coordinates, hotspot, notes, the actions with their keys, and its own visits (eBird checklists) with protocol, effort and the number of sightings on that date.
+- **The place.** Kind, built-in status, eBird code, coordinates, hotspot, notes, the actions with their keys, and its own visits (eBird checklists) with protocol, effort and the number of sightings on that date. Ctrl+E goes into the visits, and Enter (or a click) opens one in Enter sightings for editing (see ENTERING.md).
 
 Keys: Up/Down choose; Right opens a place (again: the first place inside); Left closes it (again: goes up); Enter or Tab into the species list, Esc or Shift+Tab back; Insert new place inside; F2 edit; Delete; Ctrl+M move; Ctrl+Shift+M merge. All are in F1.
 
@@ -32,4 +32,4 @@ The tree builds in 8 ms. The largest "seen in" (North America, about 1,100 rows)
 
 ## Still to come in M4
 
-Species browse, trips, and editing an existing visit (after which saving can replace a visit's sightings the way Scythebill does), plus custom checklists from the Locations screen.
+Species browse, trips, and custom checklists from the Locations screen.
