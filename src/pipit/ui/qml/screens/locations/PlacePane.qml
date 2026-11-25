@@ -14,6 +14,7 @@ ColumnLayout {
     signal moveRequested()
     signal mergeRequested()
     signal deleteRequested()
+    signal checklistRequested()
     signal visitChosen(string dateRaw, string start)
     signal back()
     function focusVisits() {
@@ -121,6 +122,15 @@ ColumnLayout {
             enabled: root.writable && root.has && !root.place.builtIn
             blockedReason: root.has && root.place.builtIn ? qsTr("Built-in places can't be merged away.") : ""
             onClicked: root.mergeRequested()
+        }
+        ActionRow {
+            objectName: "checklistButton"
+            Layout.fillWidth: true
+            text: root.has && root.place.hasChecklist ? qsTr("Edit its checklist") : qsTr("Start a checklist")
+            iconName: "list-tree"
+            keys: "Ctrl+L"
+            enabled: root.writable && app.taxaReady
+            onClicked: root.checklistRequested()
         }
         ActionRow {
             objectName: "deletePlaceButton"

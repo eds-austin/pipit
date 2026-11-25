@@ -32,7 +32,15 @@ Each change is one undoable action (one Ctrl+Z), using `pipit.storage.location_o
 - **Edit** coordinates (both or neither), notes, private flag and eBird hotspot. Only your own places can be renamed. A new name must not clash with a sibling.
 - Built-in places can't be moved or merged away from the screen. They mirror eBird's regions.
 
-### The place index
+### A place's own checklist (Ctrl+L)
+
+"Edit its checklist" (or "Start a checklist") opens Scythebill's checklist editor: the species in taxonomic order with their status. Up and Down choose a species. Digits 0–7 set its status, in Scythebill's order and words (Regular, Introduced, Provisional, Not established, Rarity, Rarity from introduced pop., Endemic, Extinct). Delete takes it off. Typing (or Ctrl+J) adds a species, and Enter adds the match. Nothing is stored until Ctrl+S, which saves as one undo step. Esc closes, asking twice if there are unsaved changes. "Delete checklist" removes it, and the place then uses the checklist of the place it is in.
+
+Saved as Scythebill saves them (`EditChecklistPanel`): it rebuilds the checklist as a Java `HashMap` and writes it in that map's order, not the order shown. Pipit reproduces that order (`pipit.domain.java_hash`: Java string and list hashes, Guava's `newHashMapWithExpectedSize`, `HashMap` buckets). Five cases match Scythebill byte for byte (`tools/oracle/ChecklistOps.java`). On Eric's list, re-saving all 18 checklists (7,952 entries, in AviList) unchanged gives exactly Scythebill's file. A new checklist goes after the others.
+
+Not yet: making a checklist from your sightings (it needs M5's query engine), from pasted text, or from eBird.
+
+
 
 `location_closure` (schema 3) holds every (ancestor, descendant, depth) pair, so "everything in this place" is one join. Triggers keep it current on insert, delete and re-parenting, including while undo and redo replay their statements. It isn't journaled itself. The integrity check on open compares it with a fresh walk of the tree. The location-operations fuzz test checks it after every random add, move, merge, delete and rename, and after every undo and redo.
 

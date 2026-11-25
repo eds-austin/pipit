@@ -8,6 +8,7 @@
 //   Ctrl+M        move it into another place; Ctrl+Shift+M merge it into another place
 //   Delete        delete it (its sightings and visits move to the place it is in)
 //   Ctrl+E        into its visits: Enter opens one in Enter sightings to edit, Esc back
+//   Ctrl+L        edit its own checklist (or start one)
 // Every change is one step of Ctrl+Z.
 import QtQuick
 import QtQuick.Controls.Basic as B
@@ -24,6 +25,7 @@ Item {
     readonly property bool has: place.row !== undefined
     readonly property bool dialogOpen: addDialog.visible || editDialog.visible
                                        || pickDialog.visible || deleteDialog.visible
+                                       || checklistEditor.visible || deleteChecklistDialog.visible
     readonly property bool canChange: root.has && !app.readOnly && !root.dialogOpen
 
     function focusTree() { tree.forceActiveFocus() }
@@ -48,6 +50,11 @@ Item {
 
     Shortcut { enabled: root.shown && root.working && !root.dialogOpen; sequence: "Ctrl+F"; onActivated: root.startFilter("") }
     Shortcut { enabled: root.shown && root.working; sequence: "Ctrl+M"; onActivated: root.openPick("move") }
+    Shortcut {
+        enabled: root.shown && root.working && app.taxaReady
+        sequence: "Ctrl+L"
+        onActivated: if (root.canChange) checklistEditor.show(root.place.xmlId, root.place.name)
+    }
     Shortcut {
         enabled: root.shown && root.working && !root.dialogOpen
         sequence: "Ctrl+E"
@@ -195,8 +202,42 @@ Item {
                 onMoveRequested: root.openPick("move")
                 onMergeRequested: root.openPick("merge")
                 onDeleteRequested: root.openDelete()
+                onChecklistRequested: if (root.canChange) checklistEditor.show(root.place.xmlId, root.place.name)
             }
         }
+    }
+
+    ChecklistEditor {
+        id: checklistEditor
+        onClosed: root.focusTree()
+        onDeleteRequested: deleteChecklistDialog.open()
+    }
+    PDialog {
+        id: deleteChecklistDialog
+        objectName: "deleteChecklistDialog"
+        heading: qsTr("Delete the checklist of %1?").arg(checklist.placeName)
+        onOpened: confirmDeleteChecklist.forceActiveFocus()
+        PLabel {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            elide: Text.ElideNone
+            text: qsTr("The place then uses the checklist of the place it is in. Ctrl+Z undoes this.")
+        }
+        footerItem: [
+            PButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: deleteChecklistDialog.close() },
+            PButton {
+                id: confirmDeleteChecklist
+                objectName: "confirmDeleteChecklist"
+                text: qsTr("Delete")
+                variant: "danger"
+                onClicked: {
+                    deleteChecklistDialog.close()
+                    if (checklist.deleteChecklist()) checklistEditor.close()
+                }
+                Keys.onReturnPressed: clicked()
+                Keys.onEnterPressed: clicked()
+            }
+        ]
     }
 
     // ---------------------------------------------------------------- dialogs

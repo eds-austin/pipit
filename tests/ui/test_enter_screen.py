@@ -47,6 +47,7 @@ class Running:
     locations: Any = None
     species: Any = None
     trips: Any = None
+    checklist: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -54,6 +55,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
 
     from pipit.app import QML_DIR
     from pipit.ui.backend.app_controller import AppController
+    from pipit.ui.backend.checklist_backend import ChecklistBackend
     from pipit.ui.backend.entry_backend import EntryBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.shell import Shell
@@ -69,13 +71,14 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     locations = LocationsBackend(app)
     species = SpeciesBackend(app)
     trips = TripsBackend(app)
+    checklist = ChecklistBackend(app)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
     engine.addImageProvider("icon", IconProvider())
     for name, value in (("shell", shell), ("app", app), ("entry", entry),
                         ("locations", locations), ("species", species),
-                        ("trips", trips)):  # fmt: skip
+                        ("trips", trips), ("checklist", checklist)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
@@ -87,7 +90,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     window.setProperty("height", 1000)
     window.requestActivate()
     wait_until(window.isActive)
-    running = Running(window, app, entry, shell, engine, locations, species, trips)
+    running = Running(window, app, entry, shell, engine, locations, species, trips, checklist)
     running.errors = errors  # type: ignore[attr-defined]
     return running
 

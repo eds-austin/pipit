@@ -122,3 +122,18 @@ trip_ops delete_span delete:span
 trip_ops edit "edit:coast:name=Oregon coast|start=2026-06-30|end=2026-07-09|notes=Fog, then sun"
 trip_ops move edit:coast:loc=bayare1
 trip_ops clear_notes "edit:coast:notes="
+
+# Custom checklists (ChecklistOps.java: EditChecklistPanel and removeChecklist).
+"$PY" -I tools/oracle/make_checklists_fixture.py "$PACK" "$BSXM/checklists.bsxm"
+checklist_ops() {
+    local name="$1"; shift
+    java -cp "$CLASSPATH" tools/oracle/ChecklistOps.java "$FILES/taxon.xml" \
+        "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$BSXM/checklists.bsxm" \
+        "$BSXM/checklists.$name.scythebill.bsxm" "$@"
+}
+checklist_ops unchanged clements edit:bayare
+checklist_ops unchanged_avilist avilist edit:bayare
+checklist_ops edit clements "edit:bayare:status=spStrutcam=endemic;remove=spCasuacas;add=spArdeaalb;status=spStrutmol=native"
+checklist_ops small clements "edit:poirey:add=spEgretthu;add=spAnaspla"
+checklist_ops delete clements delete:bayare  # (Kent's list goes on load: Kent becomes built-in)

@@ -59,7 +59,8 @@ PDialog {
         ["Delete", qsTr("Delete it (sightings move up a level)")],
         ["Ctrl+M", qsTr("Move it into another place")],
         ["Ctrl+Shift+M", qsTr("Merge it into another place")],
-        ["Ctrl+E", qsTr("Its visits: Enter opens one to edit")]
+        ["Ctrl+E", qsTr("Its visits: Enter opens one to edit")],
+        ["Ctrl+L", qsTr("Its own checklist: 0–7 status, Delete removes")]
     ]
 
     // Scrolls when the list is taller than the window.

@@ -47,6 +47,9 @@ CORE_MODULES = [
     "storage.sighting_ops",
     "browse.trips",
     "storage.trip_ops",
+    "browse.checklists",
+    "storage.checklist_ops",
+    "domain.java_hash",
     "storage.location_ops",
 ]
 
