@@ -76,6 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     from pipit.config.settings import AppSettings, load_settings
     from pipit.ui.backend.app_controller import AppController
     from pipit.ui.backend.entry_backend import EntryBackend
+    from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.theme import IconProvider, apply_theme
 
@@ -110,6 +111,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     elif not testing:
         controller.reopen_last()
     entry = EntryBackend(controller, date.fromisoformat(args.today) if args.today else None)
+    locations = LocationsBackend(controller)
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -121,6 +123,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     context.setContextProperty("shell", shell)
     context.setContextProperty("app", controller)
     context.setContextProperty("entry", entry)
+    context.setContextProperty("locations", locations)
     engine.setInitialProperties({"appVersion": __version__, "maximized": not args.size})
     engine.warnings.connect(
         lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings]

@@ -64,6 +64,30 @@ def _check_location_tree(connection: sqlite3.Connection) -> list[str]:
                 return [f"the location tree has a cycle at location row {start}"]
             seen.add(current)
             current = parents.get(current)
+    return _check_closure(connection, parents)
+
+
+def expected_closure(parents: dict[int, int | None]) -> set[tuple[int, int, int]]:
+    """Every (ancestor, descendant, depth) of an acyclic tree given as row -> parent."""
+    pairs = set()
+    for start in parents:
+        current: int | None = start
+        depth = 0
+        while current is not None:
+            pairs.add((current, start, depth))
+            current = parents.get(current)
+            depth += 1
+    return pairs
+
+
+def _check_closure(connection: sqlite3.Connection, parents: dict[int, int | None]) -> list[str]:
+    stored = set(connection.execute("SELECT ancestor, descendant, depth FROM location_closure"))
+    expected = expected_closure(parents)
+    if stored != expected:
+        return [
+            f"the location index is out of date ({len(stored - expected)} extra, "
+            f"{len(expected - stored)} missing)"
+        ]
     return []
 
 

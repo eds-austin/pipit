@@ -17,9 +17,10 @@ from pathlib import Path
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 APPLICATION_ID = 0x50495049  # "PIPI": a Pipit list
 #: Tables the undo journal never records.
-UNJOURNALED = frozenset(
-    {"undo_actions", "undo_log", "undo_state", "schema_migrations", "entry_drafts"}
-)
+UNJOURNALED = frozenset({
+    "undo_actions", "undo_log", "undo_state", "schema_migrations", "entry_drafts",
+    "location_closure",  # derived from locations by its own triggers
+})  # fmt: skip
 
 
 class SchemaError(RuntimeError):

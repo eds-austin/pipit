@@ -195,6 +195,49 @@ def test_random_operations_keep_the_tree_valid(
         export_bsxm(again, second)
     assert second.read_bytes() == first.read_bytes()
 
+    finished = dump(database.connection)
     while database.undo() is not None:
-        pass
+        assert integrity.check(database.connection) == []  # the closure follows undo
     assert dump(database.connection) == original
+    while database.redo() is not None:
+        assert integrity.check(database.connection) == []  # and redo
+    assert dump(database.connection) == finished
+
+
+def test_closure_lists_every_ancestor(location_list: ListDatabase) -> None:
+    connection = location_list.connection
+    inside_california = {
+        xml_id
+        for (xml_id,) in connection.execute(
+            "SELECT l.xml_id FROM location_closure c JOIN locations l ON l.id = c.descendant "
+            "WHERE c.ancestor = ? AND c.depth > 0",
+            (row_of(connection, "_usst_califo"),),
+        )
+    }
+    assert {"bayare", "poirey", "lighth", "lakmer"} <= inside_california
+    assert "_usst" not in inside_california
+
+
+def test_stale_closure_is_detected(location_list: ListDatabase) -> None:
+    connection = location_list.connection
+    connection.execute("DELETE FROM location_closure WHERE depth = 1")
+    connection.commit()
+    assert any("location index" in problem for problem in integrity.check(connection))
+
+
+def test_migration_fills_the_closure_for_older_lists(location_list: ListDatabase) -> None:
+    path = location_list.path
+    connection = location_list.connection
+    expected = set(connection.execute("SELECT * FROM location_closure"))
+    for (name,) in connection.execute(
+        "SELECT name FROM sqlite_schema WHERE type = 'trigger' AND name LIKE 'closure_%'"
+    ).fetchall():
+        connection.execute(f'DROP TRIGGER "{name}"')
+    connection.execute("DROP TABLE location_closure")
+    connection.execute("DELETE FROM schema_migrations WHERE version = 3")
+    connection.execute("PRAGMA user_version = 2")
+    connection.commit()
+    location_list.close()
+    with ListDatabase.open(path) as reopened:
+        assert set(reopened.connection.execute("SELECT * FROM location_closure")) == expected
+        assert integrity.check(reopened.connection) == []

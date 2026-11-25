@@ -42,6 +42,8 @@ CORE_MODULES = [
     "entry.commit",
     "entry.taxa",
     "entry.context",
+    "browse.locations",
+    "storage.location_ops",
 ]
 
 

@@ -18,13 +18,14 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 10.0) -> None:
 
 
 def add_app_context(engine: object, tmp: object) -> list[object]:
-    """The ``app`` and ``entry`` objects Main.qml expects, with no data pack and no list.
-    Returns them so the caller keeps them alive."""
+    """The ``app``, ``entry`` and ``locations`` objects Main.qml expects, with no data pack
+    and no list. Returns them so the caller keeps them alive."""
     from pathlib import Path
 
     from pipit.config.settings import AppSettings
     from pipit.ui.backend.app_controller import AppController
     from pipit.ui.backend.entry_backend import EntryBackend
+    from pipit.ui.backend.locations_backend import LocationsBackend
 
     app = AppController(
         AppSettings(),
@@ -33,7 +34,9 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
         load_in_background=False,
     )
     entry = EntryBackend(app)
+    locations = LocationsBackend(app)
     context = engine.rootContext()  # type: ignore[attr-defined]
     context.setContextProperty("app", app)
     context.setContextProperty("entry", entry)
-    return [app, entry]
+    context.setContextProperty("locations", locations)
+    return [app, entry, locations]

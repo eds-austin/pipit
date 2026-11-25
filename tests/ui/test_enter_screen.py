@@ -44,6 +44,7 @@ class Running:
     entry: Any
     shell: Any
     engine: Any
+    locations: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -52,6 +53,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     from pipit.app import QML_DIR
     from pipit.ui.backend.app_controller import AppController
     from pipit.ui.backend.entry_backend import EntryBackend
+    from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.theme import IconProvider
 
@@ -60,11 +62,13 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
                         backups_root=backups, load_in_background=False)  # fmt: skip
     assert app.open_path(list_path)
     entry = EntryBackend(app, date(2026, 11, 24))
+    locations = LocationsBackend(app)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
     engine.addImageProvider("icon", IconProvider())
-    for name, value in (("shell", shell), ("app", app), ("entry", entry)):
+    for name, value in (("shell", shell), ("app", app), ("entry", entry),
+                        ("locations", locations)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
@@ -76,7 +80,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     window.setProperty("height", 1000)
     window.requestActivate()
     wait_until(window.isActive)
-    running = Running(window, app, entry, shell, engine)
+    running = Running(window, app, entry, shell, engine, locations)
     running.errors = errors  # type: ignore[attr-defined]
     return running
 

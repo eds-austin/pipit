@@ -50,14 +50,14 @@ It refuses, with a message to open and save the file in Scythebill first:
 
 Everything Scythebill itself refuses is refused too: unknown taxa, malformed dates, duplicate IDs.
 
-Not ported yet: `ReassignNewBuiltInLocations`, which runs on every Scythebill load and replaces a user location with a newer built-in location of the same name. It needs the predefined-location tables, which come with the location screens. Skipping it never loses data, and Scythebill applies it the next time it opens an exported file.
+Import also runs Scythebill's on-load `ReassignNewBuiltInLocations` (after the stored list has been checked against the file): a place of yours that matches a newer built-in place under the same parent is replaced by the built-in one, so the list matches what Scythebill shows after opening the same file. The places replaced are listed as warnings.
 
 ## Data integrity
 
 - **All or nothing.** An import is read, checked, written in one transaction, then exported again from the database and compared byte for byte with the expected output. Any difference deletes the new list.
 - **Always saved.** Every change is one SQLite transaction (WAL, `synchronous=FULL`, foreign keys on), so there is no Save command and a crash loses nothing that was committed.
-- **Undo and redo.** Generated triggers record the inverse of every change to every table. Undo replays them in one transaction, so the database returns to exactly its earlier state. The last 200 actions are kept, and an action that changes nothing isn't recorded.
-- **Checks on open.** Every open runs SQLite's quick check and foreign-key check, then Pipit's own checks: the sp. and hybrid structure, extended taxa, the location tree, migration checksums, and taxa against the data pack. If any fails, the list opens read-only ("repair mode"), so nothing is written on top of damage.
+- **Undo and redo.** Generated triggers record the inverse of every change to every table (except derived ones such as `location_closure`, which its own triggers keep current, during undo and redo too). Undo replays them in one transaction, so the database returns to exactly its earlier state. The last 200 actions are kept, and an action that changes nothing isn't recorded.
+- **Checks on open.** Every open runs SQLite's quick check and foreign-key check, then Pipit's own checks: the sp. and hybrid structure, extended taxa, the location tree (no cycles, and the `location_closure` index of every ancestor matches a fresh walk of the tree), migration checksums, and taxa against the data pack. If any fails, the list opens read-only ("repair mode"), so nothing is written on top of damage.
 - **Backups.** One zip per day, holding the database and the same list as `.bsxm`, so Scythebill can open every backup. Pipit keeps the latest 7 daily, 5 weekly and 12 monthly backups. Snapshots (`pre-<operation>-<time>.zip`) are taken before risky operations and are never rotated away.
 - **Schema changes.** Numbered SQL migrations, each recorded with its checksum. A list made by a newer Pipit is refused rather than misread.
 

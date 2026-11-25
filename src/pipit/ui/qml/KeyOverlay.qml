@@ -1,4 +1,4 @@
-// F1: the keyboard shortcuts that work everywhere. Screens add their own later.
+// F1: the keyboard shortcuts, everywhere and per screen.
 import QtQuick
 import QtQuick.Layouts
 import Pipit
@@ -33,6 +33,16 @@ PDialog {
         ["Ctrl+Shift+L", qsTr("Walk the checklist: digits, Enter; / filters")],
         ["Ctrl+Enter", qsTr("Save the day (one visit per location)")]
     ]
+    readonly property var locationKeys: [
+        ["Ctrl+F · /", qsTr("Filter places (or just start typing)")],
+        ["→ · ←", qsTr("Open a place, or close it and go up")],
+        ["Enter · Esc", qsTr("Into the species seen there, and back")],
+        ["Insert", qsTr("New place inside the chosen one")],
+        ["F2", qsTr("Edit the place")],
+        ["Delete", qsTr("Delete it (sightings move up a level)")],
+        ["Ctrl+M", qsTr("Move it into another place")],
+        ["Ctrl+Shift+M", qsTr("Merge it into another place")]
+    ]
 
     GridLayout {
         width: parent.width
@@ -55,6 +65,17 @@ PDialog {
         SectionHeader { text: qsTr("Enter sightings"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
         Repeater {
             model: root.entryKeys
+            RowLayout {
+                required property var modelData
+                Layout.fillWidth: true
+                spacing: Theme.s3
+                PLabel { Layout.fillWidth: true; text: modelData[1] }
+                KeyHint { keys: modelData[0] }
+            }
+        }
+        SectionHeader { text: qsTr("Locations"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+        Repeater {
+            model: root.locationKeys
             RowLayout {
                 required property var modelData
                 Layout.fillWidth: true
