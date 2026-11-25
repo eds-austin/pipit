@@ -49,6 +49,7 @@ class Running:
     trips: Any = None
     checklist: Any = None
     reports: Any = None
+    home: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -58,6 +59,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     from pipit.ui.backend.app_controller import AppController
     from pipit.ui.backend.checklist_backend import ChecklistBackend
     from pipit.ui.backend.entry_backend import EntryBackend
+    from pipit.ui.backend.home_backend import HomeBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.reports_backend import ReportsBackend
     from pipit.ui.backend.shell import Shell
@@ -75,6 +77,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     trips = TripsBackend(app)
     checklist = ChecklistBackend(app)
     reports = ReportsBackend(app)
+    home = HomeBackend(app)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -82,7 +85,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     for name, value in (("shell", shell), ("app", app), ("entry", entry),
                         ("locations", locations), ("species", species),
                         ("trips", trips), ("checklist", checklist),
-                        ("reports", reports)):  # fmt: skip
+                        ("reports", reports), ("home", home)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
@@ -95,7 +98,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     window.requestActivate()
     wait_until(window.isActive)
     running = Running(
-        window, app, entry, shell, engine, locations, species, trips, checklist, reports
+        window, app, entry, shell, engine, locations, species, trips, checklist, reports, home
     )
     running.errors = errors  # type: ignore[attr-defined]
     return running

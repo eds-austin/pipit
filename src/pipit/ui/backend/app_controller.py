@@ -98,6 +98,10 @@ class AppController(QObject):
     def database(self):  # type: ignore[no-untyped-def]
         return None if self._opened is None else self._opened.database
 
+    @property
+    def backups_root(self) -> Path:
+        return self._backups_root or paths.backups_dir()
+
     @Property(bool, notify=listChanged)
     def hasList(self) -> bool:
         return self._opened is not None

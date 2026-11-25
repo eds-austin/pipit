@@ -267,6 +267,13 @@ class ReportsBackend(QObject):
             fields.append({"type": row["type"], "value": value, "bool": row["bool"]})
         return gson.dumps({"fields": fields})
 
+    @Slot(str)
+    def showQuery(self, text: str) -> None:
+        """Put this query in the builder (not tied to a saved report)."""
+        self._current_saved = ""
+        self.set_query_json(text)
+        self.savedChanged.emit()
+
     def set_query_json(self, text: str) -> None:
         data = json.loads(text)
         legacy = data.get("type")

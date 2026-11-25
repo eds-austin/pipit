@@ -125,3 +125,20 @@ other, with the same name, place in the list, and JSON.
 Scythebill's own restore writes the queries back without their type (but doesn't mark the
 list changed), which is why older lists have none; Pipit writes the type, as Scythebill's
 saving does.
+
+## Home (Ctrl+1)
+
+- **Figures.** The life list, this year, then every saved report in its saved order (up to
+  twelve): each a real query with the Reports screen's counting (species and families, in
+  the display taxonomy). Arrows choose one; Enter or a click opens it in Reports (a saved
+  report loads as itself). A report Pipit can't run shows a dash and says so; total-ticks
+  reports aren't figures. Choosing which reports appear (pinning) can come later; for now
+  the saved order decides.
+- **Recent visits.** The eight newest place, date and time groups of sightings; Ctrl+R goes
+  in, Enter edits the visit in Enter Sightings.
+- **Backups.** When the newest backup was made, and how they are kept.
+
+Figures are counted on a worker thread with its own read-only connection and query
+context, so Home never holds up the window: on Eric's list the window waits about 15 ms
+and the figures follow about half a second later. Home only counts while it is showing;
+changes made elsewhere are counted when it next shows.
