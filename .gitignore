@@ -4,6 +4,9 @@
 !tests/fixtures/bsxm/new_list.scythebill.bsxm
 !tests/fixtures/bsxm/locations*.bsxm
 !tests/fixtures/bsxm/visits*.bsxm
+!tests/fixtures/bsxm/trips*.bsxm
+!tests/fixtures/bsxm/checklists*.bsxm
+!tests/fixtures/bsxm/queries.bsxm
 *.pipit
 datapacks/
 __pycache__/

@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report-set version="21.5.0" taxonomy="clements2026">
+  <locations>
+    <region id="__norame" name="North America">
+      <region id="__wesind" name="West Indies">
+        <country id="_ct_anguil" name="Anguilla" ebirdCode="AI"/>
+        <country id="_ct_ananba" name="Antigua and Barbuda" ebirdCode="AG"/>
+        <country id="_ct_bahama" name="Bahamas" ebirdCode="BS"/>
+        <country id="_ct_barbad" name="Barbados" ebirdCode="BB"/>
+        <country id="_ct_brviis" name="British Virgin Islands" ebirdCode="VG"/>
+        <country id="_ct_carnet" name="Caribbean Netherlands" ebirdCode="BQ"/>
+        <country id="_ct_cayisl" name="Cayman Islands" ebirdCode="KY"/>
+        <country id="_ct_cuba" name="Cuba" ebirdCode="CU"/>
+        <country id="_ct_domini" name="Dominica" ebirdCode="DM"/>
+        <country id="_ct_domrep" name="Dominican Republic" ebirdCode="DO"/>
+        <country id="_ct_grenad" name="Grenada" ebirdCode="GD"/>
+        <country id="_ct_guadel" name="Guadeloupe" ebirdCode="GP"/>
+        <country id="_ct_haiti" name="Haiti" ebirdCode="HT"/>
+        <country id="_ct_jamaic" name="Jamaica" ebirdCode="JM"/>
+        <country id="_ct_martin" name="Martinique" ebirdCode="MQ"/>
+        <country id="_ct_montse" name="Montserrat" ebirdCode="MS"/>
+        <country id="_ct_saibar" name="Saint Barth&#xe9;lemy" ebirdCode="BL"/>
+        <country id="_ct_sakian" name="Saint Kitts and Nevis" ebirdCode="KN"/>
+        <country id="_ct_sailuc" name="Saint Lucia" ebirdCode="LC"/>
+        <country id="_ct_samafp" name="Saint Martin (French part)" ebirdCode="MF"/>
+        <country id="_ct_savatg" name="Saint Vincent and the Grenadines" ebirdCode="VC"/>
+        <state id="_ct_sapysc" name="San Andr&#xe9;s, Providencia y Santa Catalina" ebirdCode="CO-SAP"/>
+        <country id="_ct_tuanci" name="Turks and Caicos Islands" ebirdCode="TC"/>
+        <country id="_ct_unista1" name="United States" ebirdCode="US">
+          <country id="_usst_pueric" name="Puerto Rico" ebirdCode="PR"/>
+          <country id="_usst_viisus" name="Virgin Islands (U.S.)" ebirdCode="VI"/>
+        </country>
+      </region>
+      <region id="__cename" name="Central America">
+        <country id="_ct_belize" name="Belize" ebirdCode="BZ"/>
+        <country id="_ct_cosric" name="Costa Rica" ebirdCode="CR"/>
+        <country id="_ct_elsalv" name="El Salvador" ebirdCode="SV"/>
+        <country id="_ct_guatem" name="Guatemala" ebirdCode="GT"/>
+        <country id="_ct_hondur" name="Honduras" ebirdCode="HN"/>
+        <country id="_ct_nicara" name="Nicaragua" ebirdCode="NI"/>
+        <country id="_ct_panama" name="Panama" ebirdCode="PA"/>
+      </region>
+      <country id="_ct_bermud" name="Bermuda" ebirdCode="BM"/>
+      <country id="_ct_canada" name="Canada" ebirdCode="CA"/>
+      <country id="_ct_greenl" name="Greenland" ebirdCode="GL"/>
+      <country id="_ct_mexico" name="Mexico" ebirdCode="MX"/>
+      <state id="_ct_sapiam" name="Saint Pierre and Miquelon" ebirdCode="PM"/>
+      <country id="_ct_unista" name="United States" ebirdCode="US">
+        <state id="_usst_alabam" name="Alabama" ebirdCode="AL"/>
+        <state id="_usst_alaska" name="Alaska" ebirdCode="AK"/>
+        <state id="_usst_arizon" name="Arizona" ebirdCode="AZ"/>
+        <state id="_usst_arkans" name="Arkansas" ebirdCode="AR"/>
+        <state id="_usst_califo" name="California" ebirdCode="CA">
+          <location id="bayare" name="Bay Area">
+            <park id="lakmer" name="Lake Merritt" lat="37.8000000" long="-122.2600000"/>
+            <location id="poirey" name="Point Reyes">
+              <location id="lighth" name="Lighthouse"/>
+            </location>
+          </location>
+          <county id="_scyco_US-CA-041" name="Marin" ebirdCode="US-CA-041">
+            <location id="muiwoo" name="Muir Woods"/>
+          </county>
+        </state>
+        <state id="_usst_colora" name="Colorado" ebirdCode="CO"/>
+        <state id="_usst_connec" name="Connecticut" ebirdCode="CT"/>
+        <state id="_usst_delawa" name="Delaware" ebirdCode="DE"/>
+        <state id="_usst_diofco" name="District of Columbia" ebirdCode="DC"/>
+        <state id="_usst_florid" name="Florida" ebirdCode="FL"/>
+        <state id="_usst_georgi" name="Georgia" ebirdCode="GA"/>
+        <state id="_usst_idaho" name="Idaho" ebirdCode="ID"/>
+        <state id="_usst_illino" name="Illinois" ebirdCode="IL"/>
+        <state id="_usst_indian" name="Indiana" ebirdCode="IN"/>
+        <state id="_usst_iowa" name="Iowa" ebirdCode="IA"/>
+        <state id="_usst_kansas" name="Kansas" ebirdCode="KS"/>
+        <state id="_usst_kentuc" name="Kentucky" ebirdCode="KY"/>
+        <state id="_usst_louisi" name="Louisiana" ebirdCode="LA"/>
+        <state id="_usst_maine" name="Maine" ebirdCode="ME"/>
+        <state id="_usst_maryla" name="Maryland" ebirdCode="MD"/>
+        <state id="_usst_massac" name="Massachusetts" ebirdCode="MA"/>
+        <state id="_usst_michig" name="Michigan" ebirdCode="MI"/>
+        <state id="_usst_minnes" name="Minnesota" ebirdCode="MN"/>
+        <state id="_usst_missis" name="Mississippi" ebirdCode="MS"/>
+        <state id="_usst_missou" name="Missouri" ebirdCode="MO"/>
+        <state id="_usst_montan" name="Montana" ebirdCode="MT"/>
+        <state id="_usst_nebras" name="Nebraska" ebirdCode="NE"/>
+        <state id="_usst_nevada" name="Nevada" ebirdCode="NV"/>
+        <state id="_usst_newham" name="New Hampshire" ebirdCode="NH"/>
+        <state id="_usst_newjer" name="New Jersey" ebirdCode="NJ"/>
+        <state id="_usst_newmex" name="New Mexico" ebirdCode="NM"/>
+        <state id="_usst_newyor" name="New York" ebirdCode="NY"/>
+        <state id="_usst_norcar" name="North Carolina" ebirdCode="NC"/>
+        <state id="_usst_nordak" name="North Dakota" ebirdCode="ND"/>
+        <state id="_usst_ohio" name="Ohio" ebirdCode="OH"/>
+        <state id="_usst_oklaho" name="Oklahoma" ebirdCode="OK"/>
+        <state id="_usst_oregon" name="Oregon" ebirdCode="OR">
+          <location id="bayare1" name="Bay Area">
+            <location id="yaqbay" name="Yaquina Bay"/>
+          </location>
+          <location id="coast" name="Coast">
+            <location id="lighth1" name="Lighthouse"/>
+            <location id="dunes" name="Dunes"/>
+          </location>
+        </state>
+        <state id="_usst_pennsy" name="Pennsylvania" ebirdCode="PA"/>
+        <state id="_usst_rhoisl" name="Rhode Island" ebirdCode="RI"/>
+        <state id="_usst_soucar" name="South Carolina" ebirdCode="SC"/>
+        <state id="_usst_soudak" name="South Dakota" ebirdCode="SD"/>
+        <state id="_usst_tennes" name="Tennessee" ebirdCode="TN"/>
+        <state id="_usst_texas" name="Texas" ebirdCode="TX"/>
+        <state id="_usst_utah" name="Utah" ebirdCode="UT"/>
+        <state id="_usst_vermon" name="Vermont" ebirdCode="VT"/>
+        <state id="_usst_virgin" name="Virginia" ebirdCode="VA"/>
+        <state id="_usst_washin" name="Washington" ebirdCode="WA"/>
+        <state id="_usst_wesvir" name="West Virginia" ebirdCode="WV"/>
+        <state id="_usst_wiscon" name="Wisconsin" ebirdCode="WI"/>
+        <state id="_usst_wyomin" name="Wyoming" ebirdCode="WY"/>
+      </country>
+    </region>
+    <region id="__souame" name="South America">
+      <country id="_ct_argent" name="Argentina" ebirdCode="AR"/>
+      <country id="_ct_aruba" name="Aruba" ebirdCode="AW"/>
+      <country id="_ct_bolivi" name="Bolivia" ebirdCode="BO"/>
+      <country id="_ct_brazil" name="Brazil" ebirdCode="BR"/>
+      <country id="_ct_carnet1" name="Caribbean Netherlands" ebirdCode="BQ"/>
+      <country id="_ct_chile" name="Chile" ebirdCode="CL"/>
+      <country id="_ct_colomb" name="Colombia" ebirdCode="CO"/>
+      <country id="_ct_ecuado" name="Ecuador" ebirdCode="EC"/>
+      <country id="_ct_fregui" name="French Guiana" ebirdCode="GF"/>
+      <country id="_ct_guyana" name="Guyana" ebirdCode="GY"/>
+      <country id="_ct_paragu" name="Paraguay" ebirdCode="PY"/>
+      <country id="_ct_peru" name="Peru" ebirdCode="PE"/>
+      <country id="_ct_surina" name="Suriname" ebirdCode="SR"/>
+      <country id="_ct_tranto" name="Trinidad and Tobago" ebirdCode="TT"/>
+      <country id="_ct_urugua" name="Uruguay" ebirdCode="UY"/>
+      <country id="_ct_venezu" name="Venezuela" ebirdCode="VE"/>
+    </region>
+    <region id="__eurasi" name="Eurasia">
+      <region id="__europe" name="Europe">
+        <country id="_ct_albani" name="Albania" ebirdCode="AL"/>
+        <country id="_ct_andorr" name="Andorra" ebirdCode="AD"/>
+        <country id="_ct_austri" name="Austria" ebirdCode="AT"/>
+        <country id="_ct_azores" name="Azores" ebirdCode="PT-20"/>
+        <country id="_ct_belaru" name="Belarus" ebirdCode="BY"/>
+        <country id="_ct_belgiu" name="Belgium" ebirdCode="BE"/>
+        <country id="_ct_boanhe" name="Bosnia and Herzegovina" ebirdCode="BA"/>
+        <country id="_ct_bulgar" name="Bulgaria" ebirdCode="BG"/>
+        <country id="_ct_croati" name="Croatia" ebirdCode="HR"/>
+        <country id="_ct_czerep" name="Czech Republic" ebirdCode="CZ"/>
+        <country id="_ct_denmar" name="Denmark" ebirdCode="DK"/>
+        <country id="_ct_estoni" name="Estonia" ebirdCode="EE"/>
+        <country id="_ct_finlan" name="Finland" ebirdCode="FI"/>
+        <country id="_ct_france" name="France" ebirdCode="FR"/>
+        <country id="_ct_german" name="Germany" ebirdCode="DE"/>
+        <country id="_ct_gibral" name="Gibraltar" ebirdCode="GI"/>
+        <country id="_ct_greece" name="Greece" ebirdCode="GR"/>
+        <country id="_ct_guerns" name="Guernsey" ebirdCode="GG"/>
+        <country id="_ct_hungar" name="Hungary" ebirdCode="HU"/>
+        <country id="_ct_icelan" name="Iceland" ebirdCode="IS"/>
+        <country id="_ct_irelan" name="Ireland" ebirdCode="IE"/>
+        <country id="_ct_isofma" name="Isle of Man" ebirdCode="IM"/>
+        <country id="_ct_italy" name="Italy" ebirdCode="IT"/>
+        <country id="_ct_jersey" name="Jersey" ebirdCode="JE"/>
+        <country id="_ct_kosovo" name="Kosovo" ebirdCode="XK"/>
+        <country id="_ct_latvia" name="Latvia" ebirdCode="LV"/>
+        <country id="_ct_liecht" name="Liechtenstein" ebirdCode="LI"/>
+        <country id="_ct_lithua" name="Lithuania" ebirdCode="LT"/>
+        <country id="_ct_luxemb" name="Luxembourg" ebirdCode="LU"/>
+        <country id="_ct_madeir" name="Madeira" ebirdCode="PT-30"/>
+        <country id="_ct_malta" name="Malta" ebirdCode="MT"/>
+        <country id="_ct_moldov" name="Moldova" ebirdCode="MD"/>
+        <country id="_ct_monaco" name="Monaco" ebirdCode="MC"/>
+        <country id="_ct_monten" name="Montenegro" ebirdCode="ME"/>
+        <country id="_ct_nether" name="Netherlands" ebirdCode="NL"/>
+        <country id="_ct_normac" name="North Macedonia" ebirdCode="MK"/>
+        <country id="_ct_norway" name="Norway" ebirdCode="NO"/>
+        <country id="_ct_poland" name="Poland" ebirdCode="PL"/>
+        <country id="_ct_portug" name="Portugal" ebirdCode="PT"/>
+        <country id="_ct_romani" name="Romania" ebirdCode="RO"/>
+        <country id="_ct_russia1" name="Russia" ebirdCode="RU"/>
+        <country id="_ct_sanmar" name="San Marino" ebirdCode="SM"/>
+        <country id="_ct_serbia" name="Serbia" ebirdCode="RS"/>
+        <country id="_ct_slovak" name="Slovakia" ebirdCode="SK"/>
+        <country id="_ct_sloven" name="Slovenia" ebirdCode="SI"/>
+        <country id="_ct_spain" name="Spain" ebirdCode="ES"/>
+        <country id="_ct_sweden" name="Sweden" ebirdCode="SE"/>
+        <country id="_ct_switze" name="Switzerland" ebirdCode="CH"/>
+        <country id="_ct_turkey" name="Turkey" ebirdCode="TR"/>
+        <country id="_ct_ukrain" name="Ukraine" ebirdCode="UA"/>
+        <country id="_ct_unikin" name="United Kingdom" ebirdCode="GB">
+          <country id="_scyco_GB-ENG" name="England" ebirdCode="GB-ENG">
+            <county id="_scyco_GB-ENG-KEN" name="Kent" ebirdCode="GB-ENG-KEN"/>
+          </country>
+          <state id="_scyco_GB-NIR" name="Northern Ireland" ebirdCode="GB-NIR"/>
+          <country id="_scyco_GB-SCT" name="Scotland" ebirdCode="GB-SCT"/>
+          <country id="_scyco_GB-WLS" name="Wales" ebirdCode="GB-WLS"/>
+        </country>
+        <country id="_ct_vatcit" name="Vatican City" ebirdCode="VA"/>
+      </region>
+      <region id="__asia" name="Asia">
+        <country id="_ct_afghan" name="Afghanistan" ebirdCode="AF"/>
+        <country id="_ct_armeni" name="Armenia" ebirdCode="AM"/>
+        <country id="_ct_azerba" name="Azerbaijan" ebirdCode="AZ"/>
+        <country id="_ct_bahrai" name="Bahrain" ebirdCode="BH"/>
+        <country id="_ct_bangla" name="Bangladesh" ebirdCode="BD"/>
+        <country id="_ct_bhutan" name="Bhutan" ebirdCode="BT"/>
+        <country id="_ct_brunei" name="Brunei" ebirdCode="BN"/>
+        <country id="_ct_cambod" name="Cambodia" ebirdCode="KH"/>
+        <country id="_ct_china" name="China" ebirdCode="CN"/>
+        <country id="_ct_cyprus" name="Cyprus" ebirdCode="CY"/>
+        <country id="_ct_eastim" name="East Timor" ebirdCode="TL"/>
+        <country id="_ct_egypt1" name="Egypt" ebirdCode="EG"/>
+        <country id="_ct_georgi" name="Georgia" ebirdCode="GE"/>
+        <country id="_ct_honkon" name="Hong Kong" ebirdCode="HK"/>
+        <country id="_ct_india" name="India" ebirdCode="IN"/>
+        <country id="_ct_indone1" name="Indonesia" ebirdCode="ID"/>
+        <country id="_ct_iran" name="Iran" ebirdCode="IR"/>
+        <country id="_ct_iraq" name="Iraq" ebirdCode="IQ"/>
+        <country id="_ct_israel" name="Israel" ebirdCode="IL"/>
+        <country id="_ct_japan" name="Japan" ebirdCode="JP"/>
+        <country id="_ct_jordan" name="Jordan" ebirdCode="JO"/>
+        <country id="_ct_kazakh" name="Kazakhstan" ebirdCode="KZ"/>
+        <country id="_ct_kuwait" name="Kuwait" ebirdCode="KW"/>
+        <country id="_ct_kyrgyz" name="Kyrgyzstan" ebirdCode="KG"/>
+        <country id="_ct_laos" name="Laos" ebirdCode="LA"/>
+        <country id="_ct_lebano" name="Lebanon" ebirdCode="LB"/>
+        <country id="_ct_macau" name="Macau" ebirdCode="MO"/>
+        <country id="_ct_malays" name="Malaysia" ebirdCode="MY"/>
+        <country id="_ct_mongol" name="Mongolia" ebirdCode="MN"/>
+        <country id="_ct_myanma" name="Myanmar" ebirdCode="MM"/>
+        <country id="_ct_nepal" name="Nepal" ebirdCode="NP"/>
+        <country id="_ct_norkor" name="North Korea" ebirdCode="KP"/>
+        <country id="_ct_oman" name="Oman" ebirdCode="OM"/>
+        <country id="_ct_pakist" name="Pakistan" ebirdCode="PK"/>
+        <country id="_ct_palter" name="Palestinian Territory" ebirdCode="PS"/>
+        <country id="_ct_philip" name="Philippines" ebirdCode="PH"/>
+        <country id="_ct_qatar" name="Qatar" ebirdCode="QA"/>
+        <country id="_ct_russia" name="Russia" ebirdCode="RU"/>
+        <country id="_ct_sauara" name="Saudi Arabia" ebirdCode="SA"/>
+        <country id="_ct_singap" name="Singapore" ebirdCode="SG"/>
+        <country id="_ct_soukor" name="South Korea" ebirdCode="KR"/>
+        <country id="_ct_srilan" name="Sri Lanka" ebirdCode="LK"/>
+        <country id="_ct_syria" name="Syria" ebirdCode="SY"/>
+        <country id="_ct_taiwan" name="Taiwan" ebirdCode="TW"/>
+        <country id="_ct_tajiki" name="Tajikistan" ebirdCode="TJ"/>
+        <country id="_ct_thaila" name="Thailand" ebirdCode="TH"/>
+        <country id="_ct_turkey1" name="Turkey" ebirdCode="TR"/>
+        <country id="_ct_turkme" name="Turkmenistan" ebirdCode="TM"/>
+        <country id="_ct_unarem" name="United Arab Emirates" ebirdCode="AE"/>
+        <country id="_ct_uzbeki" name="Uzbekistan" ebirdCode="UZ"/>
+        <country id="_ct_vietna" name="Vietnam" ebirdCode="VN"/>
+        <country id="_ct_yemen" name="Yemen" ebirdCode="YE"/>
+      </region>
+    </region>
+    <region id="__africa" name="Africa">
+      <country id="_ct_algeri" name="Algeria" ebirdCode="DZ"/>
+      <country id="_ct_angola" name="Angola" ebirdCode="AO"/>
+      <country id="_ct_benin" name="Benin" ebirdCode="BJ"/>
+      <country id="_ct_botswa" name="Botswana" ebirdCode="BW"/>
+      <country id="_ct_burfas" name="Burkina Faso" ebirdCode="BF"/>
+      <country id="_ct_burund" name="Burundi" ebirdCode="BI"/>
+      <country id="_ct_camero" name="Cameroon" ebirdCode="CM"/>
+      <country id="_ct_canisl" name="Canary Islands" ebirdCode="ES-CN"/>
+      <country id="_ct_capver" name="Cape Verde" ebirdCode="CV"/>
+      <country id="_ct_ceafre" name="Central African Republic" ebirdCode="CF"/>
+      <country id="_ct_ceanms" name="Ceuta and Melilla (Spain)" ebirdCode="ES-CEUMEL"/>
+      <country id="_ct_chad" name="Chad" ebirdCode="TD"/>
+      <country id="_ct_congo" name="Congo" ebirdCode="CG"/>
+      <country id="_ct_derotc" name="Democratic Republic of the Congo" ebirdCode="CD"/>
+      <country id="_ct_djibou" name="Djibouti" ebirdCode="DJ"/>
+      <country id="_ct_egypt" name="Egypt" ebirdCode="EG"/>
+      <country id="_ct_equgui" name="Equatorial Guinea" ebirdCode="GQ"/>
+      <country id="_ct_eritre" name="Eritrea" ebirdCode="ER"/>
+      <country id="_ct_ethiop" name="Ethiopia" ebirdCode="ET"/>
+      <country id="_ct_gabon" name="Gabon" ebirdCode="GA"/>
+      <country id="_ct_gambia" name="Gambia" ebirdCode="GM"/>
+      <country id="_ct_ghana" name="Ghana" ebirdCode="GH"/>
+      <country id="_ct_guinea" name="Guinea" ebirdCode="GN"/>
+      <country id="_ct_guinea1" name="Guinea-Bissau" ebirdCode="GW"/>
+      <country id="_ct_ivocoa" name="Ivory Coast" ebirdCode="CI"/>
+      <country id="_ct_kenya" name="Kenya" ebirdCode="KE"/>
+      <country id="_ct_lesoth" name="Lesotho" ebirdCode="LS"/>
+      <country id="_ct_liberi" name="Liberia" ebirdCode="LR"/>
+      <country id="_ct_libya" name="Libya" ebirdCode="LY"/>
+      <country id="_ct_malawi" name="Malawi" ebirdCode="MW"/>
+      <country id="_ct_mali" name="Mali" ebirdCode="ML"/>
+      <country id="_ct_maurit" name="Mauritania" ebirdCode="MR"/>
+      <country id="_ct_morocc" name="Morocco" ebirdCode="MA"/>
+      <country id="_ct_mozamb" name="Mozambique" ebirdCode="MZ"/>
+      <country id="_ct_namibi" name="Namibia" ebirdCode="NA"/>
+      <country id="_ct_niger" name="Niger" ebirdCode="NE"/>
+      <country id="_ct_nigeri" name="Nigeria" ebirdCode="NG"/>
+      <country id="_ct_rwanda" name="Rwanda" ebirdCode="RW"/>
+      <country id="_ct_sotoap" name="S&#xe3;o Tom&#xe9; and Pr&#xed;ncipe" ebirdCode="ST"/>
+      <country id="_ct_senega" name="Senegal" ebirdCode="SN"/>
+      <country id="_ct_sieleo" name="Sierra Leone" ebirdCode="SL"/>
+      <country id="_ct_socotr" name="Socotra" ebirdCode="YE-HD-SOC"/>
+      <country id="_ct_somali" name="Somalia" ebirdCode="SO"/>
+      <country id="_ct_souafr" name="South Africa" ebirdCode="ZA"/>
+      <country id="_ct_sousud" name="South Sudan" ebirdCode="SS"/>
+      <country id="_ct_sudan" name="Sudan" ebirdCode="SD"/>
+      <country id="_ct_swazil" name="Swaziland" ebirdCode="SZ"/>
+      <country id="_ct_tanzan" name="Tanzania" ebirdCode="TZ"/>
+      <country id="_ct_togo" name="Togo" ebirdCode="TG"/>
+      <country id="_ct_tunisi" name="Tunisia" ebirdCode="TN"/>
+      <country id="_ct_uganda" name="Uganda" ebirdCode="UG"/>
+      <country id="_ct_wessah" name="Western Sahara" ebirdCode="EH"/>
+      <country id="_ct_zambia" name="Zambia" ebirdCode="ZM"/>
+      <country id="_ct_zimbab" name="Zimbabwe" ebirdCode="ZW"/>
+    </region>
+    <region id="__austra" name="Australasia">
+      <country id="_ct_austra" name="Australia" ebirdCode="AU"/>
+      <country id="_ct_asanci" name="Ashmore and Cartier Islands" ebirdCode="AC"/>
+      <country id="_ct_coseis" name="Coral Sea Islands" ebirdCode="CS"/>
+      <country id="_ct_indone" name="Indonesia" ebirdCode="ID"/>
+      <country id="_ct_macisl" name="Macquarie Island" ebirdCode="AU-TAS-Macquarie"/>
+      <country id="_ct_newcal" name="New Caledonia" ebirdCode="NC"/>
+      <country id="_ct_newzea" name="New Zealand" ebirdCode="NZ"/>
+      <country id="_ct_norisl" name="Norfolk Island" ebirdCode="NF"/>
+      <country id="_ct_panegu" name="Papua New Guinea" ebirdCode="PG"/>
+      <country id="_ct_solisl" name="Solomon Islands" ebirdCode="SB"/>
+      <country id="_ct_vanuat" name="Vanuatu" ebirdCode="VU"/>
+    </region>
+    <region id="__pacoce" name="Pacific Ocean">
+      <country id="_ct_cliisl" name="Clipperton Island" ebirdCode="CP"/>
+      <country id="_ct_cooisl" name="Cook Islands" ebirdCode="CK"/>
+      <country id="_ct_easisl" name="Easter Island" ebirdCode="CL-VS-Easter"/>
+      <country id="_ct_fiji" name="Fiji" ebirdCode="FJ"/>
+      <country id="_ct_frepol" name="French Polynesia" ebirdCode="PF"/>
+      <state id="_ct_galisl" name="Galapagos Islands" ebirdCode="EC-W"/>
+      <country id="_ct_higsea3" name="High Seas" ebirdCode="XX"/>
+      <country id="_ct_jufeis" name="Juan Fernandez Islands" ebirdCode="CL-VS-JuanFernandez"/>
+      <country id="_ct_kiriba" name="Kiribati" ebirdCode="KI"/>
+      <country id="_ct_marisl" name="Marshall Islands" ebirdCode="MH"/>
+      <country id="_ct_micron" name="Micronesia" ebirdCode="FM"/>
+      <country id="_ct_nauru" name="Nauru" ebirdCode="NR"/>
+      <country id="_ct_niue" name="Niue" ebirdCode="NU"/>
+      <country id="_ct_palau" name="Palau" ebirdCode="PW"/>
+      <country id="_ct_pitisl" name="Pitcairn Islands" ebirdCode="PN"/>
+      <country id="_ct_samoa" name="Samoa" ebirdCode="WS"/>
+      <country id="_ct_tonga" name="Tonga" ebirdCode="TO"/>
+      <country id="_ct_tokela" name="Tokelau" ebirdCode="TK"/>
+      <country id="_ct_tuvalu" name="Tuvalu" ebirdCode="TV"/>
+      <country id="_ct_unista2" name="United States" ebirdCode="US">
+        <country id="_usst_amesam" name="American Samoa" ebirdCode="AS"/>
+        <country id="_usst_guam" name="Guam" ebirdCode="GU"/>
+        <state id="_usst_hawaii" name="Hawaii" ebirdCode="HI"/>
+        <country id="_usst_nomais" name="Northern Mariana Islands" ebirdCode="MP"/>
+      </country>
+      <country id="_ct_unsmoi" name="United States Minor Outlying Islands" ebirdCode="UM"/>
+      <country id="_ct_waanfu" name="Wallis and Futuna" ebirdCode="WF"/>
+    </region>
+    <region id="__indoce" name="Indian Ocean">
+      <country id="_ct_brinot" name="British Indian Ocean Territory" ebirdCode="IO"/>
+      <country id="_ct_chrisl" name="Christmas Island" ebirdCode="CX"/>
+      <country id="_ct_cokeis" name="Cocos (Keeling) Islands" ebirdCode="CC"/>
+      <country id="_ct_comoro" name="Comoros" ebirdCode="KM"/>
+      <country id="_ct_frsaal" name="French Southern and Antarctic Lands" ebirdCode="TF"/>
+      <country id="_ct_higsea2" name="High Seas" ebirdCode="XX"/>
+      <country id="_ct_madaga" name="Madagascar" ebirdCode="MG"/>
+      <country id="_ct_maldiv" name="Maldives" ebirdCode="MV"/>
+      <country id="_ct_maurit1" name="Mauritius" ebirdCode="MU"/>
+      <country id="_ct_mayott" name="Mayotte" ebirdCode="YT"/>
+      <country id="_ct_preami" name="Prince Edward and Marion Islands" ebirdCode="ZA-WC-EdwardMarion"/>
+      <country id="_ct_runion" name="R&#xe9;union" ebirdCode="RE"/>
+      <country id="_ct_seyche" name="Seychelles" ebirdCode="SC"/>
+    </region>
+    <region id="__atloce" name="Atlantic Ocean">
+      <country id="_ct_bouisl" name="Bouvet Island" ebirdCode="BV"/>
+      <country id="_ct_falisl" name="Falkland Islands" ebirdCode="FK"/>
+      <country id="_ct_higsea" name="High Seas" ebirdCode="XX"/>
+      <country id="_ct_shaatd" name="Saint Helena, Ascension, and Tristan da Cunha" ebirdCode="SH"/>
+    </region>
+    <region id="__arcoce" name="Arctic Ocean">
+      <country id="_ct_farisl" name="Faroe Islands" ebirdCode="FO"/>
+      <country id="_ct_higsea1" name="High Seas" ebirdCode="XX"/>
+      <country id="_ct_svalba" name="Svalbard" ebirdCode="SJ"/>
+    </region>
+    <region id="__sopore" name="South Polar Region">
+      <country id="_ct_antarc" name="Antarctica" ebirdCode="AQ"/>
+      <country id="_ct_heiami" name="Heard Island and McDonald Islands" ebirdCode="HM"/>
+      <country id="_ct_higsea4" name="High Seas" ebirdCode="XX"/>
+      <country id="_ct_sgassi" name="South Georgia and South Sandwich Islands" ebirdCode="GS"/>
+    </region>
+  </locations>
+  <trip id="coast" loc="coast" startDate="2026-07-01" endDate="2026-07-08" name="Coast week"/>
+  <sighting taxon="spAnaspla" loc="lakmer" date="2026-01-01" time="08:00" count="3"/>
+  <sighting taxon="spAnasrub" loc="lakmer" date="2026-01-01" time="08:00"/>
+  <sighting taxon="spAnaspla" loc="bayare" date="2026-01-01" time="08:00" count="5"/>
+  <sighting taxon="spArdeaalb" loc="lighth" date="2026-02-02" count="1"/>
+  <sighting taxon="spArdeaalb" loc="lighth1" date="2026-03-03" count="2"/>
+  <sighting taxon="spEgretthu" loc="yaqbay" date="2026-04-04" time="07:00" count="4"/>
+  <sighting taxon="spButeo1jam" loc="muiwoo" date="2026-05-05"/>
+  <sighting taxon="spHirun2rus" loc="dunes" date="2026-07-07" count="6"/>
+  <sighting taxon="spAnaspla" loc="_scyco_GB-ENG-KEN" date="2026-06-06" count="9"/>
+  <checklist loc="bayare">
+    <entry taxon="spNothopen" status="endemic"/>
+    <entry taxon="spCygnubuc"/>
+    <entry taxon="spCryptund" status="introduced"/>
+    <entry taxon="spSarkimel" status="escaped"/>
+    <entry taxon="spSarkisyl" status="extinct"/>
+    <entry taxon="spPterohar" status="provisional"/>
+    <entry taxon="spApterrow" status="rarity-from-introduced"/>
+    <entry taxon="spSpatudis"/>
+    <entry taxon="spChloepol" status="rarity"/>
+    <entry taxon="spCryptpta"/>
+    <entry taxon="spSpatuver" status="provisional"/>
+    <entry taxon="spTadorfer" status="endemic"/>
+    <entry taxon="spNettacor"/>
+    <entry taxon="spTadortad" status="rarity"/>
+    <entry taxon="spCryptcas" status="provisional"/>
+    <entry taxon="spBrantcan" status="rarity-from-introduced"/>
+    <entry taxon="spAnhimcor" status="escaped"/>
+    <entry taxon="spNotho1nig" status="rarity-from-introduced"/>
+    <entry taxon="spOressjub" status="rarity-from-introduced"/>
+    <entry taxon="spCryptcin" status="rarity-from-introduced"/>
+    <entry taxon="spCryptbou" status="rarity-from-introduced"/>
+    <entry taxon="spBrantsan"/>
+    <entry taxon="spSpatucya" status="endemic"/>
+    <entry taxon="spTaoninan" status="endemic"/>
+    <entry taxon="spTadortad1" status="extinct"/>
+    <entry taxon="spCryptnoc" status="rarity"/>
+    <entry taxon="spSpatuque" status="escaped"/>
+    <entry taxon="spNothoorn" status="rarity"/>
+    <entry taxon="spLophospe" status="escaped"/>
+    <entry taxon="spAmazobra" status="rarity-from-introduced"/>
+    <entry taxon="spTachypte" status="endemic"/>
+    <entry taxon="spRheaame" status="rarity"/>
+    <entry taxon="spCygnucyg" status="introduced"/>
+    <entry taxon="spEudrofor" status="rarity-from-introduced"/>
+    <entry taxon="spBrantruf" status="endemic"/>
+    <entry taxon="spRhyncruf" status="rarity-from-introduced"/>
+    <entry taxon="spCryptvar" status="escaped"/>
+    <entry taxon="spHymenmal"/>
+    <entry taxon="spThalaleu"/>
+    <entry taxon="spChauncha" status="provisional"/>
+    <entry taxon="spSpatuhot" status="extinct"/>
+    <entry taxon="spSpatusmi" status="rarity"/>
+    <entry taxon="spStictnae" status="rarity"/>
+    <entry taxon="spTadorcan" status="introduced"/>
+    <entry taxon="spCasuauna" status="escaped"/>
+    <entry taxon="spCygnuatr" status="provisional"/>
+    <entry taxon="spAlopoker"/>
+    <entry taxon="spBrantber" status="escaped"/>
+    <entry taxon="spCryptbre" status="rarity-from-introduced"/>
+    <entry taxon="spCryptbar" status="extinct"/>
+    <entry taxon="spNothocur" status="introduced"/>
+    <entry taxon="spTadorcri" status="provisional"/>
+    <entry taxon="spRheapen" status="escaped"/>
+    <entry taxon="spAnser1alb" status="rarity-from-introduced"/>
+    <entry taxon="spAlopomau" status="rarity-from-introduced"/>
+    <entry taxon="spNothubor" status="introduced"/>
+    <entry taxon="spTinam1osg" status="extinct"/>
+    <entry taxon="spCasuacas" status="introduced"/>
+    <entry taxon="spCoscocos" status="rarity"/>
+    <entry taxon="spAnser1ser" status="introduced"/>
+    <entry taxon="spSpecuspe" status="extinct"/>
+    <entry taxon="spDendrarc" status="provisional"/>
+    <entry taxon="spDendrarb" status="escaped"/>
+    <entry taxon="spCryptobs" status="rarity"/>
+    <entry taxon="spCygnucol" status="endemic"/>
+    <entry taxon="spAnser1ery"/>
+    <entry taxon="spCryptcin1" status="provisional"/>
+    <entry sp="spAnaspla,spAnasrub" status="rarity"/>
+    <entry taxon="spNotho1bon"/>
+    <entry taxon="spTachypat"/>
+    <entry taxon="spDendrgut"/>
+    <entry taxon="spCryptdui" status="introduced"/>
+    <entry taxon="spEudroele"/>
+    <entry taxon="spNothoper" status="extinct"/>
+    <entry taxon="spDendreyt" status="endemic"/>
+    <entry taxon="spAptermax" status="introduced"/>
+    <entry taxon="spNothotac" status="escaped"/>
+    <entry taxon="spStrutmol" status="endemic"/>
+    <entry taxon="spCryptery" status="endemic"/>
+    <entry taxon="spPlectgam" status="rarity-from-introduced"/>
+    <entry taxon="spChenofin" status="provisional"/>
+    <entry taxon="spSpatupun" status="rarity-from-introduced"/>
+    <entry taxon="spCyanocya" status="escaped"/>
+    <entry taxon="spApterman"/>
+    <entry taxon="spTinampen" status="extinct"/>
+    <entry taxon="spAnser1cae" status="rarity"/>
+    <entry taxon="spTinam1maj" status="endemic"/>
+    <entry taxon="spAnser1can" status="introduced"/>
+    <entry taxon="spSalvawai" status="introduced"/>
+    <entry taxon="spNettapul" status="rarity-from-introduced"/>
+    <entry taxon="spAnser1ros" status="escaped"/>
+    <entry taxon="spRhyncmac" status="provisional"/>
+    <entry taxon="spCryptker"/>
+    <entry taxon="spOressmel"/>
+    <entry taxon="spDendrjav" status="rarity-from-introduced"/>
+    <entry taxon="spSpatucly" status="extinct"/>
+    <entry taxon="spCalloleu" status="introduced"/>
+    <entry taxon="spApterowe" status="endemic"/>
+    <entry taxon="spTinam1gut" status="escaped"/>
+    <entry taxon="spSibirfor" status="rarity"/>
+    <entry taxon="spTadorvar" status="escaped"/>
+    <entry taxon="spDendrvid" status="introduced"/>
+    <entry taxon="spCygnumel" status="rarity-from-introduced"/>
+    <entry taxon="spCasuaben" status="rarity"/>
+    <entry taxon="spNothudar" status="escaped"/>
+    <entry taxon="spCairimos" status="provisional"/>
+    <entry taxon="spNotho1jul" status="provisional"/>
+    <entry taxon="spAnser1cyg" status="provisional"/>
+    <entry taxon="spCryptstr" status="rarity"/>
+    <entry taxon="spAlopoaeg" status="provisional"/>
+    <entry taxon="spTinam1tao" status="rarity"/>
+    <entry taxon="spCygnuolo" status="extinct"/>
+    <entry taxon="spDendrbic" status="extinct"/>
+    <entry taxon="spBranthut" status="provisional"/>
+    <entry taxon="spTinaming" status="provisional"/>
+    <entry taxon="spCrypttat" status="introduced"/>
+    <entry taxonSsp="spAnaspla|conboschas"/>
+    <entry taxon="spCrypttra" status="extinct"/>
+    <entry taxon="spStrutcam"/>
+    <entry taxon="spCryptpar" status="endemic"/>
+    <entry taxon="spAnser1fab" status="endemic"/>
+    <entry taxon="spCryptatr" status="escaped"/>
+    <entry taxon="spNettaaur" status="endemic"/>
+    <entry taxon="spCryptres" status="endemic"/>
+    <entry taxon="spAixspo" status="rarity"/>
+    <entry taxon="spSpatupla" status="introduced"/>
+    <entry taxon="spAnser1bra" status="rarity"/>
+    <entry taxon="spNothocin"/>
+    <entry taxon="spCryptsou"/>
+    <entry taxon="spChloepic" status="endemic"/>
+    <entry taxon="spTinam1sol" status="introduced"/>
+    <entry taxon="spCryptber" status="provisional"/>
+    <entry taxon="spDromanov" status="extinct"/>
+    <entry taxon="spApteraus" status="provisional"/>
+    <entry taxon="spChloerub" status="escaped"/>
+    <entry taxon="spCereonov" status="introduced"/>
+    <entry taxon="spAnser1ind" status="endemic"/>
+    <entry taxon="spAnser1ans" status="extinct"/>
+    <entry taxon="spTachybra" status="introduced"/>
+    <entry taxon="spNothumac" status="extinct"/>
+    <entry taxon="spChloehyb" status="introduced"/>
+    <entry taxon="spBrantleu" status="extinct"/>
+    <entry taxon="spNothumin" status="rarity"/>
+    <entry taxon="spAnsersem" status="rarity-from-introduced"/>
+    <entry taxon="spChauntor" status="extinct"/>
+    <entry taxon="spSpaturhy" status="escaped"/>
+    <entry taxon="spChenojub" status="extinct"/>
+    <entry taxon="spAixgal" status="escaped"/>
+    <entry taxon="spRadjarad" status="extinct"/>
+    <entry taxon="spMergaarm" status="endemic"/>
+    <entry taxon="spDendraut" status="rarity"/>
+    <entry taxon="spTachyleu" status="rarity"/>
+  </checklist>
+  <checklist loc="poirey">
+    <entry taxon="spArdeaalb" status="rarity"/>
+  </checklist>
+  <visit-info loc="lakmer" date="2026-01-01" time="08:00" observationType="historical">
+    <comments>lake</comments>
+  </visit-info>
+  <visit-info loc="bayare" date="2026-01-01" time="08:00" observationType="historical">
+    <comments>bay</comments>
+  </visit-info>
+  <one-time-upgrade>TaxonFixesForIoc101</one-time-upgrade>
+  <one-time-upgrade>CountryNames2019</one-time-upgrade>
+  <one-time-upgrade>CountryNames2023</one-time-upgrade>
+  <one-time-upgrade>CountryNames2024</one-time-upgrade>
+  <one-time-upgrade>CountryNames2025</one-time-upgrade>
+  <one-time-upgrade>VinBreastedAmazonIoc</one-time-upgrade>
+  <one-time-upgrade>IocCentralisAfricanGreyWoodpecker</one-time-upgrade>
+  <one-time-upgrade>EBird2026States</one-time-upgrade>
+  <one-time-upgrade>moveImageTripLinksToPhotos</one-time-upgrade>
+</report-set>
