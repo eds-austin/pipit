@@ -33,6 +33,14 @@ PDialog {
         ["Ctrl+Shift+L", qsTr("Walk the checklist: digits, Enter; / filters")],
         ["Ctrl+Enter", qsTr("Save the day (one visit per location)")]
     ]
+    readonly property var speciesKeys: [
+        ["Ctrl+F · /", qsTr("Filter species (or just start typing)")],
+        ["Ctrl+Shift+A", qsTr("Every species, or only those seen")],
+        ["Enter · Esc", qsTr("Into its sightings; Enter edits one, Esc back")],
+        ["Ctrl+S", qsTr("Save the sighting (Enter in a field too)")],
+        ["Ctrl+E", qsTr("Edit the sighting's visit")],
+        ["Ctrl+Delete", qsTr("Delete the sighting")]
+    ]
     readonly property var locationKeys: [
         ["Ctrl+F · /", qsTr("Filter places (or just start typing)")],
         ["→ · ←", qsTr("Open a place, or close it and go up")],
@@ -66,6 +74,17 @@ PDialog {
         SectionHeader { text: qsTr("Enter sightings"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
         Repeater {
             model: root.entryKeys
+            RowLayout {
+                required property var modelData
+                Layout.fillWidth: true
+                spacing: Theme.s3
+                PLabel { Layout.fillWidth: true; text: modelData[1] }
+                KeyHint { keys: modelData[0] }
+            }
+        }
+        SectionHeader { text: qsTr("Species"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+        Repeater {
+            model: root.speciesKeys
             RowLayout {
                 required property var modelData
                 Layout.fillWidth: true

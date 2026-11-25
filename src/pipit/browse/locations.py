@@ -80,6 +80,7 @@ class SpeciesSeen:
     first_text: str = ""
     last_text: str = ""
     places: set[str] = field(default_factory=set)
+    sighting_ids: list[int] = field(default_factory=list)  # in list order
 
 
 class SpeciesRollup:
@@ -126,20 +127,27 @@ class SpeciesRollup:
 def species_at(
     connection: sqlite3.Connection,
     taxa: EntryTaxa,
-    row: int,
+    row: int | None,
     rollup: SpeciesRollup | None = None,
 ) -> list[SpeciesSeen]:
-    """What was seen in the place ``row`` and every place inside it, in taxonomic order
-    (other taxonomies, such as mammals, after the birds)."""
+    """What was seen in the place ``row`` and every place inside it (``None``: every
+    sighting in the list, with or without a place), in taxonomic order (other taxonomies,
+    such as mammals, after the birds)."""
     rollup = rollup or SpeciesRollup(taxa)
+    params: tuple[int, ...]
+    if row is None:
+        within, params = "", ()
+    else:
+        within = (
+            "JOIN locations l ON l.xml_id = s.location_xml_id "
+            "JOIN location_closure c ON c.descendant = l.id WHERE c.ancestor = ? "
+        )
+        params = (row,)
     parts: dict[int, list[str]] = defaultdict(list)
     for sighting, taxon_id in connection.execute(
         "SELECT t.sighting_id, t.taxon_id FROM sighting_taxa t "
-        "JOIN sightings s ON s.id = t.sighting_id "
-        "JOIN locations l ON l.xml_id = s.location_xml_id "
-        "JOIN location_closure c ON c.descendant = l.id "
-        "WHERE c.ancestor = ? ORDER BY t.sighting_id, t.ord",
-        (row,),
+        "JOIN sightings s ON s.id = t.sighting_id " + within + "ORDER BY t.sighting_id, t.ord",
+        params,
     ):
         parts[sighting].append(taxon_id)
     extended = _extended_species(connection)
@@ -158,9 +166,9 @@ def species_at(
     ) in connection.execute(
         "SELECT s.id, s.taxonomy_id, s.kind, s.taxon_id, s.subspecies, s.date_y, "
         "s.date_m, s.date_d, s.heard_only, s.location_xml_id FROM sightings s "
-        "JOIN locations l ON l.xml_id = s.location_xml_id "
-        "JOIN location_closure c ON c.descendant = l.id WHERE c.ancestor = ?",
-        (row,),
+        + within
+        + "ORDER BY s.ord",
+        params,
     ):
         ids = (taxon_id,) if taxon_id is not None else tuple(parts[sighting])
         if taxonomy_id is not None:
@@ -184,6 +192,7 @@ def species_at(
         if entry is None:
             entry = seen[key] = SpeciesSeen(key, common, scientific, order, is_species)
         entry.sightings += 1
+        entry.sighting_ids.append(sighting)
         entry.heard_only += heard
         if place is not None:
             entry.places.add(place)

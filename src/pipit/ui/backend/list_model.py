@@ -43,5 +43,12 @@ class DictListModel(QAbstractListModel):
             del self._rows[len(rows) :]
             self.endRemoveRows()
 
+    def replace_all(self, rows: list[dict[str, Any]]) -> None:
+        """Replace every row at once (a model reset): for long lists that change wholesale,
+        where ``reset``'s row-by-row updates would be slow."""
+        self.beginResetModel()
+        self._rows = list(rows)
+        self.endResetModel()
+
     def rows(self) -> list[dict[str, Any]]:
         return self._rows

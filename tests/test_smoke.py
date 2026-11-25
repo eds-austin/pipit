@@ -43,6 +43,8 @@ CORE_MODULES = [
     "entry.taxa",
     "entry.context",
     "browse.locations",
+    "browse.species",
+    "storage.sighting_ops",
     "storage.location_ops",
 ]
 

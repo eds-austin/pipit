@@ -2,6 +2,16 @@
 
 M4 in progress. This page covers what is built so far.
 
+## Species (Ctrl+3)
+
+Three panes: the display taxonomy as a list, the chosen species' sightings, and the chosen sighting.
+
+- **List.** Families are headings. Each species shows its number of sightings, bold when seen and italic when not, as in Scythebill. "Seen only" (Ctrl+Shift+A) switches between what you've seen and the whole taxonomy. Filter with Ctrl+F or `/`, or just start typing; it matches common and scientific names. Entries come from the same roll-up as the Locations screen: subspecies and groups count as their species, and a sp., hybrid or genus-level record is its own entry where it falls in taxonomic order. Another taxonomy (mammals) follows the birds.
+- **Sightings.** Newest first, with place, time and count. A caption line shows the record when it is narrower than the entry (a subspecies, or in AviList an AviList subspecies sp.), plus flags, status, trip and notes. In AviList, Scythebill's Andean Duck is listed under Ruddy Duck, because AviList treats it as a sp. of two Ruddy Duck subspecies.
+- **The sighting.** Count (empty or "x" for present), status, breeding code, notes and the six flags, with Scythebill's labels. Enter or Ctrl+S saves as one undo step and returns to the list. Esc puts the fields back. "Edit its visit" (Ctrl+E) opens the visit in Enter sightings, which is where place, date and species change, as in Scythebill. Ctrl+Delete deletes the sighting (its observers and photos go with it, and Ctrl+Z brings it all back).
+
+Speed on Eric's list (3,495 species seen; 11,650 in AviList): the whole-list roll-up takes 0.15 s after each change, and a filter change 0.13 s. Moving through all 11,650 rows, including a full redraw, stays within 20 ms for each step: End, Home, PageDown, Down.
+
 ## Locations (Ctrl+4)
 
 Three panes: the place tree, what was seen in the chosen place, and the place itself.
@@ -32,4 +42,4 @@ The tree builds in 8 ms. The largest "seen in" (North America, about 1,100 rows)
 
 ## Still to come in M4
 
-Species browse, trips, and custom checklists from the Locations screen.
+Trips, and custom checklists from the Locations screen.
