@@ -8,7 +8,7 @@ Ported from Scythebill ``model/src/commonMain/kotlin/com/scythebill/birdlist/mod
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from pipit.taxa.model import (
@@ -28,13 +28,29 @@ class SightingTaxonType(Enum):
     SINGLE_WITH_SECONDARY_SUBSPECIES = "ssp"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class SightingTaxon:
     """Immutable. Multi-taxon forms hold distinct IDs, sorted, at least two."""
 
     type: SightingTaxonType
     ids: tuple[str, ...]
     subspecies: str | None = None  # only for SINGLE_WITH_SECONDARY_SUBSPECIES
+    # The hash, computed once (these are dictionary keys in the query engine's loops).
+    _hash: int = field(default=0, init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "_hash", hash((self.type, self.ids, self.subspecies)))
+
+    def __hash__(self) -> int:
+        return self._hash
+
+    def __eq__(self, other: object) -> bool:
+        if self is other:
+            return True
+        if not isinstance(other, SightingTaxon):
+            return NotImplemented
+        return (self._hash == other._hash and self.type is other.type and self.ids == other.ids
+                and self.subspecies == other.subspecies)  # fmt: skip
 
     @staticmethod
     def single(taxon_id: str) -> SightingTaxon:

@@ -34,7 +34,7 @@ exec java --add-modules ALL-SYSTEM "${jvm[@]}" -m jdk.compiler/com.sun.tools.jav
 EOF
 chmod +x "$WORK/bin/javac"
 
-rsync -a --delete --exclude taxonomy --exclude mobile --exclude www --exclude packaging \
+rsync -a --delete --exclude /taxonomy --exclude /mobile --exclude /www --exclude /packaging \
     --exclude .git --exclude '*.bsxm' "$SCYTHEBILL/" "$WORK/src/"
 # Runtime-only JDKs lack ct.sym (needed by --release) and newer javac warns more (-Werror).
 sed -i -e 's#<release>[0-9]*</release>#<source>17</source><target>17</target>#' \
@@ -137,3 +137,27 @@ checklist_ops unchanged_avilist avilist edit:bayare
 checklist_ops edit clements "edit:bayare:status=spStrutcam=endemic;remove=spCasuacas;add=spArdeaalb;status=spStrutmol=native"
 checklist_ops small clements "edit:poirey:add=spEgretthu;add=spAnaspla"
 checklist_ops delete clements delete:bayare  # (Kent's list goes on load: Kent becomes built-in)
+
+# Queries (QueryOracle.java: Scythebill's own headless stored-query path, as its Reports
+# screen counts). Needs the ui module too; the harness is compiled into its reports package.
+(cd "$WORK/src" && "$WORK/apache-maven-$MAVEN_VERSION/bin/mvn" -B -q \
+    -Dmaven.repo.local="$WORK/m2" -pl ui -am -DskipTests \
+    compile dependency:build-classpath -Dmdep.outputFile="$WORK/cp-ui.txt")
+UI_CLASSPATH="$WORK/oracle-classes:$(cat "$WORK/cp-ui.txt"):$WORK/src/model/target/classes"
+UI_CLASSPATH="$UI_CLASSPATH:$WORK/src/ui/target/classes:$WORK/src/xml-parser/target/classes"
+UI_CLASSPATH="$UI_CLASSPATH:$WORK/src/ui/src/main/resources:$WORK/src/model/src/main/resources"
+mkdir -p "$WORK/oracle-classes"
+javac -nowarn -d "$WORK/oracle-classes" -cp "$UI_CLASSPATH" tools/oracle/QueryOracle.java
+"$PY" -I tools/oracle/make_queries_fixture.py "$PACK" "$WORK/large_sample.bsxm" "$BSXM/queries.bsxm"
+query_oracle() {  # list display depth queries out
+    java -cp "$UI_CLASSPATH" com.scythebill.birdlist.ui.panels.reports.QueryOracle \
+        "$FILES/taxon.xml" "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$1" "$2" "$3" "$4" > "$5"
+}
+for config in "clements species" "avilist species" "clements subspecies" "avilist group"; do
+    set -- $config
+    query_oracle "$BSXM/queries.bsxm" "$1" "$2" "$FIXTURES/queries.txt" \
+        "$FIXTURES/queries.$1.$2.jsonl"
+done
+query_oracle "$BSXM/visits.bsxm" clements species "$FIXTURES/regions.txt" \
+    "$FIXTURES/regions.clements.species.jsonl"

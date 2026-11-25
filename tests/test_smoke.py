@@ -50,6 +50,8 @@ CORE_MODULES = [
     "browse.checklists",
     "storage.checklist_ops",
     "domain.java_hash",
+    "query.engine",
+    "query.synthetic",
     "storage.location_ops",
 ]
 

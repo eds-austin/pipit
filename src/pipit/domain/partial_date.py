@@ -200,3 +200,15 @@ def before_or_equals(base: PartialDate, date: PartialDate) -> bool:
     """``PartialDatePredicates.beforeOrEquals(base)(date)``."""
     value = _compare_flexible(base, date)
     return value is not None and value <= 0
+
+
+def after(base: PartialDate, date: PartialDate) -> bool:
+    """``PartialDatePredicates.after(base)(date)``."""
+    value = _compare_flexible(base, date)
+    return value is not None and value > 0
+
+
+def before(base: PartialDate, date: PartialDate) -> bool:
+    """``PartialDatePredicates.before(base)(date)``."""
+    value = _compare_flexible(base, date)
+    return value is not None and value < 0
