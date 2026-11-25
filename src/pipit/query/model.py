@@ -32,6 +32,7 @@ class QPlace:
     built_in: bool
     latitude: float | None
     longitude: float | None
+    ebird_code: str | None = None  # as stored
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +41,7 @@ class QTrip:
     start: PartialDate
     end: PartialDate
     location_xml_id: str | None
+    name: str | None = None
 
 
 @dataclass(slots=True)
@@ -140,9 +142,9 @@ def _taxon(kind: str, ids: tuple[str, ...], subspecies: str | None) -> SightingT
 
 def load_query_list(connection: sqlite3.Connection) -> QueryList:
     trips = {
-        xml_id: QTrip(xml_id, parse_partial_date(start), parse_partial_date(end), location)
-        for xml_id, start, end, location in connection.execute(
-            "SELECT xml_id, start_date, end_date, location_xml_id FROM trips"
+        xml_id: QTrip(xml_id, parse_partial_date(start), parse_partial_date(end), location, name)
+        for xml_id, start, end, location, name in connection.execute(
+            "SELECT xml_id, start_date, end_date, location_xml_id, name FROM trips"
         )
     }
     parts: dict[int, list[str]] = defaultdict(list)
@@ -223,7 +225,7 @@ def load_query_list(connection: sqlite3.Connection) -> QueryList:
         places[xml_id] = QPlace(
             xml_id, name, kind, location_code, parent_id, xml_id.startswith("_"),
             None if latitude is None else float(latitude),
-            None if longitude is None else float(longitude),
+            None if longitude is None else float(longitude), code,
         )  # fmt: skip
     return QueryList(
         sightings, trips, {key: frozenset(value) for key, value in subtree.items()}, parent,

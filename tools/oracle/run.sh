@@ -177,3 +177,20 @@ for name in unchanged add replace ticks remove rename move all; do
     stored_queries "$BSXM/stored_queries.bsxm" "$name"
 done
 stored_queries "$BSXM/visits.bsxm" first
+
+# Printed reports and checklists (PrintOracle.java: HtmlOutput as PrintAction sets it up, and
+# Checklists.getChecklist). The pages are megabytes, so only their size and SHA-256 are kept.
+javac -nowarn -d "$WORK/oracle-classes" -cp "$UI_CLASSPATH" tools/oracle/QueryOracle.java \
+    tools/oracle/PrintOracle.java
+PRINT=tests/fixtures/oracle/print
+mkdir -p "$PRINT"
+"$PY" -I tools/oracle/make_print_cases.py "$FIXTURES/queries.txt" "$PRINT/cases.jsonl"
+print_oracle() {  # list mode args...
+    java -cp "$UI_CLASSPATH" com.scythebill.birdlist.ui.panels.reports.PrintOracle \
+        "$FILES/taxon.xml" "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$@"
+}
+rm -rf "$WORK/print"
+print_oracle "$BSXM/queries.bsxm" print "$PRINT/cases.jsonl" "$WORK/print"
+"$PY" -I tools/oracle/summarize_pages.py "$PRINT/cases.jsonl" "$WORK/print" > "$PRINT/pages.jsonl"
+print_oracle "$BSXM/queries.bsxm" checklists "$PRINT/checklists.queries.jsonl"

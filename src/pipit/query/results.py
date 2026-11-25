@@ -11,13 +11,18 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from pipit.query.definition import PostProcessor, Predicate
 from pipit.query.model import QSighting
+from pipit.query.ordering import greatest_of
 from pipit.taxa.model import Taxon, Taxonomy, TaxonType, parent_of_type_or_none
 from pipit.taxa.sighting_taxon import Resolved, SightingTaxon, SightingTaxonType
+
+if TYPE_CHECKING:
+    from pipit.query.checklists import Checklist
 
 _SINGLE_KINDS = (SightingTaxonType.SINGLE, SightingTaxonType.SINGLE_WITH_SECONDARY_SUBSPECIES)
 
@@ -64,6 +69,12 @@ class QueryResults:
         self.sightings = dict(builder.sightings)
         self.non_single = dict(builder.non_single)
         self.annotations = builder.annotations
+        #: Set by ``run_query``: the display taxonomy's resolver, the query's annotator (for
+        #: lifers at other levels) and the checklist of the query's one place, if any.
+        self.resolve: Callable[[SightingTaxon], Resolved | None] | None = None
+        self.annotate: Callable[[QSighting, SightingTaxon], str | None] | None = None
+        self.checklist: Checklist | None = None
+        self._with_annotation: dict[str, set[Resolved]] = {}
         self._include_families = include_families
         if countable is None:
             self.countable_ids = set(self.sightings)
@@ -114,6 +125,67 @@ class QueryResults:
                 found.append(Resolved.of(order[family].taxon))
             found.append(resolved)
         return found
+
+    # ------------------------------------------------------------ sightings and lifers
+
+    def sightings_of(self, resolved: Resolved) -> list[QSighting]:
+        if resolved.type is SightingTaxonType.SINGLE:
+            return self.sightings.get(resolved.taxon.id, [])
+        return self.non_single.get(resolved.sighting_taxon, [])
+
+    def best_sightings(self, resolved: Resolved, ordering: Callable[[QSighting, QSighting], int],
+                       count: int) -> list[QSighting]:  # fmt: skip
+        """``getBestSightings``: Guava's ``greatestOf`` under the ordering."""
+        found = self.sightings_of(resolved)
+        return greatest_of(found, ordering, count) if found else []
+
+    def _annotated(self, note: str) -> list[QSighting]:
+        rows = {row for row, found in self.annotations.items() if found == note}
+        if not rows:
+            return []
+        every = [*self.sightings.values(), *self.non_single.values()]
+        return [s for found in every for s in found if s.row in rows]
+
+    def taxa_with_annotation(self, note: str) -> set[Resolved]:
+        """``getTaxaWithAnnotation(taxonomy, annotation)``: each annotated sighting's taxon and
+        its parents up to its species."""
+        cached = self._with_annotation
+        if note in cached:
+            return cached[note]
+        taxa: set[Resolved] = set()
+        assert self.resolve is not None
+        for sighting in self._annotated(note):
+            resolved = self.resolve(sighting.taxon)
+            if resolved is None:
+                continue
+            taxa.add(resolved)
+            if sighting.taxon.type is SightingTaxonType.SINGLE_WITH_SECONDARY_SUBSPECIES:
+                plain = self.resolve(SightingTaxon.single(sighting.taxon.ids[0]))
+                if plain is not None:
+                    taxa.add(plain)
+                    resolved = plain
+            while resolved.largest_type < TaxonType.SPECIES:
+                resolved = resolved.parent().resolve_internal(self.taxonomy)
+                taxa.add(resolved)
+        cached[note] = taxa
+        return taxa
+
+    def taxa_with_annotation_at(self, note: str, level: TaxonType) -> set[Resolved]:
+        """``getTaxaWithAnnotation(taxonomy, annotation, type)``: taxa at ``level`` whose
+        sighting the query annotates at that level too."""
+        taxa: set[Resolved] = set()
+        assert self.resolve is not None and self.annotate is not None
+        for sighting in self._annotated(note):
+            resolved = self.resolve(sighting.taxon)
+            if resolved is None:
+                continue
+            parent = resolved.parent_of_at_least_type(level)
+            if self.annotate(sighting, parent) == note:
+                taxa.add(parent.resolve_internal(self.taxonomy))
+        return taxa
+
+    def contains_annotation(self, note: str, resolved: Resolved) -> bool:
+        return resolved in self.taxa_with_annotation(note)
 
     # ------------------------------------------------------------ totals
 
@@ -294,6 +366,20 @@ def _order(taxonomy: Taxonomy) -> dict[str, _Position]:
             sys.setrecursionlimit(limit)
     _ORDERS[id(taxonomy)] = (taxonomy, positions)
     return positions
+
+
+def taxonomy_index(taxonomy: Taxonomy) -> dict[str, int]:
+    """Each taxon's position in taxonomic order (``getTaxonomyIndex``)."""
+    cached = _INDEXES.get(id(taxonomy))
+    if cached is None or cached[0] is not taxonomy:
+        cached = _INDEXES[id(taxonomy)] = (
+            taxonomy,
+            {key: position.pre for key, position in _order(taxonomy).items()},
+        )
+    return cached[1]
+
+
+_INDEXES: dict[int, tuple[Taxonomy, dict[str, int]]] = {}
 
 
 def _sorted_taxa(taxa: list[SightingTaxon]) -> list[SightingTaxon]:

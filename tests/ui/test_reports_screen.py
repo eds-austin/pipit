@@ -5,6 +5,7 @@ kept as Scythebill's JSON, and choosing a species shows its sightings."""
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -171,3 +172,32 @@ def test_saved_reports(with_saved: Running) -> None:
         running.app.undo()
     wait_until(lambda: stored_queries(database.connection) == original)
     assert _names(running) == [query.name for query in original]
+
+
+def test_print(running: Running) -> None:
+    """Ctrl+P: the options (remembered), then the page, written to a file named after the
+    report and handed to the browser (stubbed here)."""
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_6")
+    wait_until(lambda: running.shell.currentKey == "reports")
+    reports.run_now()
+    wait_until(lambda: reports.sightingCount > 0)
+    ctrl(window, "Key_P")
+    wait_focus(running, "printCompact")
+    shots = os.environ.get("PIPIT_SHOTS")
+    if shots:  # screenshots for checking the look by eye
+        window.grabWindow().save(str(Path(shots) / "print-dialog.png"))
+    key(window, "Key_Space")  # compact
+    key(window, "Key_Return")  # Enter prints
+    wait_until(lambda: reports.last_printed is not None, timeout=60)
+    path = reports.last_printed
+    assert path is not None
+    # The query has one (empty) place condition, so Scythebill names the report "World".
+    assert path.name == "World.html"
+    page = path.read_text(encoding="utf-8")
+    assert '<body class="compact" onload="onload_script();">' in page
+    assert "<h1>World</h1>" in page
+    assert running.app.settings.print_compact
+    assert reports.printOptions["compact"] is True
+    assert not reports.printing

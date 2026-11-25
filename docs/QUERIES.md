@@ -142,3 +142,47 @@ Figures are counted on a worker thread with its own read-only connection and que
 context, so Home never holds up the window: on Eric's list the window waits about 15 ms
 and the figures follow about half a second later. Home only counts while it is showing;
 changes made elsewhere are counted when it next shows.
+
+## Print (Ctrl+P on the Reports screen)
+
+Print works as Scythebill's does: a dialog with Scythebill's options, then the page, written
+to a temporary file named after the report (browsers print the file's address in their
+footer), opens in the browser, which prints it. The options are remembered (app settings).
+
+- **What data?** Compact (three columns), scientific names, families, threatened status.
+- **Which species?** Omit uncountable sightings, omit sp. and hybrids, and the species
+  order: taxonomic, newest additions, longest since seen, day of year (either way), or
+  number recorded. The date orders number the species, counting down to 1.
+- **Which sightings?** How many per species (0 to 100) and their order. These, and
+  families, apply only where Scythebill applies them (not compact, taxonomic order).
+
+The page is Scythebill's exactly (`pipit/output/print_html.py`, a port of `HtmlOutput`,
+`PrintHtml` and `PrintAction`, with Scythebill's own stylesheets and print script): the
+heading is the query's name as Scythebill makes it ("Washington", "never Oregon", else the
+list's file name), the summary line has the totals, and badges mark checklist statuses and
+IUCN statuses, with a legend for those used. Lifers are bold.
+
+Badges and family totals ("12/34", "Families: 80 of 249") need the checklist of the
+report's place, so Pipit now has Scythebill's checklist lookup (`pipit/query/checklists.py`,
+`Checklists.getChecklist`): built-in checklists from the data pack; world regions,
+synthetic regions, the US outside North America, the Caribbean Netherlands, Great Britain
+and St Helena as unions of built-in ones (`TransposedChecklistSynthesizer`, native species
+found nowhere else promoted to endemic); otherwise the list's own checklist.
+
+Which sightings are printed comes from Guava's `Ordering.greatestOf`, ported exactly
+(`pipit/query/ordering.py`), because among sightings that tie under the order it keeps
+the ones its quickselect leaves, not the first ones.
+
+- **Checked against Scythebill.** `tools/oracle/PrintOracle.java` drives Scythebill's own
+  `HtmlOutput` as `PrintAction` does, on 122 cases (`make_print_cases.py`): the 30
+  reference queries, and every option, sort, names order, taxonomy and depth on four of
+  them. Every page is byte-identical (the fixture keeps each page's size and SHA-256). Its
+  checklists mode lists the checklist Scythebill finds for each place and synthetic region,
+  in both taxonomies: all 220 equal. On Eric's list (private), all 1,404 checklists
+  (including his 18 own) and 16 pages (life list in both taxonomies and at subspecies,
+  three synthetic regions, highlighted lifers, sorts, compact, his saved reports) are
+  identical.
+- **Dates** are written as Scythebill writes them in US English ("11/25/26").
+
+The page is built on a worker thread with its own read-only connections, so the window
+doesn't wait.

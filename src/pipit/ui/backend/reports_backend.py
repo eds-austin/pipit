@@ -7,28 +7,40 @@ and the sightings of the chosen taxon.
 from __future__ import annotations
 
 import copy
+import datetime
 import json
 import logging
 import sqlite3
+import tempfile
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices
 
 from pipit.browse.dates import display_date
 from pipit.browse.species import place_labels
+from pipit.datapack.pack import DataPack
 from pipit.domain import gson
+from pipit.domain.partial_date import PartialDate
+from pipit.output.print_html import PrintOptions, print_report, safe_file_name, short_date
 from pipit.query import stored
+from pipit.query.checklists import Checklists
 from pipit.query.engine import EngineContext, parse_query, run_query
 from pipit.query.fields_place_time import UnsupportedQueryError
 from pipit.query.fields_simple import QueryJsonError
 from pipit.query.model import QSighting, QueryList, load_query_list
 from pipit.query.results import QueryResults
+from pipit.query.sorting import SORT_TYPES, SPECIES_SORT_LABELS
 from pipit.query.stored import StoredQuery
-from pipit.query.synthetic import regions_for
+from pipit.query.synthetic import REGION_NAMES, regions_for
 from pipit.storage.stored_query_ops import save_stored_queries, stored_queries
-from pipit.taxa.model import TaxonType, full_name
+from pipit.taxa.model import Taxonomy, TaxonType, full_name
 from pipit.taxa.sighting_taxon import Resolved, SightingTaxonType
 from pipit.ui.backend.app_controller import AppController
+from pipit.ui.backend.dispatch import Dispatcher, run_in_thread
 from pipit.ui.backend.list_model import DictListModel
 
 log = logging.getLogger(__name__)
@@ -165,10 +177,17 @@ class ReportsBackend(QObject):
     resultsChanged = Signal()
     selectionChanged = Signal()
     savedChanged = Signal()
+    printingChanged = Signal()
 
-    def __init__(self, app: AppController) -> None:
+    def __init__(
+        self, app: AppController, open_url: Callable[[QUrl], object] = QDesktopServices.openUrl
+    ) -> None:
         super().__init__()
         self._app = app
+        self._open_url = open_url
+        self._dispatcher = Dispatcher()
+        self._printing = False
+        self.last_printed: Path | None = None
         self._rows: list[dict[str, Any]] = []
         self._depth = TaxonType.SPECIES
         self._query_list: QueryList | None = None
@@ -465,7 +484,7 @@ class ReportsBackend(QObject):
         query_list = self._ensure_list()
         if kind == "place" and query_list is not None:
             for region, _places in regions_for(query_list).items():
-                name = _REGION_NAMES.get(region, region)
+                name = REGION_NAMES.get(region, region)
                 if not needle or needle in name.casefold():
                     found.append({"key": region, "name": name, "path": "Region"})
             for xml_id, place in query_list.places.items():
@@ -504,8 +523,8 @@ class ReportsBackend(QObject):
         if not choice_id:
             return ""
         if kind == "place":
-            if choice_id in _REGION_NAMES:
-                return _REGION_NAMES[choice_id]
+            if choice_id in REGION_NAMES:
+                return REGION_NAMES[choice_id]
             query_list = self._ensure_list()
             place = None if query_list is None else query_list.places.get(choice_id)
             return place.name if place else choice_id
@@ -660,6 +679,75 @@ class ReportsBackend(QObject):
         if 0 <= index < len(results.taxa):
             self.select(index)
 
+    # ------------------------------------------------------------ printing
+
+    @Property("QVariantMap", notify=printingChanged)
+    def printOptions(self) -> dict[str, Any]:
+        """Scythebill's Print options, as last chosen."""
+        settings = self._app.settings
+        return {key: getattr(settings, f"print_{name}") for key, name in _PRINT_SETTINGS.items()}
+
+    @Property(bool, notify=printingChanged)
+    def printing(self) -> bool:
+        return self._printing
+
+    @Property("QVariantList", constant=True)
+    def sortTypes(self) -> list[list[str]]:
+        """Each sort: [key, label for species, label for sightings]."""
+        return [[key, SPECIES_SORT_LABELS[key], _SIGHTING_SORT_LABELS[key]]
+                for key in SORT_TYPES]  # fmt: skip
+
+    @Slot("QVariantMap")
+    def printReport(self, options: dict[str, Any]) -> None:
+        """Print as Scythebill does: the page is written to a temporary file named after the
+        report, and the browser opens it and prints."""
+        database = self._app.database
+        taxa = self._app.entry_taxa
+        pack = self._app.pack
+        if database is None or taxa is None or pack is None or self._printing:
+            return
+        self._app.update_settings(**{f"print_{name}": options[key]
+                                     for key, name in _PRINT_SETTINGS.items()
+                                     if key in options})  # fmt: skip
+        settings = self._app.settings
+        print_options = PrintOptions(
+            include_scientific=settings.print_include_scientific,
+            show_families=settings.print_show_families,
+            show_status=settings.print_show_status,
+            maximum_sightings=settings.print_maximum_sightings,
+            sort_type=settings.print_sort_type,
+            sort_sightings_type=settings.print_sort_sightings_type,
+            compact=settings.print_compact,
+            only_countable=settings.print_only_countable,
+            omit_sp_and_hybrid=settings.print_omit_sp_and_hybrid,
+        )
+        job = _PrintJob(Path(database.path), pack.path, taxa.display, self._depth,
+                        self.query_json(), Path(database.path).stem,
+                        short_date(PartialDate.of(*_today())), print_options)  # fmt: skip
+        self._printing = True
+        self.printingChanged.emit()
+        run_in_thread("report-print", lambda: self._print(job))
+
+    def _print(self, job: _PrintJob) -> None:
+        """On a worker thread, from the list as last committed."""
+        try:
+            path = _write_page(job)
+        except (OSError, sqlite3.Error, ValueError, KeyError, QueryJsonError,
+                UnsupportedQueryError) as error:  # fmt: skip
+            log.warning("print failed: %s", error)
+            message = f"Could not print: {error}"
+            self._dispatcher.post(lambda: self._printed(None, message))
+            return
+        self._dispatcher.post(lambda: self._printed(path, "Opened in your browser to print"))
+
+    def _printed(self, path: Path | None, message: str) -> None:
+        self._printing = False
+        self.printingChanged.emit()
+        if path is not None:
+            self.last_printed = path
+            self._open_url(QUrl.fromLocalFile(str(path)))
+        self._app.message.emit(message)
+
     # ------------------------------------------------------------ models and lists
 
     @Property("QVariantList", constant=True)
@@ -707,6 +795,61 @@ class ReportsBackend(QObject):
         return self.choices_model
 
 
+_PRINT_SETTINGS = {"includeScientific": "include_scientific", "showFamilies": "show_families",
+                   "showStatus": "show_status", "maximumSightings": "maximum_sightings",
+                   "sortType": "sort_type", "sortSightingsType": "sort_sightings_type",
+                   "compact": "compact", "onlyCountable": "only_countable",
+                   "omitSpAndHybrid": "omit_sp_and_hybrid"}  # fmt: skip
+#: ``SortType.toString``: sorting a species' sightings.
+_SIGHTING_SORT_LABELS = {"DEFAULT": "Best first", "BY_DATE": "Oldest first",
+                         "BY_DATE_DESCENDING": "Newest first",
+                         "BY_DAY_OF_YEAR": "Earliest in the year",
+                         "BY_DAY_OF_YEAR_DESCENDING": "Latest in the year",
+                         "BY_SIGHTING_COUNT": "Highest count"}  # fmt: skip
+
+
+@dataclass(frozen=True)
+class _PrintJob:
+    list_path: Path
+    pack_path: Path
+    display: Taxonomy
+    depth: TaxonType
+    query_json: str
+    file_name: str
+    date: str
+    options: PrintOptions
+
+
+def _users(connection: sqlite3.Connection) -> dict[str, tuple[str | None, str | None]]:
+    rows = connection.execute("SELECT xml_id, name, abbreviation FROM users")
+    return {xml_id: (name, abbreviation) for xml_id, name, abbreviation in rows}
+
+
+def _today() -> tuple[int, int, int]:
+    today = datetime.date.today()
+    return today.year, today.month, today.day
+
+
+def _write_page(job: _PrintJob) -> Path:
+    connection = sqlite3.connect(f"file:{job.list_path}?mode=ro", uri=True)
+    try:
+        with DataPack(job.pack_path) as pack:
+            query_list = load_query_list(connection)
+            users = _users(connection)
+            context = EngineContext(query_list, job.display, job.depth, users=frozenset(users))
+            printed = print_report(context=context,
+                                   checklists=Checklists(pack, connection, query_list),
+                                   query_json=job.query_json, users=users,
+                                   file_name=job.file_name, date=job.date,
+                                   options=job.options)  # fmt: skip
+    finally:
+        connection.close()
+    directory = Path(tempfile.mkdtemp(prefix="report"))
+    path = directory / f"{safe_file_name(printed.title, 'report')}.html"
+    path.write_text(printed.html, encoding="utf-8")
+    return path
+
+
 def _date_text(sighting: QSighting) -> str:
     start, end = sighting.start_date, sighting.end_date
     if start is None:
@@ -718,28 +861,4 @@ def _date_text(sighting: QSighting) -> str:
 
 
 _STATUS_LABELS = dict((key, label) for key, label in STATUS_CHOICES)
-#: Synthetic regions' English names (Scythebill's synthetic-locations-en.csv).
-_REGION_NAMES = {
-    "***aba***": "ABA region", "***abawh***": "ABA Continental",
-    "***us50***": "United States - 50 states", "***us48***": "United States - contiguous",
-    "***aou***": "AOS Area - North", "***aossouth***": "AOS Area - South",
-    "***wepale***": "Western Palearctic", "***sounafr***": "Southern Africa",
-    "***uswidepterr***": "United States (with dependent territories)",
-    "***auwidepterr***": "Australia (with dependent territories)",
-    "***austaba***": "Australasia (ABA)", "***pacoceaba***": "Pacific Ocean (ABA)",
-    "***orireg***": "Oriental Region", "***clwidepterr***": "Chile (with offshore islands)",
-    "***cowidepterr***": "Colombia (with Caribbean islands)",
-    "***ecwidepterr***": "Ecuador (with Galapagos)",
-    "***ptwidepterr***": "Portugal (with Azores and Madeira)",
-    "***eswidepterr***": "Spain (with Canary Islands, Ceuta, and Melilla)",
-    "***nzwidepterr***": "New Zealand (with Tokelau)",
-    "***nowidepterr***": "Norway (with Bouvet Island and Svalbard)",
-    "***gbwidepterr***": "United Kingdom (with dependent territories)",
-    "***cnwidepterr***": "China (with administrative regions)",
-    "***dkwidepterr***": "Kingdom of Denmark",
-    "***zawidepterr***": "South Africa (with Prince Edward and Marion Islands)",
-    "***frwidepterr***": "France (with Overseas Territories)",
-    "***ireislof***": "Ireland (Island of)",
-    "***ushiwinowiis***": "Hawaii (with Northwestern Islands)",
-    "***nlwidepterr***": "Kingdom of the Netherlands",
-}  # fmt: skip
+# fmt: skip

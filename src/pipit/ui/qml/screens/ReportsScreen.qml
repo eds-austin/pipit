@@ -2,6 +2,7 @@
 // finds with Scythebill's totals, and the sightings of the chosen one. Keyboard map (F1):
 //   Ctrl+Shift+A    add a condition (the first kind not used yet, as Scythebill does)
 //   Ctrl+S          save the query as a report (Scythebill sees it too)
+//   Ctrl+P          print (options, then the browser prints the page)
 //   Ctrl+L          into the saved reports: Enter loads, F2 renames, Delete, Alt+Up/Down
 //   Ctrl+R          into the results; Up/Down choose (family headings skipped)
 //   Esc             (in the results) back to the query
@@ -17,6 +18,7 @@ Item {
     readonly property bool shown: shell.currentKey === "reports"
     readonly property bool working: app.hasList && app.taxaReady
     readonly property bool dialogOpen: saveDialog.visible || renameDialog.visible || deleteDialog.visible
+                                       || printDialog.visible
     readonly property bool keysOn: shown && working && !dialogOpen
 
     function focusResults() { if (results.count > 0) { results.forceActiveFocus(); if (reports.selectedIndex < 0) reports.selectStep(0, 1) } }
@@ -25,6 +27,7 @@ Item {
     Shortcut { enabled: root.keysOn; sequence: "Ctrl+R"; onActivated: root.focusResults() }
     Shortcut { enabled: root.keysOn && !app.readOnly; sequence: "Ctrl+S"; onActivated: saveDialog.show() }
     Shortcut { enabled: root.keysOn; sequence: "Ctrl+L"; onActivated: saved.focusList() }
+    Shortcut { enabled: root.keysOn && reports.sightingCount > 0; sequence: "Ctrl+P"; onActivated: printDialog.show() }
 
     EmptyState {
         anchors.centerIn: parent
@@ -66,6 +69,15 @@ Item {
                         implicitWidth: Theme.controlHCompact
                         implicitHeight: Theme.controlHCompact
                         onClicked: saveDialog.show()
+                    }
+                    PIconButton {
+                        objectName: "printReport"
+                        enabled: reports.sightingCount > 0 && !reports.printing
+                        iconName: "printer"
+                        tip: qsTr("Print (Ctrl+P)")
+                        implicitWidth: Theme.controlHCompact
+                        implicitHeight: Theme.controlHCompact
+                        onClicked: printDialog.show()
                     }
                     PLabel { kind: "caption"; text: qsTr("Show") }
                     PComboBox {
@@ -275,6 +287,8 @@ Item {
     }
 
     // ------------------------------------------------------------ dialogs
+
+    PrintDialog { id: printDialog }
 
     PDialog {
         id: saveDialog

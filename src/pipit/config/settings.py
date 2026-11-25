@@ -24,6 +24,16 @@ class AppSettings:
     sidebar_collapsed: bool = False
     last_list: str = ""
     display_taxonomy: str = "avilist"  # "avilist" or "clements"
+    # Print (Scythebill's ReportPrintPreferences, with its defaults)
+    print_include_scientific: bool = True
+    print_show_families: bool = True
+    print_show_status: bool = True
+    print_maximum_sightings: int = 1
+    print_sort_type: str = "DEFAULT"
+    print_sort_sightings_type: str = "DEFAULT"
+    print_compact: bool = False
+    print_only_countable: bool = False
+    print_omit_sp_and_hybrid: bool = False
 
     def validated(self) -> AppSettings:
         """Clamp or replace invalid values (hand-edited files)."""
@@ -33,7 +43,18 @@ class AppSettings:
             display_taxonomy=self.display_taxonomy
             if self.display_taxonomy in ("avilist", "clements")
             else "avilist",
+            print_maximum_sightings=min(100, max(0, self.print_maximum_sightings)),
+            print_sort_type=_sort(self.print_sort_type),
+            print_sort_sightings_type=_sort(self.print_sort_sightings_type),
         )
+
+
+SORT_TYPES = ("DEFAULT", "BY_DATE", "BY_DATE_DESCENDING", "BY_DAY_OF_YEAR",
+              "BY_DAY_OF_YEAR_DESCENDING", "BY_SIGHTING_COUNT")  # fmt: skip
+
+
+def _sort(value: str) -> str:
+    return value if value in SORT_TYPES else "DEFAULT"
 
 
 def settings_path() -> Path:

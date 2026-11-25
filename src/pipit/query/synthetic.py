@@ -262,3 +262,29 @@ REGION_KEYS = ("aba", "abawh", "us50", "us48", "aou", "aossouth", "wepale", "sou
                "cowidepterr", "ecwidepterr", "ptwidepterr", "eswidepterr", "nzwidepterr",
                "nowidepterr", "gbwidepterr", "cnwidepterr", "dkwidepterr", "zawidepterr",
                "frwidepterr", "ireislof", "ushiwinowiis", "nlwidepterr")  # fmt: skip
+
+#: Synthetic regions' English names (Scythebill's synthetic-locations-en.csv).
+REGION_NAMES = {
+    "***aba***": "ABA region", "***abawh***": "ABA Continental",
+    "***us50***": "United States - 50 states", "***us48***": "United States - contiguous",
+    "***aou***": "AOS Area - North", "***aossouth***": "AOS Area - South",
+    "***wepale***": "Western Palearctic", "***sounafr***": "Southern Africa",
+    "***uswidepterr***": "United States (with dependent territories)",
+    "***auwidepterr***": "Australia (with dependent territories)",
+    "***austaba***": "Australasia (ABA)", "***pacoceaba***": "Pacific Ocean (ABA)",
+    "***orireg***": "Oriental Region", "***clwidepterr***": "Chile (with offshore islands)",
+    "***cowidepterr***": "Colombia (with Caribbean islands)",
+    "***ecwidepterr***": "Ecuador (with Galapagos)",
+    "***ptwidepterr***": "Portugal (with Azores and Madeira)",
+    "***eswidepterr***": "Spain (with Canary Islands, Ceuta, and Melilla)",
+    "***nzwidepterr***": "New Zealand (with Tokelau)",
+    "***nowidepterr***": "Norway (with Bouvet Island and Svalbard)",
+    "***gbwidepterr***": "United Kingdom (with dependent territories)",
+    "***cnwidepterr***": "China (with administrative regions)",
+    "***dkwidepterr***": "Kingdom of Denmark",
+    "***zawidepterr***": "South Africa (with Prince Edward and Marion Islands)",
+    "***frwidepterr***": "France (with Overseas Territories)",
+    "***ireislof***": "Ireland (Island of)",
+    "***ushiwinowiis***": "Hawaii (with Northwestern Islands)",
+    "***nlwidepterr***": "Kingdom of the Netherlands",
+}  # fmt: skip

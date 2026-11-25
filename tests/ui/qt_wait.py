@@ -43,7 +43,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     species = SpeciesBackend(app)
     trips = TripsBackend(app)
     checklist = ChecklistBackend(app)
-    reports = ReportsBackend(app)
+    reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
     home = HomeBackend(app)
     context = engine.rootContext()  # type: ignore[attr-defined]
     context.setContextProperty("app", app)

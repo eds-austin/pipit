@@ -164,6 +164,14 @@ class PredefinedLocations:
             )
         return cls(by_country, counties)
 
+    def codes(self, countries: Iterable[str], us_states: Iterable[str]) -> set[str]:
+        """The codes of the predefined places Scythebill adds below these countries (by
+        name) and US states (by code)."""
+        found = {place.code for name in countries for place in self._by_country.get(name, ())}
+        for state in us_states:
+            found.update(place.code for place in self._us_counties.get(state, ()))
+        return found
+
     def children(self, location: Location) -> list[PredefinedLocation]:
         """``getPredefinedLocations``: built-in places that belong directly below."""
         if location.ebird_code is None:

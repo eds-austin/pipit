@@ -185,6 +185,14 @@ class DataPack:
             )
         ]
 
+    def transposed_checklists(self, taxonomy_id: str) -> list[tuple[str, str, str]]:
+        """Every checklist row of a taxonomy: (taxon ID, status, region)."""
+        return self._connection.execute(
+            "SELECT taxon_id, status, region FROM checklists WHERE taxonomy_id = ? "
+            "ORDER BY region, ord",
+            (taxonomy_id,),
+        ).fetchall()
+
     def names(self, locale: str) -> dict[str, str]:
         """Localized common names by base taxon ID."""
         return dict(

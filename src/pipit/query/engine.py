@@ -699,8 +699,10 @@ def run_query(
     context: EngineContext,
     preferences: CountingPreferences | None = None,
     include_families: bool = True,
+    only_countable: bool = False,
 ) -> QueryResults:
-    """``QueryProcessor.runQuery`` as the Reports screen calls it."""
+    """``QueryProcessor.runQuery`` as the Reports screen calls it (``only_countable``:
+    ``onlyIncludeCountableSightings``, as Print and Save as may ask)."""
     preferences = preferences or CountingPreferences()
     definition = composite(list(query.fields), context)
     undescribed = context.undescribed()
@@ -716,6 +718,12 @@ def run_query(
                                                                    MappedTaxonomy)  # fmt: skip
     builder = ResultsBuilder()
     predicate = definition.predicate
+    if only_countable:
+        query_predicate = predicate
+
+        def predicate(sighting: QSighting) -> bool:
+            return query_predicate(sighting) and countable(sighting)
+
     for sighting in sightings:
         if not predicate(sighting) or not _compatible(sighting):
             continue
@@ -728,7 +736,10 @@ def run_query(
         builder.add(sighting, taxon, definition.annotate(sighting, taxon))
     if definition.postprocessor is not None:
         builder.post_process(definition.postprocessor, countable)
-    return QueryResults(context.taxonomy, builder, depth, countable, include_families)
+    results = QueryResults(context.taxonomy, builder, depth, countable, include_families)
+    results.resolve = context.resolve
+    results.annotate = definition.annotate
+    return results
 
 
 def _undescribed(context: EngineContext) -> Callable[[QSighting], bool]:

@@ -76,7 +76,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     species = SpeciesBackend(app)
     trips = TripsBackend(app)
     checklist = ChecklistBackend(app)
-    reports = ReportsBackend(app)
+    reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
     home = HomeBackend(app)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()

@@ -51,6 +51,7 @@ PDialog {
         ["Ctrl+Shift+A", qsTr("Add a condition")],
         ["Ctrl+R", qsTr("Into the results; Up/Down choose a species")],
         ["Ctrl+S", qsTr("Save the query as a report (Scythebill sees it too)")],
+        ["Ctrl+P", qsTr("Print: options, then your browser prints the page")],
         ["Ctrl+L", qsTr("Saved reports: Enter loads, F2 renames, Delete deletes, Alt+Up/Down move")]
     ]
     readonly property var tripKeys: [

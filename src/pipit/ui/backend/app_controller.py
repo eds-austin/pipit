@@ -11,6 +11,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 from PySide6.QtCore import Property, QObject, QUrl, Signal, Slot
 
@@ -78,6 +79,15 @@ class AppController(QObject):
     def _taxa_loaded(self, loaded: dict[str, EntryTaxa]) -> None:
         self.taxa = loaded
         self.taxaReadyChanged.emit()
+
+    @property
+    def settings(self) -> AppSettings:
+        return self._settings
+
+    def update_settings(self, **changes: Any) -> None:
+        """Change and save app settings (unknown names raise TypeError)."""
+        self._settings = replace(self._settings, **changes).validated()
+        self._save(self._settings)
 
     @Property(bool, notify=taxaReadyChanged)
     def taxaReady(self) -> bool:

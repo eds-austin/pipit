@@ -1,0 +1,14 @@
+/* Printed report, written by HtmlOutput after print-base.css. */
+
+/* Keep each total ("Families: 61 of 88") on one line. */
+.summary .item { white-space: nowrap; }
+.family-count { float: right; font-weight: 400; color: #666; }
+h2.familyTitle .family-count { font-size: 0.9em; }
+.flags { color: #555; }
+
+/* Regular mode: names, then the sightings. A species with several sightings
+   has a row for each, and its rule goes under the last one ("end"). */
+table.report td.name { width: 55%; padding-right: 8pt; }
+table.report.no-sightings td.name { width: auto; }
+table.report tr.end td { border-bottom: 0.5pt solid #ccc; }
+tr.species, tr.more-sighting { break-inside: avoid; }

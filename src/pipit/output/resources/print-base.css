@@ -1,0 +1,97 @@
+/* Shared styles for printed checklists (ChecklistHtmlOutput) and reports
+   (HtmlOutput), each followed by its own stylesheet. The browser does the
+   printing, so this has to work for any paper size and orientation. */
+@page { margin: 0.5in; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      Arial, "Noto Sans", sans-serif;
+  color: #000;
+  background: #fff;
+}
+/* On screen, use the width of a printed page, so what's shown matches what
+   prints (and so the Safari script measures at about the printed width). */
+@media screen { body { width: 7.5in; margin: 0.5in auto; } }
+
+header { border-bottom: 1.5pt solid #000; padding-bottom: 4pt; margin-bottom: 8pt; }
+h1 { font-size: 18pt; margin: 0; font-weight: 700; }
+.summary { font-size: 9pt; color: #333; margin-top: 2pt; }
+.summary .item + .item::before { content: "\00b7"; margin: 0 0.45em; color: #999; }
+
+.lifer { font-weight: 700; }
+.secondary { color: #444; }
+.scientific { font-style: italic; }
+.nowrap { white-space: nowrap; }
+.family-secondary { font-weight: 400; color: #555; }
+
+/* Status badges: borders only, no fills, so they print even when the
+   browser's "print backgrounds" option is off. */
+.badge {
+  display: inline-block;
+  font-size: 0.72em;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 1;
+  padding: 0.12em 0.3em;
+  /* The markup already puts a space before each badge. */
+  margin-left: 0.1em;
+  border-radius: 0.2em;
+  vertical-align: 0.1em;
+  color: #333;
+  border: 0.5pt solid #777;
+}
+.badge.endemic { color: #000; border: 1.25pt solid #000; font-weight: 800; }
+.badge.iucn { border-style: dashed; }
+
+.legend {
+  font-size: 8pt;
+  color: #333;
+  margin-top: 10pt;
+  border-top: 0.5pt solid #999;
+  padding-top: 4pt;
+}
+.legend .item { white-space: nowrap; margin-right: 1.2em; }
+.legend .badge { margin-left: 0; margin-right: 0.1em; }
+.taxonomy { font-size: 8pt; color: #666; margin-top: 4pt; }
+
+/* Compact mode: three columns of names. */
+body.compact { font-size: 8.5pt; line-height: 1.25; }
+body.compact.one-name { font-size: 9.5pt; }
+.main { column-count: 3; column-gap: 14pt; column-rule: 0.5pt solid #ddd; }
+h2.familyTitle {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 6pt 0 2pt;
+  padding-bottom: 1pt;
+  border-bottom: 0.5pt solid #000;
+  break-after: avoid;
+  break-inside: avoid;
+}
+.main > h2.familyTitle:first-child,
+.col > h2.familyTitle:first-child { margin-top: 0; }
+.species { break-inside: avoid; padding: 0.6pt 0; }
+
+/* Safari prints CSS columns as a single column, so print-columns.js
+   rebuilds the list as "bands" of three flexbox columns, which do print. */
+.band { display: flex; gap: 14pt; break-inside: avoid; margin-bottom: 4pt; }
+.band .col { flex: 1 1 0; min-width: 0; }
+.band .col + .col { border-left: 0.5pt solid #ddd; padding-left: 7pt; margin-left: -7pt; }
+
+/* Regular mode: a table, with one tbody per family. */
+body.regular { font-size: 9pt; line-height: 1.15; }
+table.list { width: 100%; border-collapse: collapse; }
+table.list thead th { font-size: 8pt; font-weight: 600; color: #333; padding: 0 0 2pt; }
+table.list td { padding: 1pt 0; vertical-align: top; }
+td.name { padding-right: 6pt; }
+th.familyTitle {
+  text-align: left;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 8pt 0 1.5pt;
+  border-bottom: 0.75pt solid #000;
+}
+tr.family { break-after: avoid; break-inside: avoid; }
+/* Keep a short family on one page, so its heading isn't left behind (Safari
+   ignores break-after on table rows). */
+tbody.short-family { break-inside: avoid; }
