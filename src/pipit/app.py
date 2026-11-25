@@ -78,6 +78,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     from pipit.ui.backend.checklist_backend import ChecklistBackend
     from pipit.ui.backend.entry_backend import EntryBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
+    from pipit.ui.backend.reports_backend import ReportsBackend
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider, apply_theme
@@ -118,6 +119,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     species = SpeciesBackend(controller)
     trips = TripsBackend(controller)
     checklist = ChecklistBackend(controller)
+    reports = ReportsBackend(controller)
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -133,6 +135,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     context.setContextProperty("species", species)
     context.setContextProperty("trips", trips)
     context.setContextProperty("checklist", checklist)
+    context.setContextProperty("reports", reports)
     engine.setInitialProperties({"appVersion": __version__, "maximized": not args.size})
     engine.warnings.connect(
         lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings]

@@ -43,6 +43,10 @@ PDialog {
         ["Ctrl+E", qsTr("Edit the sighting's visit")],
         ["Ctrl+Delete", qsTr("Delete the sighting")]
     ]
+    readonly property var reportKeys: [
+        ["Ctrl+Shift+A", qsTr("Add a condition")],
+        ["Ctrl+R", qsTr("Into the results; Up/Down choose a species")]
+    ]
     readonly property var tripKeys: [
         ["Ctrl+F · /", qsTr("Filter trips by name or notes")],
         ["Enter · Esc", qsTr("Into the trip's species, and back")],
@@ -135,7 +139,18 @@ PDialog {
                     KeyHint { keys: modelData[0] }
                 }
             }
-            SectionHeader { text: qsTr("Trips"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            SectionHeader { text: qsTr("Reports"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+        Repeater {
+            model: root.reportKeys
+            RowLayout {
+                required property var modelData
+                Layout.fillWidth: true
+                spacing: Theme.s3
+                PLabel { Layout.fillWidth: true; text: modelData[1] }
+                KeyHint { keys: modelData[0] }
+            }
+        }
+        SectionHeader { text: qsTr("Trips"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
             Repeater {
                 model: root.tripKeys
                 RowLayout {

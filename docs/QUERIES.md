@@ -72,3 +72,26 @@ On Eric's list (23,813 sightings): loading the list for queries takes 0.17 s; af
 first query (which fills the caches, up to 0.15 s), each query takes 20 to 96 ms, about
 25 ms on average. Sightings are resolved into the display taxonomy once and cached per
 depth; the taxa list is ordered by sorting on precomputed taxonomy positions.
+
+## The Reports screen (Ctrl+6)
+
+Three panes: the query, the species it finds, and the sightings of the chosen one.
+
+- **Query.** One card per condition: And, Or, Never or Never All; the field (in
+  Scythebill's menu order); its comparison; and what it needs: a place (with the synthetic
+  regions) or family or observer picked by typing, dates as partial dates ("2024",
+  "2024-05", "M12"), a status, a text, a count, or a distance. A new list starts with one
+  Location condition; "Add condition" (Ctrl+Shift+A) adds the first field not used yet,
+  as Scythebill does. "Show" chooses species, groups or subspecies.
+- **Results.** The query reruns 150 ms after any change. The heading is Scythebill's own
+  totals line ("Total species: 3,495 (8 "sp.")", with groups and ssps at those depths),
+  then families and sightings. Families head their species; taxa with no countable
+  sighting are gray and marked; lifers are marked when the query highlights them. Ctrl+R
+  goes into the results; Up and Down skip the headings.
+- **Sightings** of the chosen taxon, newest first, with place, count, flags, status and
+  notes.
+
+The query is kept as the very JSON Scythebill stores: each field's type, value and bool
+in that order, each value's keys in its Scythebill class's order, numbers as Gson writes
+them, so a saved query reads back in Scythebill unchanged. A query Scythebill would
+refuse (an unknown place, say) shows why instead of a total.
