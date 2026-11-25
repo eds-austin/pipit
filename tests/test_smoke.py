@@ -45,6 +45,8 @@ CORE_MODULES = [
     "browse.locations",
     "browse.species",
     "storage.sighting_ops",
+    "browse.trips",
+    "storage.trip_ops",
     "storage.location_ops",
 ]
 

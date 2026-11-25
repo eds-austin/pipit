@@ -149,3 +149,54 @@ def parse_with_century_fix(text: str) -> PartialDate:
     if year is not None and year < 100:
         date = date.with_field(PartialField.YEAR, year + (2000 if year < 50 else 1900))
     return date
+
+
+def compare_partial_dates(a: PartialDate, b: PartialDate) -> int:
+    """``PartialDateComparisons.comparePartialDates``: field by field; where the fields
+    differ, the larger one (a year against a month) sorts after; then by value; a date
+    with fewer fields sorts first when they agree so far."""
+    for (a_field, a_value), (b_field, b_value) in zip(a.fields, b.fields, strict=False):
+        if a_field is not b_field:
+            return int(b_field) - int(a_field)
+        if a_value != b_value:
+            return a_value - b_value
+    return len(a.fields) - len(b.fields)
+
+
+def common_partial_date(start: PartialDate | None, end: PartialDate | None) -> PartialDate | None:
+    """``getCommonPartialDate``: the year, month and day that start and end share, in that
+    order (None if not even the year is shared)."""
+    if start is None or end is None:
+        return None
+    result: PartialDate | None = None
+    for field in (PartialField.YEAR, PartialField.MONTH, PartialField.DAY):
+        start_value = start.get(field)
+        end_value = end.get(field)
+        if start_value is None or end_value is None or start_value != end_value:
+            break
+        result = (result or PartialDate()).with_field(field, start_value)
+    return result
+
+
+def _compare_flexible(base: PartialDate, date: PartialDate) -> int | None:
+    """``PartialDatePredicates.comparePartialsFlexible``: compares only the fields of
+    ``base``; None when ``date`` lacks one of them (never matches)."""
+    for field, base_value in base.fields:
+        value = date.get(field)
+        if value is None:
+            return None
+        if value != base_value:
+            return value - base_value
+    return 0
+
+
+def after_or_equals(base: PartialDate, date: PartialDate) -> bool:
+    """``PartialDatePredicates.afterOrEquals(base)(date)``."""
+    value = _compare_flexible(base, date)
+    return value is not None and value >= 0
+
+
+def before_or_equals(base: PartialDate, date: PartialDate) -> bool:
+    """``PartialDatePredicates.beforeOrEquals(base)(date)``."""
+    value = _compare_flexible(base, date)
+    return value is not None and value <= 0

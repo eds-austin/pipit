@@ -15,10 +15,12 @@ from dataclasses import dataclass
 
 from pipit.browse.dates import date_key, display_date
 from pipit.browse.locations import SpeciesSeen
+from pipit.domain.partial_date import PartialDate, parse_partial_date
 from pipit.entry.taxa import EntryTaxa
 from pipit.taxa.model import TaxonType
 from pipit.taxa.sighting_taxon import SightingTaxon
 
+DATE_RANGE = " \u2013 "  # an en dash between two dates
 _FLAG_TEXT = (("heard_only", "heard only"), ("male", "male"), ("female", "female"),
               ("adult", "adult"), ("immature", "immature"), ("photographed", "photo"))  # fmt: skip
 
@@ -136,8 +138,14 @@ def sightings_of(
     """The entry's sightings, newest first, with where, when and every detail."""
     if not entry.sighting_ids:
         return []
-    places = _place_labels(connection)
+    places = place_labels(connection)
     trips = dict(connection.execute("SELECT xml_id, coalesce(name, xml_id) FROM trips"))
+    trip_spans = {
+        xml_id: (parse_partial_date(start), parse_partial_date(end))
+        for xml_id, start, end in connection.execute(
+            "SELECT xml_id, start_date, end_date FROM trips"
+        )
+    }
     marks = ",".join("?" * len(entry.sighting_ids))
     parts: dict[int, list[str]] = {}
     for sighting, taxon_id in connection.execute(
@@ -160,7 +168,7 @@ def sightings_of(
                  "immature": immature, "photographed": photographed}  # fmt: skip
         rows.append(
             SightingRow(
-                sighting, display_date(year, month, day), time or "",
+                sighting, _date_text(year, month, day, trip_spans.get(trip)), time or "",
                 places.get(location, "No place") if location else "No place", location, date,
                 _as_recorded(taxa, entry, taxonomy_id=taxonomy_id, kind=kind,
                              taxon_id=taxon_id, subspecies=subspecies,
@@ -169,11 +177,29 @@ def sightings_of(
                 " · ".join(text for flag, text in _FLAG_TEXT if flags[flag]),
                 "" if status == "none" else status, breeding, description or "",
                 trips.get(trip, "") if trip else "",
-                (date_key(year, month, day), time or "", sighting),
+                (_sort_date(year, month, day, trip_spans.get(trip)), time or "", sighting),
             )
         )  # fmt: skip
     rows.sort(key=lambda row: row.sort_key, reverse=True)
     return rows
+
+
+def _date_text(year: int | None, month: int | None, day: int | None,
+               span: tuple[PartialDate, PartialDate] | None) -> str:  # fmt: skip
+    """The sighting's date; an undated one on a trip shows the trip's first and last days."""
+    if (year, month, day) == (None, None, None) and span is not None:
+        start, end = span
+        first = display_date(start.year, start.month, start.day)
+        last = display_date(end.year, end.month, end.day)
+        return first if first == last else f"{first}{DATE_RANGE}{last}"
+    return display_date(year, month, day)
+
+
+def _sort_date(year: int | None, month: int | None, day: int | None,
+               span: tuple[PartialDate, PartialDate] | None) -> tuple[int, int, int]:  # fmt: skip
+    if (year, month, day) == (None, None, None) and span is not None:
+        return date_key(span[0].year, span[0].month, span[0].day)
+    return date_key(year, month, day)
 
 
 def _as_recorded(
@@ -201,7 +227,7 @@ def _as_recorded(
     return scientific if common == scientific or not common else f"{common} ({scientific})"
 
 
-def _place_labels(connection: sqlite3.Connection) -> dict[str, str]:
+def place_labels(connection: sqlite3.Connection) -> dict[str, str]:
     """Each place as "name · up to three places it is in" (regions left out)."""
     rows = {
         xml_id: (name, parent, kind)

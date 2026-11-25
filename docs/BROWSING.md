@@ -40,6 +40,21 @@ Each change is one undoable action (one Ctrl+Z), using `pipit.storage.location_o
 
 The tree builds in 8 ms. The largest "seen in" (North America, about 1,100 rows) takes under 0.1 s.
 
+## Trips (Ctrl+5)
+
+Three panes: trips, the species seen on the chosen trip, and the trip itself.
+
+- **Trips** newest first, in Scythebill's order (`comparePartialDates` reversed). Filter by name or notes with Ctrl+F or `/`, or just start typing.
+- **Species seen on the trip**: its own sightings, plus any sighting inside its place (anywhere, if it has none) within its dates (Scythebill's `isPartOfTrip`, with `afterOrEquals` / `beforeOrEquals` ported). An undated sighting on a trip takes the trip's dates. Elsewhere it shows as "1 Jul 2026 – 8 Jul 2026", as Scythebill's detailed rows do.
+- **The trip**: F2 edits name, dates (partial dates such as "2025-05" work) and notes, and Ctrl+P chooses its place. Enter or Ctrl+S saves as one undo step. Ctrl+Delete deletes it.
+
+Changes follow Scythebill (`tools/oracle/TripOps.java`, seven cases byte-identical):
+
+- **Edit** (`TripInfoBrowsePanel.save`): the end may not come before the start. Empty notes are removed. A new place moves the trip's sightings at its old place to the new one, at the end of the list. Sightings inside the old place, or elsewhere, stay.
+- **Delete** (`ReportSet.deleteTrips`): no sighting is deleted. Each loses the trip and goes to the end of the list. An undated one gets the date the trip's start and end share (`getCommonPartialDate`: 1–8 July 2026 gives "2026-07"), or else the start year. Links and photos go with the trip.
+
+Your list has no trips. Trips come from lists made in Scythebill; creating them in Pipit (in Enter sightings, or automatically from visits as Scythebill can) comes later, and so does combining trips.
+
 ## Next (M4.1)
 
-Trips, with trip reports, and custom checklists from the Locations screen.
+Trip reports (HTML and Word), and custom checklists from the Locations screen.

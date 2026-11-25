@@ -105,3 +105,20 @@ edit_visit edit clements lakmer 2026-08-08 08:00 count:spAnaspla:7 remove:spArde
 edit_visit edit_avilist avilist lakmer 2026-08-08 08:00 count:spAnaspla:7 add:spEgretthu:2
 edit_visit add_time clements muiwoo 2026-09-09 06:30 add:spAnasrub:1
 edit_visit remove_all clements _scyco_GB-ENG-KEN 2026-06-06 - remove:spAnaspla  # Kent becomes built-in on load
+
+# Trips (TripOps.java: TripsBrowsePanel.deleteTrips and TripInfoBrowsePanel.save).
+"$PY" -I tools/oracle/make_trips_fixture.py "$BSXM/trips.bsxm"
+trip_ops() {
+    local name="$1"; shift
+    java -cp "$CLASSPATH" tools/oracle/TripOps.java "$FILES/taxon.xml" \
+        "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$BSXM/trips.bsxm" \
+        "$BSXM/trips.$name.scythebill.bsxm" "$@"
+}
+trip_ops delete_coast delete:coast
+trip_ops delete_spring delete:spring
+trip_ops delete_oneday delete:oneday
+trip_ops delete_span delete:span
+trip_ops edit "edit:coast:name=Oregon coast|start=2026-06-30|end=2026-07-09|notes=Fog, then sun"
+trip_ops move edit:coast:loc=bayare1
+trip_ops clear_notes "edit:coast:notes="

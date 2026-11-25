@@ -27,6 +27,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     from pipit.ui.backend.entry_backend import EntryBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.species_backend import SpeciesBackend
+    from pipit.ui.backend.trips_backend import TripsBackend
 
     app = AppController(
         AppSettings(),
@@ -37,9 +38,11 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     entry = EntryBackend(app)
     locations = LocationsBackend(app)
     species = SpeciesBackend(app)
+    trips = TripsBackend(app)
     context = engine.rootContext()  # type: ignore[attr-defined]
     context.setContextProperty("app", app)
     context.setContextProperty("entry", entry)
     context.setContextProperty("locations", locations)
     context.setContextProperty("species", species)
-    return [app, entry, locations, species]
+    context.setContextProperty("trips", trips)
+    return [app, entry, locations, species, trips]

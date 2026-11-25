@@ -80,6 +80,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider, apply_theme
+    from pipit.ui.backend.trips_backend import TripsBackend
 
     QApplication.setApplicationName(APP_NAME)
     QApplication.setApplicationVersion(__version__)
@@ -114,6 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     entry = EntryBackend(controller, date.fromisoformat(args.today) if args.today else None)
     locations = LocationsBackend(controller)
     species = SpeciesBackend(controller)
+    trips = TripsBackend(controller)
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -127,6 +129,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     context.setContextProperty("entry", entry)
     context.setContextProperty("locations", locations)
     context.setContextProperty("species", species)
+    context.setContextProperty("trips", trips)
     engine.setInitialProperties({"appVersion": __version__, "maximized": not args.size})
     engine.warnings.connect(
         lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings]

@@ -8,6 +8,9 @@ import Pipit
 Item {
     id: root
     signal back()
+    // The rows (a list model with common, scientific, sightings, first, last, heardOnly):
+    // what was seen in a place, or on a trip. Back to the top whenever it is refilled.
+    property var source: locations.species
     readonly property alias count: list.count
     readonly property int numberW: Theme.grid(72)
     readonly property int dateW: Theme.grid(100)
@@ -40,7 +43,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: locations.species
+            model: root.source
             reuseItems: true
             highlightMoveDuration: 0
             keyNavigationEnabled: true
@@ -48,8 +51,8 @@ Item {
             B.ScrollBar.vertical: B.ScrollBar {}
             Accessible.name: qsTr("Species seen here")
             Connections {
-                target: locations
-                function onSpeciesChanged() { list.currentIndex = list.activeFocus && list.count ? 0 : -1; list.positionViewAtBeginning() }
+                target: root.source
+                function onModelReset() { list.currentIndex = list.activeFocus && list.count ? 0 : -1; list.positionViewAtBeginning() }
             }
             readonly property int page: Math.max(1, Math.floor(height / Theme.rowHDense) - 1)
             Keys.onPressed: event => {

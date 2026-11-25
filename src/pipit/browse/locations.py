@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass, field
 
 from pipit.browse.dates import date_key, display_date
+from pipit.domain.partial_date import parse_partial_date
 from pipit.domain.report import ObservationType
 from pipit.entry.taxa import EntryTaxa
 from pipit.taxa.mapped import MappedTaxonomy
@@ -129,13 +131,17 @@ def species_at(
     taxa: EntryTaxa,
     row: int | None,
     rollup: SpeciesRollup | None = None,
+    sighting_ids: list[int] | None = None,
 ) -> list[SpeciesSeen]:
     """What was seen in the place ``row`` and every place inside it (``None``: every
-    sighting in the list, with or without a place), in taxonomic order (other taxonomies,
-    such as mammals, after the birds)."""
+    sighting in the list, with or without a place; or just ``sighting_ids``, such as a
+    trip's), in taxonomic order (other taxonomies, such as mammals, after the birds)."""
     rollup = rollup or SpeciesRollup(taxa)
-    params: tuple[int, ...]
-    if row is None:
+    params: tuple[int | str, ...]
+    if sighting_ids is not None:
+        within = "WHERE s.id IN (SELECT value FROM json_each(?)) "
+        params = (json.dumps(sighting_ids),)
+    elif row is None:
         within, params = "", ()
     else:
         within = (
@@ -151,6 +157,7 @@ def species_at(
     ):
         parts[sighting].append(taxon_id)
     extended = _extended_species(connection)
+    trip_dates = _trip_dates(connection)
     seen: dict[str, SpeciesSeen] = {}
     for (
         sighting,
@@ -163,9 +170,10 @@ def species_at(
         day,
         heard,
         place,
+        trip,
     ) in connection.execute(
         "SELECT s.id, s.taxonomy_id, s.kind, s.taxon_id, s.subspecies, s.date_y, "
-        "s.date_m, s.date_d, s.heard_only, s.location_xml_id FROM sightings s "
+        "s.date_m, s.date_d, s.heard_only, s.location_xml_id, s.trip_xml_id FROM sightings s "
         + within
         + "ORDER BY s.ord",
         params,
@@ -196,14 +204,38 @@ def species_at(
         entry.heard_only += heard
         if place is not None:
             entry.places.add(place)
-        when = date_key(year, month, day)
+        earliest, latest = _span((year, month, day), trip, trip_dates)
+        when = date_key(*earliest)
         if when < entry.first:
             entry.first = when
-            entry.first_text = display_date(year, month, day)
+            entry.first_text = display_date(*earliest)
+        when = date_key(*latest)
         if when > entry.last:
             entry.last = when
-            entry.last_text = display_date(year, month, day)
+            entry.last_text = display_date(*latest)
     return sorted(seen.values(), key=lambda entry: (entry.order, entry.key))
+
+
+_Fields = tuple[int | None, int | None, int | None]
+
+
+def _span(
+    date: _Fields, trip: str | None, trip_dates: dict[str, tuple[_Fields, _Fields]]
+) -> tuple[_Fields, _Fields]:
+    """A sighting's first and last possible dates: its own, or for an undated sighting on
+    a trip, the trip's (Scythebill's ``getStartDateAsPartial`` / ``getEndDateAsPartial``)."""
+    if date == (None, None, None) and trip in trip_dates:
+        return trip_dates[trip]
+    return date, date
+
+
+def _trip_dates(connection: sqlite3.Connection) -> dict[str, tuple[_Fields, _Fields]]:
+    dates = {}
+    for xml_id, start, end in connection.execute("SELECT xml_id, start_date, end_date FROM trips"):
+        first = parse_partial_date(start)
+        last = parse_partial_date(end)
+        dates[xml_id] = ((first.year, first.month, first.day), (last.year, last.month, last.day))
+    return dates
 
 
 def _extended_species(

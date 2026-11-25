@@ -307,7 +307,7 @@ class LocationsBackend(QObject):
         connection = self._connection
         taxa = self._app.entry_taxa
         if connection is None or taxa is None or self._selected is None:
-            self.species_model.reset([])
+            self.species_model.replace_all([])
             self._species_count = 0
             self._other_count = 0
             self._species_for = None
@@ -317,7 +317,7 @@ class LocationsBackend(QObject):
             self._rollup = SpeciesRollup(taxa)
             self._rollup_taxa = taxa
         seen = species_at(connection, taxa, self._selected, self._rollup)
-        self.species_model.reset([
+        self.species_model.replace_all([
             {"key": entry.key, "common": entry.common, "scientific": entry.scientific,
              "sightings": entry.sightings, "first": entry.first_text, "last": entry.last_text,
              "heardOnly": entry.heard_only == entry.sightings, "places": len(entry.places)}

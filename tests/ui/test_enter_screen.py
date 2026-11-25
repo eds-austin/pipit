@@ -46,6 +46,7 @@ class Running:
     engine: Any
     locations: Any = None
     species: Any = None
+    trips: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -58,6 +59,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider
+    from pipit.ui.backend.trips_backend import TripsBackend
 
     settings = AppSettings()
     app = AppController(settings, save=lambda _s: None, pack_path=pack_path,
@@ -66,12 +68,14 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     entry = EntryBackend(app, date(2026, 11, 24))
     locations = LocationsBackend(app)
     species = SpeciesBackend(app)
+    trips = TripsBackend(app)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
     engine.addImageProvider("icon", IconProvider())
     for name, value in (("shell", shell), ("app", app), ("entry", entry),
-                        ("locations", locations), ("species", species)):  # fmt: skip
+                        ("locations", locations), ("species", species),
+                        ("trips", trips)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
@@ -83,7 +87,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     window.setProperty("height", 1000)
     window.requestActivate()
     wait_until(window.isActive)
-    running = Running(window, app, entry, shell, engine, locations, species)
+    running = Running(window, app, entry, shell, engine, locations, species, trips)
     running.errors = errors  # type: ignore[attr-defined]
     return running
 

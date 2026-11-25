@@ -1,10 +1,12 @@
 // F1: the keyboard shortcuts, everywhere and per screen.
 import QtQuick
+import QtQuick.Controls.Basic as B
 import QtQuick.Layouts
 import Pipit
 
 PDialog {
     id: root
+    onOpened: keysView.forceActiveFocus()
     heading: qsTr("Keyboard shortcuts")
     width: Math.min(Theme.grid(720), parent ? parent.width - 2 * Theme.s7 : Theme.grid(720))
 
@@ -41,6 +43,13 @@ PDialog {
         ["Ctrl+E", qsTr("Edit the sighting's visit")],
         ["Ctrl+Delete", qsTr("Delete the sighting")]
     ]
+    readonly property var tripKeys: [
+        ["Ctrl+F · /", qsTr("Filter trips by name or notes")],
+        ["Enter · Esc", qsTr("Into the trip's species, and back")],
+        ["F2", qsTr("Edit the trip; Enter or Ctrl+S saves")],
+        ["Ctrl+P", qsTr("Choose the trip's place")],
+        ["Ctrl+Delete", qsTr("Delete the trip (sightings stay)")]
+    ]
     readonly property var locationKeys: [
         ["Ctrl+F · /", qsTr("Filter places (or just start typing)")],
         ["→ · ←", qsTr("Open a place, or close it and go up")],
@@ -53,66 +62,99 @@ PDialog {
         ["Ctrl+E", qsTr("Its visits: Enter opens one to edit")]
     ]
 
-    GridLayout {
+    // Scrolls when the list is taller than the window.
+    B.ScrollView {
+        id: keysView
         width: parent.width
-        columns: 2
-        columnSpacing: Theme.s7
-        rowSpacing: Theme.s1
+        height: Math.min(keysGrid.implicitHeight,
+                         (root.parent ? root.parent.height : 900) - Theme.grid(200))
+        contentWidth: availableWidth
+        clip: true
+        focus: true
+        // Up/Down and PageUp/PageDown scroll it from the keyboard.
+        Keys.onPressed: event => {
+            const bar = keysView.B.ScrollBar.vertical
+            const page = keysView.height / Math.max(1, keysGrid.implicitHeight)
+            if (event.key === Qt.Key_Down) bar.increase()
+            else if (event.key === Qt.Key_Up) bar.decrease()
+            else if (event.key === Qt.Key_PageDown) bar.position = Math.min(1 - bar.size, bar.position + page)
+            else if (event.key === Qt.Key_PageUp) bar.position = Math.max(0, bar.position - page)
+            else return
+            event.accepted = true
+        }
+        GridLayout {
+            id: keysGrid
+            width: keysView.availableWidth
+            columns: 2
+            columnSpacing: Theme.s7
+            rowSpacing: Theme.s1
 
-        SectionHeader { text: qsTr("Screens"); Layout.columnSpan: 2 }
-        Repeater {
-            model: shell.screens
-            RowLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: Theme.s3
-                PIcon { name: modelData.icon; size: Theme.iconSm }
-                PLabel { Layout.fillWidth: true; text: modelData.title }
-                KeyHint { keys: modelData.shortcut }
+            SectionHeader { text: qsTr("Screens"); Layout.columnSpan: 2 }
+            Repeater {
+                model: shell.screens
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PIcon { name: modelData.icon; size: Theme.iconSm }
+                    PLabel { Layout.fillWidth: true; text: modelData.title }
+                    KeyHint { keys: modelData.shortcut }
+                }
             }
-        }
-        SectionHeader { text: qsTr("Enter sightings"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
-        Repeater {
-            model: root.entryKeys
-            RowLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: Theme.s3
-                PLabel { Layout.fillWidth: true; text: modelData[1] }
-                KeyHint { keys: modelData[0] }
+            SectionHeader { text: qsTr("Enter sightings"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            Repeater {
+                model: root.entryKeys
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PLabel { Layout.fillWidth: true; text: modelData[1] }
+                    KeyHint { keys: modelData[0] }
+                }
             }
-        }
-        SectionHeader { text: qsTr("Species"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
-        Repeater {
-            model: root.speciesKeys
-            RowLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: Theme.s3
-                PLabel { Layout.fillWidth: true; text: modelData[1] }
-                KeyHint { keys: modelData[0] }
+            SectionHeader { text: qsTr("Species"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            Repeater {
+                model: root.speciesKeys
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PLabel { Layout.fillWidth: true; text: modelData[1] }
+                    KeyHint { keys: modelData[0] }
+                }
             }
-        }
-        SectionHeader { text: qsTr("Locations"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
-        Repeater {
-            model: root.locationKeys
-            RowLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: Theme.s3
-                PLabel { Layout.fillWidth: true; text: modelData[1] }
-                KeyHint { keys: modelData[0] }
+            SectionHeader { text: qsTr("Locations"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            Repeater {
+                model: root.locationKeys
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PLabel { Layout.fillWidth: true; text: modelData[1] }
+                    KeyHint { keys: modelData[0] }
+                }
             }
-        }
-        SectionHeader { text: qsTr("Everywhere"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
-        Repeater {
-            model: root.globalKeys
-            RowLayout {
-                required property var modelData
-                Layout.fillWidth: true
-                spacing: Theme.s3
-                PLabel { Layout.fillWidth: true; text: modelData[1] }
-                KeyHint { keys: modelData[0] }
+            SectionHeader { text: qsTr("Trips"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            Repeater {
+                model: root.tripKeys
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PLabel { Layout.fillWidth: true; text: modelData[1] }
+                    KeyHint { keys: modelData[0] }
+                }
+            }
+            SectionHeader { text: qsTr("Everywhere"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            Repeater {
+                model: root.globalKeys
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PLabel { Layout.fillWidth: true; text: modelData[1] }
+                    KeyHint { keys: modelData[0] }
+                }
             }
         }
     }
