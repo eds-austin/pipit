@@ -95,3 +95,33 @@ The query is kept as the very JSON Scythebill stores: each field's type, value a
 in that order, each value's keys in its Scythebill class's order, numbers as Gson writes
 them, so a saved query reads back in Scythebill unchanged. A query Scythebill would
 refuse (an unknown place, say) shows why instead of a total.
+
+## Saved reports
+
+Scythebill's stored queries, shared both ways: a report saved in either app shows in the
+other, with the same name, place in the list, and JSON.
+
+- **Where they live.** The list's preferences (`<prefs>` in the .bsxm), under
+  `StoredReportSetQueriesPreferences.storedQueries`: a JSON array of `{name, json, type}`
+  kept as a string. Pipit reads it as `StoredQueries.restoreFromPreferences` does (a
+  missing type is a report unless the JSON starts `COUNTRY/`, `STATE/` or `COUNTY/`; each
+  query canonicalized, legacy top-level "type" pushed down to each field's "bool"). Saving
+  rewrites only that key, as `ReportPreferencesManager.save` does: Gson's pretty printing,
+  its HTML-safe escapes (`=` as `=` and so on), and every other preference written
+  back as Gson writes what it read.
+- **On the Reports screen.** "Saved reports" heads the query pane. Enter (or the play
+  button) loads one into the query; the loaded one is marked, and "Edited" once the query
+  differs. Ctrl+S saves the query under a name (a taken name replaces that report in
+  place, as in Scythebill); F2 renames; Delete deletes after asking; Alt+Up/Down moves.
+  Each is one undo. Total-ticks reports are listed and kept, but run only in Scythebill.
+- **Checked against Scythebill.** `tools/oracle/StoredQueriesOracle.java` runs Scythebill's
+  own `StoredQueries` (restore, add, replace, total ticks, remove, rename, move) on a list
+  with stored queries in every form (`make_stored_queries_fixture.py`): Pipit restores the
+  same queries and, after the same edits, writes the same file byte for byte (nine cases).
+  On Eric's list (private), his stored queries restore identically, an added one gives
+  Scythebill's exact file, and each loads into the query builder and writes back
+  unchanged.
+
+Scythebill's own restore writes the queries back without their type (but doesn't mark the
+list changed), which is why older lists have none; Pipit writes the type, as Scythebill's
+saving does.

@@ -11,9 +11,11 @@ from typing import Any
 
 import pytest
 from qt_wait import wait_until
-from test_enter_screen import Running, _start, _stop, ctrl, key, wait_focus
+from test_enter_screen import Running, _start, _stop, alt, ctrl, key, type_text, wait_focus
 
+from pipit.query import stored
 from pipit.storage.lists import import_bsxm
+from pipit.storage.stored_query_ops import stored_queries
 
 pytestmark = [pytest.mark.ui, pytest.mark.scythebill]
 FIXTURES = Path(__file__).parents[1] / "fixtures"
@@ -100,3 +102,72 @@ def test_reports_screen(running: Running) -> None:
     reports.set_query_json('{"fields":[{"type":"LOCATION","value":{"type":"IN","id":"nowhere"}}]}')
     reports.run_now()
     assert reports.error and reports.results_model.rowCount() == 0
+
+
+@pytest.fixture
+def with_saved(qapp: object, pack: Any, built_pack: Path, tmp_path: Path) -> Iterator[Running]:
+    path = tmp_path / "saved.pipit"
+    import_bsxm(FIXTURES / "bsxm" / "stored_queries.bsxm", path, pack.base_taxonomy_id,
+                pack.base_taxon_ids(), pack.predefined_locations())  # fmt: skip
+    started = _start(path, built_pack, tmp_path / "backups")
+    yield started
+    _stop(started)
+
+
+def _names(running: Running) -> list[str]:
+    return [row["name"] for row in running.reports.saved_model.rows()]
+
+
+def test_saved_reports(with_saved: Running) -> None:
+    running = with_saved
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_6")
+    wait_until(lambda: running.shell.currentKey == "reports")
+    wait_until(lambda: reports.saved_model.rowCount() == 8)
+    database = running.app.database
+    original = stored_queries(database.connection)
+
+    # Every report query loads into the builder unchanged: the builder writes back exactly
+    # the JSON Scythebill stored (legacy forms canonical, Gson's escapes, numbers).
+    for index, query in enumerate(original):
+        reports.loadSaved(index)
+        if query.type != stored.REPORTS or query.name == "Broken":
+            assert reports.currentSaved != query.name
+            continue
+        assert reports.currentSaved == query.name
+        assert not reports.savedEdited, query.name
+        assert stored.canonicalize_query_json(reports.query_json()) == query.persisted
+
+    # Change the loaded query: it is marked edited; Ctrl+S saves it under a new name.
+    reports.loadSaved(0)
+    reports.setRowOperation(0, "NEVER")
+    assert reports.savedEdited
+    ctrl(window, "Key_S")
+    wait_focus(running, "saveReportName")
+    type_text(window, "Never at the lake")
+    key(window, "Key_Return")
+    wait_until(lambda: len(_names(running)) == 9)
+    assert _names(running)[-1] == "Never at the lake"
+    assert reports.currentSaved == "Never at the lake" and not reports.savedEdited
+    saved = stored_queries(database.connection)[-1]
+    assert saved.persisted == reports.query_json()
+
+    # Saving under a taken name replaces that report in its place.
+    assert reports.saveAs("Lake Merritt")
+    assert _names(running)[0] == "Lake Merritt"
+    assert stored_queries(database.connection)[0].persisted == reports.query_json()
+
+    # Ctrl+L into the list; Alt+Down moves; rename and delete; each is one undo.
+    ctrl(window, "Key_L")
+    wait_focus(running, "savedReports")
+    alt(window, "Key_Down")
+    wait_until(lambda: _names(running)[:2] == ["Legacy any", "Lake Merritt"])
+    assert reports.renameSaved(1, "The lake")
+    assert not reports.renameSaved(1, "Legacy any")  # taken
+    reports.deleteSaved(0)
+    wait_until(lambda: _names(running)[0] == "The lake")
+    for _step in range(5):  # delete, rename, move, replace, save
+        running.app.undo()
+    wait_until(lambda: stored_queries(database.connection) == original)
+    assert _names(running) == [query.name for query in original]

@@ -1,0 +1,1 @@
+{"op":"add","name":"New <one> & 'two' = é","json":"{\"fields\":[{\"type\":\"DATE\",\"value\":{\"type\":\"AFTER\",\"from\":\"2020-05\"},\"bool\":\"ALL\"}]}"}

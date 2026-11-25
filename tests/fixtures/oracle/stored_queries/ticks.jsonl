@@ -1,0 +1,1 @@
+{"op":"ticks","name":"Counties","ticks":"COUNTY","json":"{\"fields\":[{\"type\":\"SIGHTING_NOTES\",\"value\":{\"type\":\"CONTAINS\",\"text\":\"x=1\"},\"bool\":\"ALL\"}]}"}

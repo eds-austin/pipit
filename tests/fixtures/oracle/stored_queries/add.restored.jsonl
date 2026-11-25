@@ -1,0 +1,8 @@
+{"name":"Lake Merritt","persisted":"{\"fields\":[{\"type\":\"LOCATION\",\"value\":{\"type\":\"IN\",\"id\":\"lakmer\"},\"bool\":\"ALL\"}]}","type":"REPORTS"}
+{"name":"Legacy any","persisted":"{\"fields\":[{\"type\":\"LOCATION\",\"value\":{\"type\":\"IN\",\"id\":\"lakmer\"},\"bool\":\"ANY\"},{\"type\":\"DATE\",\"value\":{\"type\":\"DURING\",\"from\":\"2026\"},\"bool\":\"ANY\"}]}","type":"REPORTS"}
+{"name":"Notes = <sun & 'wind'>","persisted":"{\"fields\":[{\"type\":\"SIGHTING_NOTES\",\"value\":{\"type\":\"CONTAINS\",\"text\":\"a \\u003d b \\u003c c \\u0026 d \\u0027e\\u0027 \\u2028 café \\\"q\\\"\"},\"bool\":\"ALL\"}]}","type":"REPORTS"}
+{"name":"Countries","persisted":"COUNTRY/{\"fields\":[]}","type":"TOTAL_TICKS"}
+{"name":"States 2026","persisted":"STATE/{\"fields\":[{\"type\":\"DATE\",\"value\":{\"type\":\"DURING\",\"from\":\"2026\"},\"bool\":\"ALL\"}]}","type":"TOTAL_TICKS"}
+{"name":"Odd type","persisted":"{\"fields\":[]}","type":"REPORTS"}
+{"name":"Broken","persisted":"{\"fields\":[{\"type\":","type":"REPORTS"}
+{"name":"Times","persisted":"{\"fields\":[{\"type\":\"TIMES_SIGHTED\",\"value\":{\"type\":\"AT_LEAST\",\"count\":2},\"bool\":\"NEVER\"},{\"type\":\"LOCATION\",\"value\":{\"type\":\"IS_NEARER_THAN\",\"id\":\"lakmer\",\"milesOrKilometers\":\"MILES\",\"distance\":12.5},\"bool\":\"ANY\"}]}","type":"REPORTS"}

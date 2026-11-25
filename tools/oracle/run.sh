@@ -161,3 +161,19 @@ for config in "clements species" "avilist species" "clements subspecies" "avilis
 done
 query_oracle "$BSXM/visits.bsxm" clements species "$FIXTURES/regions.txt" \
     "$FIXTURES/regions.clements.species.jsonl"
+
+# Stored queries (StoredQueriesOracle.java: StoredQueries and ReportPreferencesManager).
+javac -nowarn -d "$WORK/oracle-classes" -cp "$UI_CLASSPATH" tools/oracle/QueryOracle.java \
+    tools/oracle/StoredQueriesOracle.java
+"$PY" -I tools/oracle/make_stored_queries_fixture.py "$BSXM/visits.bsxm" "$BSXM/stored_queries.bsxm"
+STORED_OPS=tests/fixtures/oracle/stored_queries
+stored_queries() {  # list name: ops in $STORED_OPS/name.jsonl, restored queries to name.txt
+    java -cp "$UI_CLASSPATH" com.scythebill.birdlist.ui.panels.reports.StoredQueriesOracle \
+        "$FILES/taxon.xml" "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$1" "$BSXM/stored_queries.$2.scythebill.bsxm" \
+        "$STORED_OPS/$2.jsonl" > "$STORED_OPS/$2.restored.jsonl"
+}
+for name in unchanged add replace ticks remove rename move all; do
+    stored_queries "$BSXM/stored_queries.bsxm" "$name"
+done
+stored_queries "$BSXM/visits.bsxm" first

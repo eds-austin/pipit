@@ -1,6 +1,8 @@
 // Reports: a query built from Scythebill's conditions (rerun as it changes), the species it
 // finds with Scythebill's totals, and the sightings of the chosen one. Keyboard map (F1):
 //   Ctrl+Shift+A    add a condition (the first kind not used yet, as Scythebill does)
+//   Ctrl+S          save the query as a report (Scythebill sees it too)
+//   Ctrl+L          into the saved reports: Enter loads, F2 renames, Delete, Alt+Up/Down
 //   Ctrl+R          into the results; Up/Down choose (family headings skipped)
 //   Esc             (in the results) back to the query
 import QtQuick
@@ -14,11 +16,15 @@ Item {
     objectName: "reportsScreen"
     readonly property bool shown: shell.currentKey === "reports"
     readonly property bool working: app.hasList && app.taxaReady
+    readonly property bool dialogOpen: saveDialog.visible || renameDialog.visible || deleteDialog.visible
+    readonly property bool keysOn: shown && working && !dialogOpen
 
     function focusResults() { if (results.count > 0) { results.forceActiveFocus(); if (reports.selectedIndex < 0) reports.selectStep(0, 1) } }
 
-    Shortcut { enabled: root.shown && root.working; sequence: "Ctrl+Shift+A"; onActivated: reports.addRow() }
-    Shortcut { enabled: root.shown && root.working; sequence: "Ctrl+R"; onActivated: root.focusResults() }
+    Shortcut { enabled: root.keysOn; sequence: "Ctrl+Shift+A"; onActivated: reports.addRow() }
+    Shortcut { enabled: root.keysOn; sequence: "Ctrl+R"; onActivated: root.focusResults() }
+    Shortcut { enabled: root.keysOn && !app.readOnly; sequence: "Ctrl+S"; onActivated: saveDialog.show() }
+    Shortcut { enabled: root.keysOn; sequence: "Ctrl+L"; onActivated: saved.focusList() }
 
     EmptyState {
         anchors.centerIn: parent
@@ -42,9 +48,25 @@ Item {
             ColumnLayout {
                 anchors.fill: parent
                 spacing: Theme.s2
+                SavedReports {
+                    id: saved
+                    Layout.fillWidth: true
+                    onRenameRequested: (index, name) => renameDialog.show(index, name)
+                    onDeleteRequested: (index, name) => deleteDialog.show(index, name)
+                }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
                 RowLayout {
                     Layout.fillWidth: true
                     SectionHeader { Layout.fillWidth: true; text: qsTr("Query") }
+                    PIconButton {
+                        objectName: "saveReport"
+                        enabled: !app.readOnly
+                        iconName: "save"
+                        tip: qsTr("Save as a report (Ctrl+S)")
+                        implicitWidth: Theme.controlHCompact
+                        implicitHeight: Theme.controlHCompact
+                        onClicked: saveDialog.show()
+                    }
                     PLabel { kind: "caption"; text: qsTr("Show") }
                     PComboBox {
                         objectName: "depthChooser"
@@ -250,5 +272,123 @@ Item {
                 }
             }
         }
+    }
+
+    // ------------------------------------------------------------ dialogs
+
+    PDialog {
+        id: saveDialog
+        objectName: "saveReportDialog"
+        heading: qsTr("Save report")
+        readonly property bool taken: reports.nameTaken(saveName.text.trim())
+        function show() {
+            saveName.text = reports.currentSaved
+            open()
+            saveName.forceActiveFocus()
+            saveName.selectAll()
+        }
+        function accept() { if (saveName.text.trim() !== "" && reports.saveAs(saveName.text)) close() }
+        ColumnLayout {
+            width: parent.width
+            spacing: Theme.s2
+            PLabel { kind: "caption"; text: qsTr("Name") }
+            PTextField {
+                id: saveName
+                objectName: "saveReportName"
+                Layout.fillWidth: true
+                onAccepted: saveDialog.accept()
+            }
+            PLabel {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: saveDialog.taken ? Theme.warning : Theme.textMuted
+                text: saveDialog.taken ? qsTr("A report has this name: saving replaces it, in its place.")
+                                       : qsTr("Saved in the list, so Scythebill shows it too.")
+            }
+        }
+        footerItem: [
+            PButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: saveDialog.close() },
+            PButton {
+                variant: "primary"
+                text: saveDialog.taken ? qsTr("Replace") : qsTr("Save")
+                enabled: saveName.text.trim() !== ""
+                onClicked: saveDialog.accept()
+            }
+        ]
+    }
+
+    PDialog {
+        id: renameDialog
+        objectName: "renameReportDialog"
+        property int index: -1
+        property string oldName
+        heading: qsTr("Rename %1").arg(oldName)
+        readonly property bool taken: renameField.text.trim() !== oldName && reports.nameTaken(renameField.text.trim())
+        function show(index, name) {
+            renameDialog.index = index
+            oldName = name
+            renameField.text = name
+            open()
+            renameField.forceActiveFocus()
+            renameField.selectAll()
+        }
+        function accept() {
+            if (renameField.text.trim() === oldName) { close(); return }
+            if (!taken && reports.renameSaved(index, renameField.text)) close()
+        }
+        onClosed: saved.focusList()
+        ColumnLayout {
+            width: parent.width
+            spacing: Theme.s2
+            PTextField {
+                id: renameField
+                Layout.fillWidth: true
+                onAccepted: renameDialog.accept()
+            }
+            PLabel {
+                visible: renameDialog.taken
+                Layout.fillWidth: true
+                color: Theme.warning
+                text: qsTr("Another report has this name.")
+            }
+        }
+        footerItem: [
+            PButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: renameDialog.close() },
+            PButton {
+                variant: "primary"
+                text: qsTr("Rename")
+                enabled: renameField.text.trim() !== "" && !renameDialog.taken
+                onClicked: renameDialog.accept()
+            }
+        ]
+    }
+
+    PDialog {
+        id: deleteDialog
+        objectName: "deleteReportDialog"
+        property int index: -1
+        property string name
+        heading: qsTr("Delete %1?").arg(name)
+        function show(index, name) { deleteDialog.index = index; deleteDialog.name = name; open() }
+        onOpened: confirmDeleteReport.forceActiveFocus()
+        onClosed: saved.focusList()
+        PLabel {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            elide: Text.ElideNone
+            text: qsTr("The saved report goes, from Scythebill too; no sightings change. Ctrl+Z undoes this.")
+        }
+        footerItem: [
+            PButton { text: qsTr("Cancel"); variant: "ghost"; onClicked: deleteDialog.close() },
+            PButton {
+                id: confirmDeleteReport
+                objectName: "confirmDeleteReport"
+                text: qsTr("Delete")
+                variant: "danger"
+                onClicked: { reports.deleteSaved(deleteDialog.index); deleteDialog.close() }
+                Keys.onReturnPressed: clicked()
+                Keys.onEnterPressed: clicked()
+            }
+        ]
     }
 }

@@ -7,6 +7,7 @@
 !tests/fixtures/bsxm/trips*.bsxm
 !tests/fixtures/bsxm/checklists*.bsxm
 !tests/fixtures/bsxm/queries.bsxm
+!tests/fixtures/bsxm/stored_queries*.bsxm
 *.pipit
 datapacks/
 __pycache__/

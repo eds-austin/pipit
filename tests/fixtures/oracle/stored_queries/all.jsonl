@@ -1,0 +1,8 @@
+{"op":"add","name":"Lake Merritt","json":"{\"type\":\"ANY\",\"fields\":[{\"type\":\"LOCATION\",\"value\":{\"type\":\"NOT_IN\",\"id\":\"lakmer\"}}]}"}
+{"op":"ticks","name":"Counties","ticks":"COUNTY","json":"{\"fields\":[{\"type\":\"SIGHTING_NOTES\",\"value\":{\"type\":\"CONTAINS\",\"text\":\"x=1\"},\"bool\":\"ALL\"}]}"}
+{"op":"remove","name":"Broken"}
+{"op":"rename","name":"Legacy any","to":"Any “quoted”   name"}
+{"op":"move","from":0,"to":3}
+{"op":"add","name":"New <one> & 'two' = é","json":"{\"fields\":[{\"type\":\"DATE\",\"value\":{\"type\":\"AFTER\",\"from\":\"2020-05\"},\"bool\":\"ALL\"}]}"}
+{"op":"move","from":0,"to":0}
+{"op":"remove","name":"Countries"}

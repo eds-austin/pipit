@@ -9,18 +9,23 @@ from __future__ import annotations
 import copy
 import json
 import logging
+import sqlite3
 from typing import Any
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from pipit.browse.dates import display_date
 from pipit.browse.species import place_labels
+from pipit.domain import gson
+from pipit.query import stored
 from pipit.query.engine import EngineContext, parse_query, run_query
 from pipit.query.fields_place_time import UnsupportedQueryError
 from pipit.query.fields_simple import QueryJsonError
 from pipit.query.model import QSighting, QueryList, load_query_list
 from pipit.query.results import QueryResults
+from pipit.query.stored import StoredQuery
 from pipit.query.synthetic import regions_for
+from pipit.storage.stored_query_ops import save_stored_queries, stored_queries
 from pipit.taxa.model import TaxonType, full_name
 from pipit.taxa.sighting_taxon import Resolved, SightingTaxonType
 from pipit.ui.backend.app_controller import AppController
@@ -159,6 +164,7 @@ class ReportsBackend(QObject):
     queryChanged = Signal()
     resultsChanged = Signal()
     selectionChanged = Signal()
+    savedChanged = Signal()
 
     def __init__(self, app: AppController) -> None:
         super().__init__()
@@ -180,6 +186,9 @@ class ReportsBackend(QObject):
         )
         self.sightings_model = DictListModel(["date", "time", "place", "count", "details"])
         self.choices_model = DictListModel(["key", "name", "path"])
+        self.saved_model = DictListModel(["name", "kind", "loadable"])
+        self._saved: list[StoredQuery] = []
+        self._current_saved = ""
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(RUN_DELAY_MS)
@@ -189,15 +198,18 @@ class ReportsBackend(QObject):
         app.taxaReadyChanged.connect(self._data_changed)
         self._rows = [self._new_row("LOCATION", "ALL")]
         self._publish_rows()
+        self._load_saved()
 
     # ------------------------------------------------------------ the list
 
     def _list_changed(self) -> None:
         self._rows = [self._new_row("LOCATION", "ALL")]
+        self._current_saved = ""
         self._publish_rows()
         self._data_changed()
 
     def _data_changed(self) -> None:
+        self._load_saved()
         self._query_list = None
         self._contexts = {}
         self._schedule()
@@ -253,7 +265,7 @@ class ReportsBackend(QObject):
                 order = _VALUE_ORDER.get(row["type"], ("type",))
                 value = {key: value[key] for key in order if value.get(key) is not None}
             fields.append({"type": row["type"], "value": value, "bool": row["bool"]})
-        return json.dumps({"fields": fields}, separators=(",", ":"), ensure_ascii=False)
+        return gson.dumps({"fields": fields})
 
     def set_query_json(self, text: str) -> None:
         data = json.loads(text)
@@ -322,6 +334,118 @@ class ReportsBackend(QObject):
     def resetQuery(self) -> None:
         self._rows = [self._new_row("LOCATION", "ALL")]
         self._publish_rows()
+
+    # ------------------------------------------------------------ saved reports
+
+    def _load_saved(self) -> None:
+        database = self._app.database
+        self._saved = stored_queries(database.connection) if database is not None else []
+        if self._current_saved not in {query.name for query in self._saved}:
+            self._current_saved = ""
+        self.saved_model.reset([
+            {"name": query.name, "loadable": query.type == stored.REPORTS,
+             "kind": "" if query.type == stored.REPORTS
+             else f"Total ticks ({(query.ticks_type or '').title()})"}
+            for query in self._saved
+        ])  # fmt: skip
+        self.savedChanged.emit()
+        self.queryChanged.emit()
+
+    def _save(self, queries: list[StoredQuery], label: str) -> bool:
+        database = self._app.database
+        if database is None or database.read_only:
+            self._app.message.emit("This list is read-only")
+            return False
+        try:
+            save_stored_queries(database, queries, label)
+        except sqlite3.Error as error:
+            log.exception("saving reports failed")
+            self._app.message.emit(f"Could not save: {error}")
+            return False
+        self._app.changed()
+        self._app.message.emit(f"{label} · Ctrl+Z undoes")
+        return True
+
+    @Property(str, notify=savedChanged)
+    def currentSaved(self) -> str:
+        """The saved report the query was loaded from or saved as ("" if none)."""
+        return self._current_saved
+
+    @Property(int, notify=savedChanged)
+    def currentSavedIndex(self) -> int:
+        return next((i for i, q in enumerate(self._saved) if q.name == self._current_saved), -1)
+
+    @Property(bool, notify=queryChanged)
+    def savedEdited(self) -> bool:
+        """The query differs from the saved report it came from."""
+        saved = next((q for q in self._saved if q.name == self._current_saved), None)
+        return (
+            saved is not None
+            and stored.canonicalize_query_json(self.query_json()) != saved.query_json
+        )
+
+    @Slot(str, result=bool)
+    def nameTaken(self, name: str) -> bool:
+        return any(query.name == name for query in self._saved)
+
+    @Slot(int)
+    def loadSaved(self, index: int) -> None:
+        """Load a saved report into the query (a total-ticks query is kept, not loaded)."""
+        if not 0 <= index < len(self._saved) or self._saved[index].type != stored.REPORTS:
+            return
+        query = self._saved[index]
+        try:
+            self.set_query_json(query.query_json)
+        except (ValueError, KeyError, TypeError, AttributeError):
+            self._app.message.emit(f"“{query.name}” can't be read")
+            return
+        self._current_saved = query.name
+        self.savedChanged.emit()
+        self.queryChanged.emit()
+
+    @Slot(str, result=bool)
+    def saveAs(self, name: str) -> bool:
+        """Save the query under this name (one of the same name is replaced, in place)."""
+        name = name.strip()
+        if not name:
+            return False
+        verb = "Replaced" if self.nameTaken(name) else "Saved"
+        if not self._save(stored.add(self._saved, name, self.query_json()),
+                          f"{verb} report “{name}”"):  # fmt: skip
+            return False
+        self._current_saved = name
+        self.savedChanged.emit()
+        self.queryChanged.emit()
+        return True
+
+    @Slot(int, str, result=bool)
+    def renameSaved(self, index: int, name: str) -> bool:
+        name = name.strip()
+        if not 0 <= index < len(self._saved) or not name or self.nameTaken(name):
+            return False
+        old = self._saved[index].name
+        if not self._save(stored.rename(self._saved, old, name), f"Renamed report “{name}”"):
+            return False
+        if self._current_saved == old:
+            self._current_saved = name
+            self.savedChanged.emit()
+        return True
+
+    @Slot(int)
+    def deleteSaved(self, index: int) -> None:
+        if 0 <= index < len(self._saved):
+            name = self._saved[index].name
+            self._save(stored.remove(self._saved, name), f"Deleted report “{name}”")
+
+    @Slot(int, int)
+    def moveSaved(self, from_index: int, to_index: int) -> None:
+        moved = stored.move(self._saved, from_index, to_index)
+        if moved != self._saved:
+            self._save(moved, f"Moved report “{self._saved[from_index].name}”")
+
+    @Property(QObject, constant=True)
+    def saved(self) -> DictListModel:
+        return self.saved_model
 
     # ------------------------------------------------------------ choices for editors
 
