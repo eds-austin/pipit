@@ -1,6 +1,6 @@
 # Browsing: species, locations and trips
 
-Species and Locations came with M4; Trips and custom checklists come with M4.1.
+Species and Locations came with M4; Trips and custom checklists with M4.1.
 
 ## Species (Ctrl+3)
 
@@ -63,6 +63,6 @@ Changes follow Scythebill (`tools/oracle/TripOps.java`, seven cases byte-identic
 
 Your list has no trips. Trips come from lists made in Scythebill; creating them in Pipit (in Enter sightings, or automatically from visits as Scythebill can) comes later, and so does combining trips.
 
-## Next (M4.1)
+## Next
 
-Trip reports (HTML and Word), and custom checklists from the Locations screen.
+Trip reports (HTML and Word) come with M5's reports, where Scythebill has them too.
