@@ -18,6 +18,7 @@ from pathlib import Path
 from pipit.bsxm.upgrades import UpgradeRefusedError
 from pipit.config import paths
 from pipit.datapack.pack import DataPack, PackError
+from pipit.domain.locations import PredefinedLocations
 from pipit.storage import backup, integrity
 from pipit.storage.database import ListDatabase
 from pipit.storage.lists import ImportFailedError, export_bsxm, import_bsxm
@@ -43,6 +44,11 @@ def _base(pack_path: Path) -> tuple[str, set[str]]:
             )
         }
         return pack.base_taxonomy_id, ids
+
+
+def _predefined(pack_path: Path) -> PredefinedLocations:
+    with DataPack(pack_path) as pack:
+        return pack.predefined_locations()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -75,7 +81,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "import":
             base_id, ids = _base(find_pack(args.pack))
-            result = import_bsxm(args.source, args.target, base_id, ids)
+            result = import_bsxm(
+                args.source, args.target, base_id, ids, _predefined(find_pack(args.pack))
+            )
             print(f"imported {result.sightings} sightings, {result.locations} locations and "
                   f"{result.visits} visits into {result.list_path}")  # fmt: skip
             for warning in result.warnings:

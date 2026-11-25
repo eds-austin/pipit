@@ -18,9 +18,11 @@ from pathlib import Path
 from pipit.bsxm.reader import BsxmError, read_bsxm
 from pipit.bsxm.upgrades import apply_upgrades, check_upgradable
 from pipit.bsxm.writer import write_bsxm
+from pipit.domain.locations import PredefinedLocations
 from pipit.domain.report import ReportSet
 from pipit.storage import backup, integrity
 from pipit.storage.database import ListDatabase
+from pipit.storage.location_ops import reassign_new_built_in_locations
 from pipit.storage.repository import load_report, save_report
 from pipit.taxa.sighting_taxon import SightingTaxon, SightingTaxonType
 
@@ -79,8 +81,13 @@ def import_bsxm(
     target: Path,
     base_taxonomy_id: str,
     base_taxon_ids: Container[str],
+    predefined: PredefinedLocations | None = None,
 ) -> ImportResult:
-    """Create the list ``target`` from the Scythebill file ``source``."""
+    """Create the list ``target`` from the Scythebill file ``source``.
+
+    With ``predefined``, Scythebill's on-load ``ReassignNewBuiltInLocations`` runs too
+    (after the stored list has been checked against the file), so the list matches what
+    Scythebill shows after opening the same file."""
     if target.exists():
         raise FileExistsError(f"{target} already exists")
     try:
@@ -101,9 +108,17 @@ def import_bsxm(
     try:
         with database.bulk(f"Import {source.name}") as connection:
             save_report(connection, report)
-        stored = write_bsxm(load_report(database.connection))
-        if stored != expected:
-            raise ImportFailedError("the stored list does not export identically; import cancelled")
+            stored = write_bsxm(load_report(connection))
+            if stored != expected:
+                raise ImportFailedError(
+                    "the stored list does not export identically; import cancelled"
+                )
+            if predefined is not None:
+                reassigned = reassign_new_built_in_locations(connection, predefined)
+                if reassigned:
+                    result.warnings.append(
+                        "places replaced by new built-in ones: " + ", ".join(reassigned)
+                    )
         problems = integrity.check(database.connection, base_taxon_ids)
         if problems:
             raise ImportFailedError("the stored list failed its checks: " + "; ".join(problems))

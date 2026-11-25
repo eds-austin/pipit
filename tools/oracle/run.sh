@@ -73,3 +73,18 @@ java -cp "$CLASSPATH" tools/oracle/NewList.java "$FILES/taxon.xml" "$BSXM/new_li
 #   round_trip ~/path/List.bsxm "$WORK/private.expected.bsxm"
 #   PIPIT_PRIVATE_BSXM=~/path/List.bsxm PIPIT_PRIVATE_EXPECTED="$WORK/private.expected.bsxm" \
 #       .venv/bin/python -m pytest -m private
+
+# Location operations (LocationOps.java) on a fixture of custom places, visits and a trip.
+"$PY" -I tools/oracle/make_locations_fixture.py "$PACK" "$BSXM/locations.bsxm"
+location_ops() {
+    local name="$1"; shift
+    java -cp "$CLASSPATH" tools/oracle/LocationOps.java "$FILES/taxon.xml" \
+        "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+        "$SCYTHEBILL/app/src/main/resources" "$BSXM/locations.bsxm" \
+        "$BSXM/locations.$name.scythebill.bsxm" "$@"
+}
+location_ops reassign
+location_ops delete delete:lighth
+location_ops merge merge:lakmer:bayare
+location_ops move move:bayare1:_usst_califo
+location_ops merge_recursive merge:coast:poirey

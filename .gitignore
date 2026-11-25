@@ -2,6 +2,7 @@
 *.bsxm
 !tests/fixtures/bsxm/edge_cases*.bsxm
 !tests/fixtures/bsxm/new_list.scythebill.bsxm
+!tests/fixtures/bsxm/locations*.bsxm
 *.pipit
 datapacks/
 __pycache__/

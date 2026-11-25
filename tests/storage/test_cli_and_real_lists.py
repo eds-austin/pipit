@@ -65,14 +65,15 @@ def test_private_list_round_trips(pack: object, tmp_path: Path) -> None:
             "SELECT id FROM taxa WHERE taxonomy_id = ?", (base,)
         )
     }
-    first = import_bsxm(source, tmp_path / "private.pipit", base, ids)
+    predefined = pack.predefined_locations()  # type: ignore[attr-defined]
+    first = import_bsxm(source, tmp_path / "private.pipit", base, ids, predefined)
     with ListDatabase.open(first.list_path) as opened:
         export_bsxm(opened, tmp_path / "once.bsxm")
     once = (tmp_path / "once.bsxm").read_bytes()
     expected = os.environ.get("PIPIT_PRIVATE_EXPECTED")
     if expected:
         assert once == Path(expected).read_bytes()
-    second = import_bsxm(tmp_path / "once.bsxm", tmp_path / "again.pipit", base, ids)
+    second = import_bsxm(tmp_path / "once.bsxm", tmp_path / "again.pipit", base, ids, predefined)
     with ListDatabase.open(second.list_path) as opened:
         export_bsxm(opened, tmp_path / "twice.bsxm")
     assert (tmp_path / "twice.bsxm").read_bytes() == once  # a fixed point

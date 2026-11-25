@@ -188,7 +188,9 @@ class AppController(QObject):
             number += 1
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
-            result = import_bsxm(source, target, self.pack.base_taxonomy_id, self._base_ids)
+            result = import_bsxm(
+                source, target, self.pack.base_taxonomy_id, self._base_ids, self._predefined
+            )
         except Exception as error:
             self.message.emit(f"Could not import {source.name}: {error}")
             return
