@@ -95,3 +95,28 @@ def test_species_screen_by_keyboard(running: Running) -> None:
     ctrl(window, "Key_E")
     wait_until(lambda: running.shell.currentKey == "enter")
     wait_until(lambda: running.entry.rows_model.rowCount() == 6)
+
+
+def test_every_species_scrolls_smoothly(running: Running) -> None:
+    """M4 acceptance: the longest list (all 11,000+ species) moves by key without stalls.
+    Each step includes a full redraw; the limits are generous so a busy machine passes."""
+    import time
+
+    window = running.window
+    ctrl(window, "Key_3")
+    wait_focus(running, "taxonList")
+    running.species.setOnlySeen(False)
+    assert running.species.taxa_model.rowCount() > 10_000
+
+    def step(name: str) -> float:
+        started = time.perf_counter()
+        key(window, name)
+        window.grabWindow()  # forces the frame
+        return (time.perf_counter() - started) * 1000
+
+    jumps = [step("Key_End"), step("Key_Home")]
+    pages = sorted(step("Key_PageDown") for _ in range(40))
+    lines = sorted(step("Key_Down") for _ in range(60))
+    assert max(jumps) < 250
+    assert pages[len(pages) // 2] < 50 and pages[-1] < 250
+    assert lines[len(lines) // 2] < 50 and lines[-1] < 250

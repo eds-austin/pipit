@@ -1,6 +1,6 @@
 # Browsing: species, locations and trips
 
-M4 in progress. This page covers what is built so far.
+Species and Locations came with M4; Trips and custom checklists come with M4.1.
 
 ## Species (Ctrl+3)
 
@@ -40,6 +40,6 @@ Each change is one undoable action (one Ctrl+Z), using `pipit.storage.location_o
 
 The tree builds in 8 ms. The largest "seen in" (North America, about 1,100 rows) takes under 0.1 s.
 
-## Still to come in M4
+## Next (M4.1)
 
-Trips, and custom checklists from the Locations screen.
+Trips, with trip reports, and custom checklists from the Locations screen.
