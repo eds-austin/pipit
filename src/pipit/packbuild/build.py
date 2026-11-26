@@ -33,6 +33,9 @@ _LOCALE_FILE = re.compile(r"^clements-names-(?P<locale>.+)\.csv$")
 _LOCATION_PROPERTIES = re.compile(r"^locations(?:_(?P<locale>.+))?\.properties$")
 _SYNTHETIC_NAMES = re.compile(r"^synthetic-locations-(?P<locale>.+)\.csv$")
 LOCATION_CSVS = ("countries.csv", "all-states.csv", "us-states.csv", "us-counties.csv")
+#: Importers' tables (``LocationAliases``, ``LocationShortcuts``), kept as rows like the above.
+IMPORT_CSVS = ("location-aliases.csv", "imported-countries-de.csv", "imported-countries-fr.csv",
+               "imported-countries-nl.csv")  # fmt: skip
 ATTRIBUTIONS = (
     "eBird/Clements Checklist of Birds of the World, Cornell Lab of Ornithology.",
     "AviList: the global avian checklist, AviList Core Team (CC BY 4.0).",
@@ -309,11 +312,13 @@ def _write_upgrades(connection: sqlite3.Connection, sources: ScythebillSources) 
 
 
 def _write_locations(connection: sqlite3.Connection, sources: ScythebillSources) -> None:
-    for name in LOCATION_CSVS:
-        rows = readers.read_csv_rows(sources.locations_dir / name)
+    csvs = [sources.locations_dir / name for name in LOCATION_CSVS]
+    csvs += [sources.imports_dir / name for name in IMPORT_CSVS]
+    for path in csvs:
+        rows = readers.read_csv_rows(path)
         connection.executemany(
             "INSERT INTO location_rows VALUES (?, ?, ?)",
-            [(name, i, json.dumps(row, ensure_ascii=False)) for i, row in enumerate(rows)],
+            [(path.name, i, json.dumps(row, ensure_ascii=False)) for i, row in enumerate(rows)],
         )
     for path in sorted(sources.locations_dir.glob("locations*.properties")):
         match = _LOCATION_PROPERTIES.match(path.name)
@@ -358,6 +363,7 @@ def source_files(sources: ScythebillSources) -> list[Path]:
     for flavor in FLAVORS:
         files += sorted(sources.checklist_dir(flavor).glob("*.csv"))
     files += [sources.locations_dir / name for name in LOCATION_CSVS]
+    files += [sources.imports_dir / name for name in IMPORT_CSVS]
     files += sorted(sources.locations_dir.glob("locations*.properties"))
     files += sorted(sources.mapdata_dir.glob("*.mapbin"))
     return files

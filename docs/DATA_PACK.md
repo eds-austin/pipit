@@ -50,7 +50,7 @@ Two warnings are expected for the 2026 data:
 | `names` | 71 localized name sets keyed by Clements ID. AviList names are derived from them at runtime (`taxa/avilist_names.py`). |
 | `checklists` | 520 regions for each taxonomy. An empty status means native. |
 | `upgrade_mappings`, `upgrade_warnings`, `upgrade_subspecies_mappings` | Old→current IDs for every older Clements release Scythebill supports, from 6.5 to 2025. |
-| `location_rows`, `display_names` | Scythebill's predefined-location CSVs and display names, as on disk. Interpreting them is part of M2 (`.bsxm` import). |
+| `location_rows`, `display_names` | Scythebill's predefined-location CSVs and display names, as on disk, and its importers' tables (`location-aliases.csv`, `imported-countries-{de,fr,nl}.csv`). Interpreting them is part of M2 (`.bsxm` import) and M6 (imports). |
 | `map_features` | Natural Earth countries, states and US counties as WKB. Drawing them is part of M7. |
 
 Sightings are always stored with Clements IDs. AviList is a view: `taxa/mapped.py` maps between the two, and so does the `resolutions` table.

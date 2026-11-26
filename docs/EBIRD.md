@@ -67,3 +67,58 @@ list came out swapped; checked against the JDK).
 **Checked against Scythebill.** PrintOracle's csv mode: 45 exports on three lists (the 30
 reference queries; everything in both taxonomies, at every depth, Excel-compatible) are
 byte-identical, and 74 on Eric's list (private, `PIPIT_PRIVATE_CSV`).
+
+## Import from eBird (My Data) (Ctrl+K, "Import from eBird")
+
+The file eBird's "Download My Data" sends (the .zip, or the `MyEBirdData.csv` in it), read
+as Scythebill's `EBirdMyDataImporter` reads it and imported as `ImportController` does
+(`src/pipit/imports/`). The dialog asks Scythebill's questions in turn, then shows what will
+change before anything is stored:
+
+1. **Only the new dates?** My Data holds the whole account, so when some of its dates already
+   have sightings in the list, Pipit offers just the others (Enter); if every date has, it
+   asks whether to import anyway.
+2. **Names Pipit didn't recognize**, one at a time: type a species and Enter picks it (its
+   subspecies too, if the file names one there), or Leave out (Ctrl+L). eBird's "sp." rows
+   ("duck sp.") are left out without asking, as in Scythebill.
+3. **Sightings already in the list** (same date, time and species): leave them out, replace
+   them, or import them too.
+4. **Review**: sightings to add and replace, new places (listed), checklists, and notes (rows
+   not imported, which can be saved next to the file as `<name>-failed.csv`; places of yours
+   given coordinates or a hotspot; sp. rows left out). Import makes a backup snapshot, then
+   stores everything as one undo step (Ctrl+Z takes it all back).
+
+How names and places are matched is Scythebill's: `TaxonResolver` (exact names, near common
+names within one letter, the genus, alternate names, "A/B" and "A x B"; a doubtful match is
+kept only if some checklist where it was seen has it), `LocationShortcuts`, `LocationAliases`
+and `ImportedLocation` (state and county codes, built-in counties, "Park--Trail" grouped
+names), with every predefined place present as `PredefinedLocationPopulator` leaves them.
+Scythebill's tables of place aliases and translated country names are in the data pack.
+
+Scythebill's ways, kept so the list comes out the same:
+- The count is read from the fifth column, wherever "Count" is.
+- The number of observers is read from the importer's second reading of the columns on (a
+  typo skips it once); since it always reads them more than once, party sizes are imported.
+- A protocol that needs a start time, on a checklist without one, becomes historical; one
+  missing a required field (a stationary count without a duration) too.
+- Places are made for every row, even rows on dates left out; the new ones nothing uses are
+  removed again, but built-in places stay marked as used (saved, empty).
+- A place of yours that gets coordinates or a hotspot moves to the end of its parent's places
+  (Scythebill replaces it with a copy).
+- Checklist details are added in Java `HashMap` order of their keys.
+
+Where Pipit differs: Scythebill counts duplicates with a Bloom filter (Pipit exactly; only
+which question is asked could differ); a file without a "Number of Observers" column makes
+Scythebill's import fail (Pipit imports it without party sizes); a name like "Mallard x
+Mallard" makes Scythebill's import fail (Pipit imports a Mallard). Lists with observers are
+refused for now (Scythebill asks which observers saw the sightings).
+
+**Checked against Scythebill.** `tools/oracle/ImportOracle.java` runs Scythebill's importer
+with the choices made in advance and saves the list. Ten cases on made-up exports
+(`tools/oracle/make_import_fixtures.py`: every protocol, groups, forms, subspecies, sp.,
+slash and hybrid names, repeated rows, an unknown name, built-in counties, a county the list
+has under another name, a bad date), into a new list and into `trip_report.bsxm` (only new
+dates, all dates, drop, replace, AviList) come out byte-identical, with the same counts; each
+is also stored, exported and undone. Seven more on a My Data file made from Eric's list
+(`tools/oracle/my_data_from_list.py`, 8,397 rows; private, `PIPIT_PRIVATE_IMPORT`), into a new
+list, into his own (drop, replace 8,418, import all) and into the trip list.

@@ -50,6 +50,7 @@ class Running:
     checklist: Any = None
     reports: Any = None
     home: Any = None
+    imports: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -60,6 +61,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     from pipit.ui.backend.checklist_backend import ChecklistBackend
     from pipit.ui.backend.entry_backend import EntryBackend
     from pipit.ui.backend.home_backend import HomeBackend
+    from pipit.ui.backend.imports_backend import ImportsBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.reports_backend import ReportsBackend
     from pipit.ui.backend.shell import Shell
@@ -78,6 +80,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     checklist = ChecklistBackend(app)
     reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
     home = HomeBackend(app)
+    imports = ImportsBackend(app)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -85,7 +88,8 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     for name, value in (("shell", shell), ("app", app), ("entry", entry),
                         ("locations", locations), ("species", species),
                         ("trips", trips), ("checklist", checklist),
-                        ("reports", reports), ("home", home)):  # fmt: skip
+                        ("reports", reports), ("home", home),
+                        ("imports", imports)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
@@ -98,7 +102,18 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     window.requestActivate()
     wait_until(window.isActive)
     running = Running(
-        window, app, entry, shell, engine, locations, species, trips, checklist, reports, home
+        window,
+        app,
+        entry,
+        shell,
+        engine,
+        locations,
+        species,
+        trips,
+        checklist,
+        reports,
+        home,
+        imports,
     )
     running.errors = errors  # type: ignore[attr-defined]
     return running

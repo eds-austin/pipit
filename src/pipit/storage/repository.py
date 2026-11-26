@@ -100,7 +100,7 @@ def save_report(connection: sqlite3.Connection, report: ReportSet) -> None:
             [(trip_row, i, link.uri, link.name) for i, link in enumerate(trip.links)],
         )
         _save_photos(connection, "trip_id", trip_row, trip.photos)
-    _save_sightings(connection, report.sightings)
+    save_sightings(connection, report.sightings)
     for order, visit in enumerate(report.visits):
         date, year, month, day = _date_text(visit.key.date)
         cursor = connection.execute(
@@ -109,7 +109,7 @@ def save_report(connection: sqlite3.Connection, report: ReportSet) -> None:
             "comments, complete) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (order, visit.key.location_id, date, year, month, day,
              _time_text(visit.key.start_time) or "", visit.observation_type.type_id,
-             _float_text(visit.area_hectares), _float_text(visit.distance_km),
+             float_text(visit.area_hectares), float_text(visit.distance_km),
              visit.duration_minutes, visit.party_size, visit.comments, int(visit.complete)),
         )  # fmt: skip
         _save_photos(connection, "visit_id", cursor.lastrowid, visit.photos)
@@ -132,7 +132,7 @@ def save_report(connection: sqlite3.Connection, report: ReportSet) -> None:
     )
 
 
-def _float_text(value: float | None) -> str | None:
+def float_text(value: float | None) -> str | None:
     return None if value is None else repr(value)
 
 
@@ -195,9 +195,11 @@ def _save_photos(
     )
 
 
-def _save_sightings(connection: sqlite3.Connection, sightings: list[Sighting]) -> None:
+def save_sightings(connection: sqlite3.Connection, sightings: list[Sighting],
+                   first_order: int = 0) -> None:  # fmt: skip
+    """Insert sightings in order, their ``ord`` counting from ``first_order``."""
     rows = []
-    for order, s in enumerate(sightings):
+    for order, s in enumerate(sightings, start=first_order):
         date, year, month, day = _date_text(s.date)
         single = s.taxon.type in (
             SightingTaxonType.SINGLE, SightingTaxonType.SINGLE_WITH_SECONDARY_SUBSPECIES
@@ -217,7 +219,7 @@ def _save_sightings(connection: sqlite3.Connection, sightings: list[Sighting]) -
         "location_xml_id, date, date_y, date_m, date_d, time, trip_xml_id, count, male, female, "
         "immature, adult, heard_only, photographed, status, breeding, description) VALUES "
         "(? + ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [(base, *row) for row in rows],
+        [(base - first_order, *row) for row in rows],
     )
     taxa: list[tuple[int, int, str]] = []
     users: list[tuple[int, int, str]] = []

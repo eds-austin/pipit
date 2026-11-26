@@ -247,3 +247,28 @@ for list in queries:cases trip_report:cases.everything edge_cases:cases.everythi
     "$PY" -I tools/oracle/summarize_ebird.py "$CSVX/$cases.jsonl" "$WORK/csv-$name" \
         > "$CSVX/$name.jsonl"
 done
+
+# eBird My Data imports (ImportOracle.java: EBirdMyDataImporter with ImportController's steps,
+# the choices made in advance), on made-up exports, into a new list and trip_report.bsxm
+# (without its observers: lists with observers are asked which observers saw the sightings).
+IMPORTS=tests/fixtures/imports
+IMPORTED=tests/fixtures/oracle/imports
+"$PY" -I tools/oracle/make_import_fixtures.py "$IMPORTS"
+javac -nowarn -d "$WORK/oracle-classes" -cp "$UI_CLASSPATH" tools/oracle/ImportOracle.java
+rm -rf "$WORK/imports" "$IMPORTED"
+mkdir -p "$IMPORTED"
+java -cp "$UI_CLASSPATH" com.scythebill.birdlist.ui.imports.ImportOracle "$FILES/taxon.xml" \
+    "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" "$SCYTHEBILL/app/src/main/resources" \
+    "$BSXM/new_list.scythebill.bsxm" "$IMPORTS/cases.jsonl" "$WORK/imports" >/dev/null
+for result in "$WORK"/imports/*.json; do
+    cp "$result" "$IMPORTED/"
+    gzip -9 -n -c "${result%.json}.bsxm" > "$IMPORTED/$(basename "${result%.json}").bsxm.gz"
+done
+for refused in "$WORK"/imports/*.error; do
+    [[ -e "$refused" ]] && echo '{"error": true}' > "$IMPORTED/$(basename "${refused%.error}").json"
+done
+# Your own list, to check imports at scale (outputs stay in a private folder):
+#   tools/oracle/my_data_from_list.py "$PACK" ~/path/List.bsxm private/my_data.csv
+#   write private/cases.jsonl like $IMPORTS/cases.jsonl (file: my_data.csv; list: absolute
+#   paths), run ImportOracle with it into private/out, then
+#   PIPIT_PRIVATE_IMPORT=private .venv/bin/python -m pytest -m private tests/imports

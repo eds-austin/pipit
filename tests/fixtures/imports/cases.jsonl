@@ -1,0 +1,10 @@
+{"format": "myData", "name": "new_list", "list": "../bsxm/new_list.scythebill.bsxm", "file": "my_data.csv"}
+{"format": "myData", "name": "new_list_avilist", "list": "../bsxm/new_list.scythebill.bsxm", "file": "my_data.csv", "display": "avilist"}
+{"format": "myData", "name": "new_list_resolved", "list": "../bsxm/new_list.scythebill.bsxm", "file": "my_data.csv", "taxa": {"Pinkish Warbler|Setophaga rosea": "spCardever"}}
+{"format": "myData", "name": "hours", "list": "../bsxm/new_list.scythebill.bsxm", "file": "my_data_hours.csv"}
+{"format": "myData", "name": "bad_date", "list": "../bsxm/new_list.scythebill.bsxm", "file": "my_data_bad_date.csv"}
+{"format": "myData", "name": "trips_only_new", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv"}
+{"format": "myData", "name": "trips_all_dates", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false}
+{"format": "myData", "name": "trips_drop", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false, "duplicates": "drop"}
+{"format": "myData", "name": "trips_overwrite", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false, "duplicates": "overwrite"}
+{"format": "myData", "name": "trips_avilist", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false, "display": "avilist", "duplicates": "drop"}

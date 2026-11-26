@@ -16,6 +16,7 @@ from pathlib import Path
 _MODEL_RESOURCES = Path("model/src/main/resources/com/scythebill/birdlist/model")
 _DATA_FILES = Path("data/src/commonMain/composeResources/files")
 _APP_RESOURCES = Path("app/src/main/resources")
+_IMPORT_RESOURCES = Path("ui/src/main/resources/com/scythebill/birdlist/ui/imports")
 _APPLICATION_MODULE = Path("app/src/main/java/com/scythebill/birdlist/app/ApplicationModule.java")
 _MAPPING_LOADER = re.compile(
     r'new\s+TaxonomyMappingLoader\(\s*"(?P<taxonomy>[^"]+)"\s*,'
@@ -70,6 +71,11 @@ class ScythebillSources:
         return self.root / _MODEL_RESOURCES / "sighting"
 
     @property
+    def imports_dir(self) -> Path:
+        """Tables Scythebill's importers read (place aliases, translated country names)."""
+        return self.root / _IMPORT_RESOURCES
+
+    @property
     def mapdata_dir(self) -> Path:
         return self.root / _MODEL_RESOURCES / "mapdata"
 
@@ -111,6 +117,7 @@ class ScythebillSources:
             self.checklist_dir("clements"),
             self.checklist_dir("avilist"),
             self.locations_dir,
+            self.imports_dir,
             self.mapdata_dir,
         ):
             if not directory.is_dir():

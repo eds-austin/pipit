@@ -62,6 +62,13 @@ COMMANDS: tuple[Command, ...] = (
     Command("app.redo", "Redo", "Edit", "Ctrl+Shift+Z"),
     Command("app.open-list", "Open list…", "List", "Ctrl+O", ("file",)),
     Command("app.import-scythebill", "Import Scythebill list…", "List", "", ("bsxm", "file")),
+    Command(
+        "app.import-ebird",
+        "Import from eBird (My Data)…",
+        "List",
+        "",
+        ("ebird", "my data", "csv", "zip", "import"),
+    ),
     Command("app.toggle-sidebar", "Toggle sidebar", "View", "Ctrl+B", ("collapse", "expand")),
     Command("app.keyboard", "Keyboard shortcuts", "Help", "F1", ("keys", "help")),
     Command("app.quit", "Quit Pipit", "App", "Ctrl+Q", ("exit", "close")),

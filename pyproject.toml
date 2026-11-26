@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "openpyxl>=3.1",      # spreadsheets (Save as spreadsheet)
     "python-docx>=1.1",   # Word documents (trip reports)
+    "rapidfuzz>=3",       # edit distances (matching imported names)
 ]
 
 [project.optional-dependencies]
@@ -67,6 +68,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLC0415", "PLR0917", "RUF001"]  # late imports; non-ASCII search cases
 "tools/**" = ["RUF001", "T201"]  # the oracle corpus has deliberate non-ASCII edge cases
+"src/pipit/imports/my_data.py" = ["RUF001"]  # eBird's protocol names in other languages
 "src/pipit/app.py" = ["PLC0415"]  # Qt imported lazily so --version works headless
 # Qt/QML naming: signals, slots and properties are camelCase.
 "src/pipit/ui/backend/**" = ["N802", "N815", "PLR0915"]

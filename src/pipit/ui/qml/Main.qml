@@ -62,6 +62,12 @@ B.ApplicationWindow {
         nameFilters: [qsTr("Scythebill lists (*.bsxm)")]
         onAccepted: app.importScythebill(selectedFile)
     }
+    FileDialog {
+        id: ebirdFileDialog
+        title: qsTr("Import from eBird: your My Data download")
+        nameFilters: [qsTr("eBird My Data (*.csv *.zip)")]
+        onAccepted: { imports.start(selectedFile); ebirdImport.show() }
+    }
 
     Connections {
         target: shell
@@ -76,6 +82,8 @@ B.ApplicationWindow {
                 openDialog.open()
             else if (key === "app.import-scythebill")
                 importDialog.open()
+            else if (key === "app.import-ebird")
+                ebirdFileDialog.open()
             else if (key === "app.quit")
                 Qt.quit()
         }
@@ -119,6 +127,7 @@ B.ApplicationWindow {
         }
     }
 
+    ImportDialog { id: ebirdImport }
     CommandPalette { id: palette }
     KeyOverlay { id: keys }
 }
