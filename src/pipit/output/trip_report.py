@@ -64,6 +64,7 @@ from pipit.output.report_document import (
     SpanStyle,
     TableStyle,
 )
+from pipit.output.report_docx import DocxReportDocumentWriter
 from pipit.output.trip_stops import GUAVA_WHITESPACE, Stop, TripStops
 from pipit.query.checklists import Checklists
 from pipit.query.definition import Predicate
@@ -458,6 +459,12 @@ class TripReport:
         tee = PlainTextTee(writer)
         self.write(HtmlReportDocumentWriter(tee))
         return writer.text(), tee.plain_text()
+
+    def word(self, *, letter_paper: bool = True) -> tuple[bytes, bytes]:
+        """``writeWordDocument``: the .docx, and its ``word/document.xml``."""
+        writer = DocxReportDocumentWriter(letter_paper=letter_paper)
+        self.write(writer)
+        return writer.data, writer.document_xml()
 
     def write(self, out: ReportDocumentWriter) -> None:
         results = self.results

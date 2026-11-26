@@ -256,9 +256,19 @@ Details that matter for matching Scythebill:
 Not ported yet: photos in the report (Pipit has no photos yet; sightings' photos online are
 still linked as "P"), other taxonomies' sections (no custom taxonomies yet).
 
+The Word document (`report_docx.py`, a port of `DocxReportDocumentWriter`) is written as
+Apache POI writes it: Pipit builds the package parts itself, and `word/document.xml` the way
+XMLBeans serializes it (run properties in the order set, other properties in schema order,
+attributes in the order POI sets them, `>` left unescaped in text, POI's quirks kept, such
+as a second `vAlign` on rotated headings). Letter paper for the US and a few other
+countries, A4 elsewhere; a species table too wide for the page gets landscape pages of its
+own, and its date headings run up their columns if it's still too narrow.
+
 - **Checked against Scythebill.** PrintOracle's trip mode writes Scythebill's HTML, plain
   text and Word document for 27 cases (`make_trip_report_cases.py`) on a made-up Costa Rica
-  trip (`make_trip_report_fixture.py`, built to reach every part of a report). The HTML and
-  text are byte-identical (the fixtures keep their size and SHA-256). On Eric's list
-  (private, `PIPIT_PRIVATE_TRIP`), 534 reports (his saved reports, every country in two
-  taxonomies and depths) are identical; Scythebill fails on two (a synthetic region).
+  trip (`make_trip_report_fixture.py`, built to reach every part of a report). The HTML,
+  text and Word `document.xml` (with its relationships) are byte-identical (the fixtures
+  keep their size and SHA-256). On Eric's list (private, `PIPIT_PRIVATE_TRIP`), 534 reports
+  (his saved reports, every country in two taxonomies and depths; 18 with landscape tables,
+  10 with rotated headings) are identical in all three; Scythebill fails on two (a
+  synthetic region).

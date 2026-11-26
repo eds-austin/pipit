@@ -1,15 +1,21 @@
 """Trip reports exactly as Scythebill writes them (tools/oracle/PrintOracle.java's trip mode:
 TripReportDocOutput as SaveAsTripReportAction sets it up, on
 tests/fixtures/bsxm/trip_report.bsxm). The HTML and its plain-text copy must be
-byte-identical: the fixtures keep each one's size and SHA-256. To see a difference, run the
-oracle (tools/oracle/run.sh) and diff its files with Pipit's."""
+byte-identical: the fixtures keep each one's size and SHA-256. So must the Word document's
+``word/document.xml`` and its relationships (the package's metadata says who wrote it and
+when). To see a difference, run the oracle (tools/oracle/run.sh) and diff its files with
+Pipit's."""
 
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import io
 import json
 import os
+import zipfile
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import pytest
@@ -24,6 +30,18 @@ from pipit.taxa.model import TaxonType
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 TRIP = FIXTURES / "oracle" / "trip_report"
+
+
+def _docx_summarizer() -> ModuleType:
+    path = Path(__file__).parents[2] / "tools" / "oracle" / "summarize_docx.py"
+    spec = importlib.util.spec_from_file_location("summarize_docx", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+SUMMARIZE_DOCX = _docx_summarizer()
 
 
 def _jsonl(path: Path) -> list[dict[str, Any]]:
@@ -82,14 +100,18 @@ def reporter(pack: Any, tmp_path_factory: pytest.TempPathFactory) -> Reporter:
 def test_reports_match_scythebill(reporter: Reporter) -> None:
     html_expected = {line["name"]: line for line in _jsonl(TRIP / "html.jsonl")}
     text_expected = {line["name"]: line for line in _jsonl(TRIP / "text.jsonl")}
+    docx_expected = {line["name"]: line for line in _jsonl(TRIP / "docx.jsonl")}
     differing = []
     for case in _jsonl(TRIP / "cases.jsonl"):
-        html, text = reporter.report(case).html()
+        report = reporter.report(case)
+        html, text = report.html()
         name = case["name"]
         if _summary(name, html.encode()) != html_expected[name]:
             differing.append(f"{name}.html")
         if _summary(name, text.encode()) != text_expected[name]:
             differing.append(f"{name}.txt")
+        if SUMMARIZE_DOCX.summary(name, report.word()[0]) != docx_expected[name]:
+            differing.append(f"{name}.docx")
     assert differing == []
 
 
@@ -107,9 +129,16 @@ def test_real_list_reports(pack: Any, tmp_path: Path) -> None:
         name = case["name"]
         if (Path(oracle) / f"{name}.error").exists():
             continue  # Scythebill fails on it (a synthetic region as the report's place)
-        html, text = reporter.report(case).html()
+        report = reporter.report(case)
+        html, text = report.html()
         if html.encode() != (Path(oracle) / f"{name}.html").read_bytes():
             differing.append(f"{name}.html")
         if text.encode() != (Path(oracle) / f"{name}.txt").read_bytes():
             differing.append(f"{name}.txt")
+        theirs = zipfile.ZipFile(Path(oracle) / f"{name}.docx")
+        mine = zipfile.ZipFile(io.BytesIO(report.word()[0]))
+        for part in ("word/document.xml", "word/_rels/document.xml.rels"):
+            if mine.read(part) != theirs.read(part):
+                differing.append(f"{name}.docx")
+                break
     assert differing == []
