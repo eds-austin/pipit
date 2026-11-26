@@ -136,3 +136,40 @@ def test_checklist_status(status_running: Running) -> None:
     key(window, "Key_Return", Qt.KeyboardModifier.NoModifier)
     wait_until(lambda: running.shell.currentKey == "locations")
     assert running.locations.details["xmlId"] == rows[0]["placeId"]
+
+
+@pytest.fixture
+def queries_running(qapp: object, pack: Any, built_pack: Path, tmp_path: Path) -> Iterator[Running]:
+    path = tmp_path / "queries.pipit"
+    import_bsxm(FIXTURES / "bsxm" / "queries.bsxm", path, pack.base_taxonomy_id,
+                pack.base_taxon_ids(), pack.predefined_locations())  # fmt: skip
+    started = _start(path, built_pack, tmp_path / "backups")
+    yield started
+    _stop(started)
+
+
+def test_splits_and_lumps(queries_running: Running) -> None:
+    from PySide6.QtCore import Qt
+
+    running = queries_running
+    window = running.window
+    special = running.special
+    ctrl(window, "Key_7")
+    wait_until(lambda: running.shell.currentKey == "special")
+    key(window, "Key_3", Qt.KeyboardModifier.AltModifier)
+    wait_until(lambda: special.report == "splits")
+    special.run_now()
+    # AviList (the list's display taxonomy): its two versions, the first chosen
+    assert [v[0] for v in special.splitsVersions] == ["vs-clements-2026", "avilist-2025"]
+    recorded = FIXTURES / "oracle" / "splits" / "everything_avilist.jsonl"
+    expected = [json.loads(line) for line in recorded.read_text().splitlines()]
+    first = expected[0]
+    assert special.splitsTotals.startswith(f"Gained: {first['knownSplitCount']} ")
+    rows = special.splits_model.rows()
+    sections = ("splits", "possibleSplits", "lumps", "possibleLumps", "possibleLumpOrSplit")
+    assert sum(1 for row in rows if not row["heading"]) == sum(len(first[k]) for k in sections)
+    special.setSplitsVersion("avilist-2025")
+    special.run_now()
+    second = expected[1]
+    assert special.splitsTotals.startswith(f"Gained: {second['knownSplitCount']} ")
+    assert special.splitsError == ""

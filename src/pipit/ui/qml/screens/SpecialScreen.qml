@@ -1,12 +1,13 @@
 // Special reports. The family report counts the Reports screen's query by order, family or
 // genus against the checklist of its places (the world without one), as Scythebill's does;
 // the checklist status report lists species seen where their place's checklist gives them a
-// status (not on it, rarity, endemic, ...). Keyboard map (F1):
-//   Alt+1, Alt+2    family report, checklist status
+// status (not on it, rarity, endemic, ...); splits and lumps shows how the query's species
+// would count in another taxonomy version. Keyboard map (F1):
+//   Alt+1…3         family report, checklist status, splits and lumps
 //   Ctrl+G          (family) group by order, family, genus (cycles)
 //   Ctrl+R          into the list; Up/Down, PageUp/PageDown, Home/End choose
 //   Enter           (checklist status) show the species' place on Locations
-//   Ctrl+Shift+Q    (family) edit the query (on Reports)
+//   Ctrl+Shift+Q    (family, splits) edit the query (on Reports)
 import QtQuick
 import QtQuick.Controls.Basic as B
 import QtQuick.Layouts
@@ -34,9 +35,10 @@ Item {
 
     Shortcut { enabled: root.keysOn; sequence: "Alt+1"; onActivated: special.setReport("family") }
     Shortcut { enabled: root.keysOn; sequence: "Alt+2"; onActivated: special.setReport("status") }
+    Shortcut { enabled: root.keysOn; sequence: "Alt+3"; onActivated: special.setReport("splits") }
     Shortcut { enabled: root.keysOn && root.family; sequence: "Ctrl+G"; onActivated: root.cycleGroupBy() }
     Shortcut { enabled: root.keysOn; sequence: "Ctrl+R"; onActivated: root.family ? root.focusGroups() : root.focusStatus() }
-    Shortcut { enabled: root.keysOn && root.family; sequence: "Ctrl+Shift+Q"; onActivated: shell.go("reports") }
+    Shortcut { enabled: root.keysOn && special.report !== "status"; sequence: "Ctrl+Shift+Q"; onActivated: shell.go("reports") }
 
     EmptyState {
         anchors.centerIn: parent
@@ -65,9 +67,9 @@ Item {
                     model: [
                         { key: "family", title: qsTr("Family report"), icon: "list-tree", ready: true },
                         { key: "status", title: qsTr("Checklist status"), icon: "badge-check", ready: true },
+                        { key: "splits", title: qsTr("Splits and lumps"), icon: "git-merge", ready: true },
                         { key: "", title: qsTr("Timeline"), icon: "calendar", ready: false },
                         { key: "", title: qsTr("Year comparison"), icon: "chart-column", ready: false },
-                        { key: "", title: qsTr("Splits and lumps"), icon: "git-merge", ready: false },
                         { key: "", title: qsTr("Ticks map"), icon: "map-pin", ready: false },
                         { key: "", title: qsTr("Lifers map"), icon: "map-pin", ready: false }
                     ]
@@ -109,7 +111,7 @@ Item {
         StackLayout {
             B.SplitView.fillWidth: true
             B.SplitView.minimumWidth: Theme.grid(560)
-            currentIndex: root.family ? 0 : 1
+            currentIndex: ["family", "status", "splits"].indexOf(special.report)
 
             B.SplitView {
                 orientation: Qt.Horizontal
@@ -510,6 +512,85 @@ Item {
                                     elide: Text.ElideRight
                                     text: qsTr("Expected range: %1").arg(statusRow.range)
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------ splits and lumps
+            Card {
+                objectName: "splitsReport"
+                padV: 0
+                padH: 0
+                clip: true
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 0
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Theme.headerH
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        spacing: Theme.s3
+                        Column {
+                            Layout.fillWidth: true
+                            PLabel { width: parent.width; kind: "title"; text: qsTr("Splits and lumps"); elide: Text.ElideRight }
+                            PLabel {
+                                objectName: "splitsTotals"
+                                width: parent.width
+                                kind: "caption"
+                                elide: Text.ElideRight
+                                text: special.splitsError !== "" ? special.splitsError : special.splitsTotals
+                                color: special.splitsError !== "" ? Theme.warning : Theme.textMuted
+                            }
+                        }
+                        PLabel { kind: "caption"; text: qsTr("Compare") }
+                        PComboBox {
+                            objectName: "splitsVersion"
+                            Layout.preferredWidth: Theme.grid(260)
+                            implicitHeight: Theme.controlHCompact
+                            model: special.splitsVersions.map(v => v[1])
+                            currentIndex: special.splitsVersions.findIndex(v => v[0] === special.splitsVersion)
+                            onActivated: i => special.setSplitsVersion(special.splitsVersions[i][0])
+                        }
+                        PButton {
+                            compact: true
+                            variant: "ghost"
+                            iconName: "sliders-horizontal"
+                            text: qsTr("Edit query")
+                            onClicked: shell.go("reports")
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+                    ListView {
+                        id: splitsList
+                        objectName: "splitsList"
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.topMargin: Theme.s2
+                        clip: true
+                        model: special.splitsRows
+                        boundsBehavior: Flickable.StopAtBounds
+                        B.ScrollBar.vertical: B.ScrollBar {}
+                        delegate: Item {
+                            id: splitsRow
+                            required property bool heading
+                            required property string text
+                            width: ListView.view.width
+                            height: line.implicitHeight + (heading ? Theme.s5 : Theme.s3)
+                            PLabel {
+                                id: line
+                                anchors.left: parent.left
+                                anchors.leftMargin: splitsRow.heading ? Theme.s4 : Theme.s4 + Theme.s3
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.s4
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: splitsRow.heading ? Theme.s1 : Theme.s1
+                                kind: splitsRow.heading ? "overline" : "body"
+                                textFormat: splitsRow.heading ? Text.PlainText : Text.StyledText
+                                wrapMode: Text.WordWrap
+                                text: splitsRow.text
                             }
                         }
                     }

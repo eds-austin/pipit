@@ -1,0 +1,6 @@
+{"name": "everything_clements", "query": {"fields": []}, "display": "clements", "depth": "species"}
+{"name": "washington_clements", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "clements", "depth": "species"}
+{"name": "never_oregon_clements", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "oregon"}, "bool": "NEVER"}]}, "display": "clements", "depth": "species"}
+{"name": "everything_avilist", "query": {"fields": []}, "display": "avilist", "depth": "species"}
+{"name": "washington_avilist", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species"}
+{"name": "never_oregon_avilist", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "oregon"}, "bool": "NEVER"}]}, "display": "avilist", "depth": "species"}

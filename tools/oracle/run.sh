@@ -231,6 +231,16 @@ mkdir -p "$STATUS"
 "$PY" -I tools/oracle/make_checklist_status_fixture.py
 print_oracle "$BSXM/checklist_status.bsxm" status "$STATUS/expected.jsonl"
 
+# Splits and lumps (PrintOracle.java's splits mode: SplitsAndLumpsProcessor for every version
+# each taxonomy offers; it reads the report-*.csv tables from the app's resources).
+SPLITS=tests/fixtures/oracle/splits
+mkdir -p "$SPLITS"
+"$PY" -I tools/oracle/make_splits_cases.py "$SPLITS/cases.jsonl"
+java -cp "$UI_CLASSPATH:$SCYTHEBILL/app/src/main/resources" \
+    com.scythebill.birdlist.ui.panels.reports.PrintOracle \
+    "$FILES/taxon.xml" "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
+    "$SCYTHEBILL/app/src/main/resources" "$BSXM/queries.bsxm" splits "$SPLITS/cases.jsonl" "$SPLITS"
+
 # eBird Record Format exports (PrintOracle.java's ebird mode: EbirdExportAction and
 # EBirdCsvExport): the reference queries, and everything in two more lists (edge_cases
 # without its February 30 sighting, which Scythebill's export fails on).

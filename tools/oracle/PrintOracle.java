@@ -17,6 +17,8 @@
 // (and for a synthetic place, the codes its checklist is the union of).
 // The status mode writes, for each of ChecklistStatusReportPanel's choices in both
 // taxonomies, the places it lists (id, whether the checklist is custom) with their species.
+// The splits mode writes outDir/<name>.jsonl: SplitsAndLumpsProcessor's result for each
+// version the case's taxonomy offers (app resources must be on the classpath).
 // The family mode writes outDir/<name>.json: the checklist's places (sorted ids), whether there
 // is a checklist, [id, seen, total] for each ORDER, FAMILY and GENUS in taxonomic order, and the
 // seen and total species.
@@ -219,6 +221,11 @@ public class PrintOracle {
       if (mode.equals("family")) {
         writeFamily(testCase, reportSet, taxonomy, restored, fields, operations, locations,
             queryPreferences, checklists, outDir);
+        continue;
+      }
+      if (mode.equals("splits")) {
+        writeSplits(testCase, reportSet, taxonomy, taxonomy == avilist, restored,
+            queryPreferences, outDir);
         continue;
       }
 
@@ -796,6 +803,82 @@ public class PrintOracle {
     for (Location child : location.contents()) {
       appendStatusPlaces(places, matching, child, reportSet, checklists, taxonomy);
     }
+  }
+
+
+  /** SplitsAndLumpsPanel's version ids for each taxonomy (CLEMENTS_ and AVILIST_ versions). */
+  static final List<String> CLEMENTS_SPLIT_VERSIONS = List.of("vs-avilist-2026", "2025", "2024",
+      "2023", "2022", "2021", "2019", "2018", "2017", "2016", "2015", "69", "68", "67", "66", "65");
+  static final List<String> AVILIST_SPLIT_VERSIONS = List.of("vs-clements-2026", "avilist-2025");
+
+  /**
+   * SplitsAndLumpsPanel.computeSplitsAndLumps for each version the taxonomy offers: one line
+   * of JSON each in outDir/<name>.jsonl, with the result's lists and counts, or "error" where
+   * the panel shows "not available" (the processor fails).
+   */
+  static void writeSplits(JsonObject testCase, ReportSet reportSet, Taxonomy taxonomy,
+      boolean isAvilist, StoredQueries.RestoredQuery restored, QueryPreferences queryPreferences,
+      File outDir) throws IOException {
+    var queryDefinition = restored.rawQueryDefinition(taxonomy, reportSet, Taxon.Type.species);
+    var countablePredicate = restored.countablePredicate(taxonomy, queryPreferences);
+    var lines = new ArrayList<String>();
+    for (String version : isAvilist ? AVILIST_SPLIT_VERSIONS : CLEMENTS_SPLIT_VERSIONS) {
+      JsonObject out = new JsonObject();
+      out.addProperty("version", version);
+      SplitsAndLumpsProcessor.SplitsAndLumpsResult result;
+      try {
+        result = new SplitsAndLumpsProcessor().process(reportSet, taxonomy, queryDefinition,
+            countablePredicate, "/report-" + version + ".csv");
+      } catch (RuntimeException e) {
+        out.addProperty("error", true);
+        lines.add(out.toString());
+        continue;
+      }
+      out.add("splits", splitResults(result.splits));
+      out.add("lumps", splitResults(result.lumps));
+      out.add("possibleSplits", splitResults(result.possibleSplits));
+      out.add("possibleLumps", splitResults(result.possibleLumps));
+      out.add("possibleLumpOrSplit", splitResults(result.possibleLumpOrSplit));
+      out.addProperty("knownSplitCount", result.knownSplitCount);
+      out.addProperty("knownLumpCount", result.knownLumpCount);
+      out.addProperty("possibleSplitCount", result.possibleSplitCount);
+      out.addProperty("possibleLumpCount", result.possibleLumpCount);
+      out.addProperty("unresolvedSpMinimum", result.unresolvedSpMinimum);
+      out.addProperty("unresolvedSpMaximum", result.unresolvedSpMaximum);
+      lines.add(out.toString());
+    }
+    Files.write(new File(outDir, testCase.get("name").getAsString() + ".jsonl").toPath(), lines,
+        StandardCharsets.UTF_8);
+  }
+
+  private static com.google.gson.JsonArray splitResults(
+      List<SplitsAndLumpsProcessor.SplitsAndLumpsResult.SingleResult> results) {
+    var array = new com.google.gson.JsonArray();
+    for (var single : results) {
+      JsonObject item = new JsonObject();
+      var current = new com.google.gson.JsonArray();
+      single.currentTaxa.forEach(current::add);
+      item.add("current", current);
+      var old = new com.google.gson.JsonArray();
+      for (var species : single.oldTaxa) {
+        var pair = new com.google.gson.JsonArray();
+        pair.add(species.scientific);
+        pair.add(species.common);
+        old.add(pair);
+      }
+      item.add("old", old);
+      var possible = new com.google.gson.JsonArray();
+      for (var species : single.possibleOldTaxa) {
+        var pair = new com.google.gson.JsonArray();
+        pair.add(species.scientific);
+        pair.add(species.common);
+        possible.add(pair);
+      }
+      item.add("possibleOld", possible);
+      item.addProperty("unresolvedSp", single.unresolvedSp);
+      array.add(item);
+    }
+    return array;
   }
 
 }

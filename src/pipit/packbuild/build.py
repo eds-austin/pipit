@@ -314,6 +314,7 @@ def _write_upgrades(connection: sqlite3.Connection, sources: ScythebillSources) 
 def _write_locations(connection: sqlite3.Connection, sources: ScythebillSources) -> None:
     csvs = [sources.locations_dir / name for name in LOCATION_CSVS]
     csvs += [sources.imports_dir / name for name in IMPORT_CSVS]
+    csvs += sources.split_reports
     for path in csvs:
         rows = readers.read_csv_rows(path)
         connection.executemany(
@@ -364,6 +365,7 @@ def source_files(sources: ScythebillSources) -> list[Path]:
         files += sorted(sources.checklist_dir(flavor).glob("*.csv"))
     files += [sources.locations_dir / name for name in LOCATION_CSVS]
     files += [sources.imports_dir / name for name in IMPORT_CSVS]
+    files += sources.split_reports
     files += sorted(sources.locations_dir.glob("locations*.properties"))
     files += sorted(sources.mapdata_dir.glob("*.mapbin"))
     return files

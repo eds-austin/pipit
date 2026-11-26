@@ -19,6 +19,14 @@ from pipit.query.model import QueryList
 from pipit.query.synthetic import REGION_NAMES
 from pipit.special.checklist_status import CHOICES, StatusPlace, checklist_status
 from pipit.special.family import FamilyReport, FamilyTotals, GroupTotal, family_report
+from pipit.special.splits_lumps import (
+    SECTIONS,
+    SplitsUnavailableError,
+    describe,
+    splits_report,
+    versions_for,
+)
+from pipit.special.splits_lumps import totals as splits_totals
 from pipit.taxa.model import Taxon, TaxonType, full_name
 from pipit.ui.backend.app_controller import AppController
 from pipit.ui.backend.list_model import DictListModel
@@ -32,7 +40,7 @@ SORTS = [["TAXONOMIC", "Taxonomic order"], ["SPECIES_SEEN", "Species seen"],
          ["FRACTION_SEEN", "Fraction seen"], ["SPECIES_UNSEEN", "Species unseen"],
          ["TOTAL_SPECIES", "Total species"]]  # fmt: skip
 _GROUPS_OF = {"ORDER": "Orders", "FAMILY": "Families", "GENUS": "Genera"}
-REPORTS = ("family", "status")
+REPORTS = ("family", "status", "splits")
 #: Countries Scythebill names with their parent in this report (``CODES_WITH_MULTIPLE_REGIONS``).
 _NAMED_WITH_PARENT = frozenset({"XX", "RU", "ID"})
 #: Scythebill's ``Species`` class: species, groups and subspecies.
@@ -66,6 +74,7 @@ class SpecialBackend(QObject):
     selectionChanged = Signal()
     reportChanged = Signal()
     statusChanged = Signal()
+    splitsChanged = Signal()
 
     def __init__(self, app: AppController, reports: ReportsBackend) -> None:
         super().__init__()
@@ -78,6 +87,11 @@ class SpecialBackend(QObject):
         self._status_choice = "NOT_FOUND"
         self._status_places: list[StatusPlace] = []
         self._status_custom = False
+        self._splits_version = ""
+        self._splits_versions: list[list[str]] = []
+        self._splits_totals = ""
+        self._splits_error = ""
+        self.splits_model = DictListModel(["heading", "text"])
         self.status_model = DictListModel(["heading", "placeId", "name", "scientific", "range",
                                            "custom"])  # fmt: skip
         self._group_by = "FAMILY"
@@ -105,6 +119,7 @@ class SpecialBackend(QObject):
 
     def _query_changed(self) -> None:
         self._stale["family"] = True
+        self._stale["splits"] = True
         self._schedule()
 
     def _data_changed(self) -> None:
@@ -155,6 +170,8 @@ class SpecialBackend(QObject):
     def run(self) -> None:
         if self._current_report == "status":
             self._run_status()
+        elif self._current_report == "splits":
+            self._run_splits()
         else:
             self._run_family()
 
@@ -467,3 +484,78 @@ class SpecialBackend(QObject):
         """The place a row is listed under (its ID)."""
         rows = self.status_model.rows()
         return str(rows[index]["placeId"]) if 0 <= index < len(rows) else ""
+
+    # ------------------------------------------------------------ splits and lumps
+
+    @Property("QVariantList", notify=splitsChanged)
+    def splitsVersions(self) -> list[list[str]]:
+        """(version, label) the display taxonomy offers."""
+        return self._splits_versions
+
+    @Property(str, notify=splitsChanged)
+    def splitsVersion(self) -> str:
+        return self._splits_version
+
+    @Slot(str)
+    def setSplitsVersion(self, version: str) -> None:
+        if version == self._splits_version:
+            return
+        self._splits_version = version
+        self._stale["splits"] = True
+        self.splitsChanged.emit()
+        self._schedule()
+
+    @Property(str, notify=splitsChanged)
+    def splitsTotals(self) -> str:
+        return self._splits_totals
+
+    @Property(str, notify=splitsChanged)
+    def splitsError(self) -> str:
+        return self._splits_error
+
+    @Property(QObject, constant=True)
+    def splitsRows(self) -> DictListModel:
+        return self.splits_model
+
+    def _run_splits(self) -> None:
+        self._stale["splits"] = False
+        self._splits_totals = ""
+        self._splits_error = ""
+        rows: list[dict[str, Any]] = []
+        context = self._context()
+        pack = self._app.pack
+        if context is not None and pack is not None:
+            offered = [list(version) for version in versions_for(context.taxonomy)]
+            if [v[0] for v in offered] != [v[0] for v in self._splits_versions]:
+                self._splits_versions = offered
+                self._splits_version = offered[0][0]
+            rows_of_version = pack.split_report_rows(self._splits_version)
+            try:
+                if not rows_of_version:
+                    self._splits_error = ("This data pack has no splits-and-lumps tables: "
+                                          "rebuild it with pipit-build-pack.")  # fmt: skip
+                    raise SplitsUnavailableError("no table")
+                query = parse_query(self._reports.query_json(), context.query_list,
+                                    context.users)  # fmt: skip
+                found = splits_report(context, query, rows_of_version)
+            except SplitsUnavailableError as error:
+                log.info("splits and lumps unavailable: %s", error)
+                self._splits_error = self._splits_error or (
+                    "Splits and lumps aren't available for this taxonomy version."
+                )
+            except (QueryJsonError, UnsupportedQueryError, ValueError, KeyError) as error:
+                log.info("splits and lumps refused: %s", error)
+                self._splits_error = str(error)
+            else:
+                if found.is_empty():
+                    self._splits_totals = "No splits or lumps found."
+                else:
+                    self._splits_totals = splits_totals(found)
+                for title, attribute in SECTIONS:
+                    results = getattr(found, attribute)
+                    if results:
+                        rows.append({"heading": True, "text": title})
+                        rows.extend({"heading": False, "text": describe(result, context.taxonomy)}
+                                    for result in results)  # fmt: skip
+        self.splits_model.replace_all(rows)
+        self.splitsChanged.emit()

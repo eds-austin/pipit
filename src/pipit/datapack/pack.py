@@ -216,6 +216,11 @@ class DataPack:
             )
         ]
 
+    def split_report_rows(self, version: str) -> list[list[str]]:
+        """Rows of Scythebill's ``report-<version>.csv`` (splits and lumps since that
+        taxonomy version), header first; empty if the pack doesn't have it."""
+        return self.location_rows(f"report-{version}.csv")
+
     def location_display_names(self, locale: str = "") -> dict[str, str]:
         """Scythebill's ``locations.properties`` (``locale`` "": English): display names of
         built-in places by code, and of regions by key."""

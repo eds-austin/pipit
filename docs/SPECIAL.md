@@ -1,7 +1,7 @@
 # Special reports (Ctrl+7)
 
 The Special screen holds Scythebill's analytical reports. The report list on the left shows
-which ones exist so far (Alt+1 and Alt+2 switch between them); the others are marked
+which ones exist so far (Alt+1 to Alt+3 switch between them); the others are marked
 "Soon".
 
 ## Family report
@@ -110,3 +110,46 @@ run takes 0.05 s, because the screen keeps the loaded checklists until the list 
 Scythebill's report fails on a list whose custom checklist names a taxon the taxonomy
 doesn't have (`ClementsChecklist.createTaxaMap`). `tests/fixtures/bsxm/checklists.bsxm` has
 one such entry. Pipit leaves such entries out.
+
+## Splits and lumps
+
+How the species your query finds would count in another taxonomy version: species gained
+by splits, species lost by lumps, and those that might be either. This is Scythebill's
+`SplitsAndLumpsProcessor` and the version list of `SplitsAndLumpsPanel`, ported in
+`pipit.special.splits_lumps`. Like the family report, it uses the Reports screen's query.
+
+- **Versions.** A Clements list compares against AviList 2026 and every older Clements
+  version back to 6.5 (December 2010). An AviList list compares against Clements 2026 and
+  AviList 2025.
+- **Tables.** Each version's table is Scythebill's `report-<version>.csv`. Each row is one
+  "bundle" of old names and current species. The data pack keeps the tables (built from
+  Scythebill's app resources). A pack built before they were added says so, and asks for a
+  rebuild with `pipit-build-pack`.
+- **Counting.** Each countable sighting at species depth is placed in its bundle:
+  - A sighting that maps to one old name makes that name known.
+  - A sighting that could be several old names makes them possible.
+
+  Comparing the bundle's current species with its known and possible old names gives
+  splits, lumps, possible splits, possible lumps, and "unknown" bundles that could be a
+  lump, a split, or neither. A sp. whose species all lie in one bundle adds to the range of
+  species unresolved sp.'s may stand for. If it's all you have of that bundle, it's listed
+  as a split you have only a sp. of.
+- **Wording.** The totals line and the sentences are Scythebill's: "Gained", "Lost",
+  "is now", "Some or all of ... are now". The totals' parts are separated with " · ".
+
+### Checked against Scythebill
+
+PrintOracle's splits mode runs `SplitsAndLumpsProcessor.process` for every version each
+taxonomy offers. It runs on `tests/fixtures/bsxm/queries.bsxm` (6,000 sightings), for the
+whole list, one state, and the list without another state, in both taxonomies
+(`make_splits_cases.py`). That makes 54 runs (16 Clements versions and 2 AviList versions
+per query). Pipit's splits, lumps, possible ones, current species, old names, order and
+counts are identical in every run (`tests/special/test_splits_against_scythebill.py`),
+with up to 120 splits in one version.
+
+On Eric's list (private), all 36 runs are identical, with up to 106 entries in one version.
+All 16 Clements versions take 1.7 s together, about 0.1 s each.
+
+The fixtures have no bundle that may be either a lump or a split.
+`tests/special/test_splits_parts.py` checks that case, the fewest species unresolved sp.'s
+stand for, and the sentences.

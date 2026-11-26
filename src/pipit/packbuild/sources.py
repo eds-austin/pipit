@@ -76,6 +76,11 @@ class ScythebillSources:
         return self.root / _IMPORT_RESOURCES
 
     @property
+    def split_reports(self) -> list[Path]:
+        """The splits-and-lumps reports' tables (``report-<version>.csv``)."""
+        return sorted((self.root / _APP_RESOURCES).glob("report-*.csv"))
+
+    @property
     def mapdata_dir(self) -> Path:
         return self.root / _MODEL_RESOURCES / "mapdata"
 
