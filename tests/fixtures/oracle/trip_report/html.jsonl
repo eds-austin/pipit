@@ -1,8 +1,8 @@
 {"name": "costa_rica", "size": 124139, "sha256": "f70acc073490311d1c7c437d4ed3461002b1bbc4157da3629600b4933e867e0b"}
-{"name": "everything", "size": 130136, "sha256": "4e8ebdff86e2e5ad30b454b0924ac5f95b474f1e2b81c5581ac08113f35c2a9d"}
+{"name": "everything", "size": 134383, "sha256": "edfeb96a08f69488ebd9b4f656129f70ad90a36333a1bdfd891133b18d79fb76"}
 {"name": "carara", "size": 17392, "sha256": "0fc927b578c77619a5ad31cec09e6e37085c619aab93be00c999caf1078e1925"}
 {"name": "valle", "size": 10840, "sha256": "64f227705a0b7e62b35197a64eebc86fa6099ffb910056068be923cb2ac23cae"}
-{"name": "california", "size": 9753, "sha256": "5f7bb4c30d10ab6e8b2181579f900ab8024fb812558a31a71e20029696181b3d"}
+{"name": "california", "size": 10348, "sha256": "b5c3a17437b912e38cc749b3139d8f37b1a5b2fe4fe57aceadc765827f91243f"}
 {"name": "selva", "size": 17406, "sha256": "f1b98578b26be7c33ca153585e19c9c5ad692751151a1afc970ba035cd6ebbb9"}
 {"name": "february", "size": 44161, "sha256": "ae03941bd8dc5f155d4f6e6d4b3ebbf6c625710690626b02ace27a2cf7cfa3da"}
 {"name": "costa_rica_scientific_first", "size": 123976, "sha256": "00a5114e9ba3afa3baa3bc30152af8c78d379222240f88fdfbabd3f3098bb6c8"}
@@ -21,7 +21,13 @@
 {"name": "costa_rica_group_common_only", "size": 118299, "sha256": "216bf7f8899c09d48312f6aed0f1ecb20befa091a966fe6a3a3228e3618470b0"}
 {"name": "costa_rica_avilist", "size": 124344, "sha256": "618023bb966d6b609956e979ead31fad5483ad21553f403684da0f8e732192c5"}
 {"name": "costa_rica_avilist_subspecies", "size": 125715, "sha256": "06edff85a402bdc3ab3aa2ef279d3392ad24147d60b412ca5977979192a33d95"}
-{"name": "everything_subspecies", "size": 132140, "sha256": "d8657e8e68b2b6bbb5119834158f94573ea3cdbe1a76fcb02597acd6eb43cf10"}
+{"name": "everything_subspecies", "size": 136387, "sha256": "104e420a230dac2864527edfddd480ab8bed8f7630362d3649094c9625eaa59a"}
 {"name": "selva_scientific_only", "size": 16136, "sha256": "32f1d954cd05ad39ce7cb48b5d8cc2eb592e7ab4503f66c9e3df50d244cd89aa"}
 {"name": "trip_part_two", "size": 123926, "sha256": "abaaabfae7b49762c007936c6263f361318b6dc4e000b1b05142b6c797fb5469"}
-{"name": "trips_both", "size": 130136, "sha256": "4e8ebdff86e2e5ad30b454b0924ac5f95b474f1e2b81c5581ac08113f35c2a9d"}
+{"name": "trips_both", "size": 134442, "sha256": "a6bf27d5b9baaac2ed84bfbe73e366e04a16f817b24b1db63eb870bd396d10f6"}
+{"name": "trips_screen_cr1", "size": 75736, "sha256": "531f20ec1547a605cc780b74d490aaba7020878f0392b094f7c42ef594caaadb"}
+{"name": "trips_screen_cr2", "error": true}
+{"name": "trips_screen_both", "error": true}
+{"name": "trips_screen_california", "size": 10354, "sha256": "0cfe0014e05d9ac33da90f1e4318b509c3e2f7536b849fc9e9e0eaf0f0a7a10e"}
+{"name": "trips_screen_all", "error": true}
+{"name": "trips_screen_two_countries", "size": 85697, "sha256": "2edd14d45d702a289c77bc817758b2d92b07062473caa53de7eb51485b890808"}

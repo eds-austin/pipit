@@ -415,6 +415,7 @@
   <trip id="cr1" loc="_ct_cosric" startDate="2025-02-01" endDate="2025-02-06" name="Costa Rica 2025 Part 1"><notes>Rain most afternoons.
 Guide: Ernesto.</notes></trip>
   <trip id="cr2" startDate="2025-02-07" endDate="2025-02-10" name="Costa Rica 2025 Part 2"/>
+  <trip id="ca24" loc="lakmer" startDate="2024-05-01" endDate="2024-05-01" name="California day"/>
   <sighting taxon="spColum1pas" loc="airport" date="2025-02-01" time="14:30" trip="cr1" count="1"/>
   <sighting taxon="spColum1pas" loc="hotel1" date="2025-02-01" trip="cr1" count="2"/>
   <sighting taxon="spColum1pas" loc="caralag" date="2025-02-02" time="06:15" trip="cr1" count="3"/>
@@ -471,9 +472,9 @@ Guide: Ernesto.</notes></trip>
   <sighting taxon="spRhodiros" loc="tarc1" date="2025-02-02" time="11:30" trip="cr1" count="~10"/>
   <sighting taxon="spIctervir" loc="tarc2" date="2025-02-02" time="12:10" trip="cr1" count="1"/>
   <sighting taxon="spPiranfla" loc="pelag" date="2025-02-03" time="05:30" trip="cr1" count="2"/>
-  <sighting taxon="spAnaspla" loc="lakmer" date="2024-05-01" time="08:00" count="3"/>
-  <sighting taxon="spBombyced" loc="lakmer" date="2024-05-01" time="08:00" count="3"/>
-  <sighting taxon="spColumliv" loc="lakmer" date="2024-05-01" time="08:00" count="3"/>
+  <sighting taxon="spAnaspla" loc="lakmer" date="2024-05-01" time="08:00" trip="ca24" count="3"/>
+  <sighting taxon="spBombyced" loc="lakmer" date="2024-05-01" time="08:00" trip="ca24" count="3"/>
+  <sighting taxon="spColumliv" loc="lakmer" date="2024-05-01" time="08:00" trip="ca24" count="3"/>
   <sighting taxon="spMicro3cup" loc="muer70" date="2025-02-04" time="06:00" trip="cr1" count="2" male="true" female="true"><photo favorite="true" name="Emerald">https://example.org/eme.jpg</photo><photo>https://example.org/eme2.jpg</photo></sighting>
   <sighting taxon="spMicro3cup" loc="montcam" date="2025-02-07" time="09:30" trip="cr2" count="1" immature="true" users="ew"/>
   <sighting taxon="spMelozcab" loc="muer80" date="2025-02-04" time="07:00" trip="cr1" heardOnly="true" users="ab"/>

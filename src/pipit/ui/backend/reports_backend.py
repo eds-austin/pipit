@@ -41,6 +41,7 @@ from pipit.output.trip_report import (
     TripReportOptions,
     load_report_data,
     trip_report,
+    trips_trip_report,
 )
 from pipit.output.xlsx_report import SpreadsheetOptions, report_spreadsheet
 from pipit.query import stored
@@ -904,6 +905,14 @@ class ReportsBackend(QObject):
     def makeTripReport(self, options: dict[str, Any]) -> None:
         """Save as trip report, as Scythebill does: the report is copied to the clipboard
         (HTML and plain text) and opened in the browser to read."""
+        self._start_trip_report(options, ())
+
+    @Slot("QVariantMap", "QVariantList")
+    def makeTripsTripReport(self, options: dict[str, Any], trip_ids: list[str]) -> None:
+        """The same from the Trips screen, for the trips chosen there."""
+        self._start_trip_report(options, tuple(str(xml_id) for xml_id in trip_ids))
+
+    def _start_trip_report(self, options: dict[str, Any], trip_ids: tuple[str, ...]) -> None:
         database = self._app.database
         taxa = self._app.entry_taxa
         pack = self._app.pack
@@ -926,7 +935,7 @@ class ReportsBackend(QObject):
         )
         depth = TaxonType[str(options.get("depth", self.depth)).upper()]
         job = _TripReportJob(Path(database.path), pack.path, taxa.display, depth,
-                             self.query_json(), report_options)  # fmt: skip
+                             self.query_json(), report_options, trip_ids)  # fmt: skip
         self._making_trip_report = True
         self.tripReportChanged.emit()
         run_in_thread("trip-report", lambda: self._make_trip_report(job))
@@ -1122,6 +1131,7 @@ class _TripReportJob:
     depth: TaxonType
     query_json: str
     options: TripReportOptions
+    trip_ids: tuple[str, ...] = ()  # from the Trips screen: these trips' sightings
 
 
 @dataclass(frozen=True)
@@ -1141,10 +1151,14 @@ def _write_trip_report(job: _TripReportJob) -> _MadeTripReport:
             data = load_report_data(connection, query_list)
             context = EngineContext(query_list, job.display, job.depth,
                                     users=frozenset(data.users))  # fmt: skip
-            report = trip_report(context=context,
-                                 checklists=Checklists(pack, connection, query_list),
-                                 data=data, query_json=job.query_json,
-                                 options=job.options)  # fmt: skip
+            checklists = Checklists(pack, connection, query_list)
+            if job.trip_ids:
+                trips = [query_list.trips[xml_id] for xml_id in job.trip_ids]
+                report = trips_trip_report(context=context, checklists=checklists, data=data,
+                                           trips=trips, options=job.options)  # fmt: skip
+            else:
+                report = trip_report(context=context, checklists=checklists, data=data,
+                                     query_json=job.query_json, options=job.options)  # fmt: skip
             html, text = report.html()
             summary = report.summary()
     finally:

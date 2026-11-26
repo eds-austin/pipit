@@ -140,7 +140,7 @@ class TripsBackend(QObject):
                 1 for entry in seen if entry.is_species and not entry.key.startswith("ext:")
             )
             self._details = {
-                "row": trip.row, "name": trip.name, "start": str(trip.start),
+                "row": trip.row, "xmlId": trip.xml_id, "name": trip.name, "start": str(trip.start),
                 "end": str(trip.end), "dates": _dates(trip), "startTime": trip.start_time,
                 "placeXmlId": trip.location_xml_id or "",
                 "place": self._places.get(trip.location_xml_id or "", ""),

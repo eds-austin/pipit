@@ -68,7 +68,7 @@ from pipit.output.report_docx import DocxReportDocumentWriter
 from pipit.output.trip_stops import GUAVA_WHITESPACE, Stop, TripStops
 from pipit.query.checklists import Checklists
 from pipit.query.definition import Predicate
-from pipit.query.engine import CountingPreferences, EngineContext, StoredQuery
+from pipit.query.engine import CountingPreferences, EngineContext, StoredQuery, run_predicate
 from pipit.query.model import QSighting, QTrip, QueryList
 from pipit.query.results import QueryResults
 from pipit.taxa.model import Taxon, Taxonomy, TaxonType
@@ -1659,6 +1659,79 @@ def trip_report(*, context: EngineContext, checklists: Checklists, data: ReportL
                                             include_incompatible=True)  # fmt: skip
     places = list_place_names(context.query_list, checklists)
     name = query_name(query, name_sources(places, data.users, context.taxonomy))
+    return _report(
+        context,
+        results,
+        data,
+        places=places,
+        root=root,
+        name=name,
+        options=options,
+        names_preference=names_preference,
+        trips=trips,
+    )
+
+
+def trips_trip_report(*, context: EngineContext, checklists: Checklists, data: ReportListData,
+                      trips: list[QTrip], options: TripReportOptions,
+                      names_preference: str = COMMON_FIRST) -> TripReport:  # fmt: skip
+    """The same from the Trips screen (``TripsBrowsePanel.tripsQueryExecutor``): the trips'
+    sightings, the checklist for their places (``getTripChecklistCodes``), and their common
+    place as the region; the report is named for what the trips' names share."""
+    query_list = context.query_list
+    results = run_predicate(lambda s: any(_trip_predicate(trip, query_list)(s) for trip in trips),
+                            context, include_incompatible=True)  # fmt: skip
+    codes = checklists.trip_checklist_codes(context.taxonomy, trips, query_list)
+    results.checklist = checklists.checklist_for_codes(context.taxonomy, codes)
+    places = list_place_names(query_list, checklists)
+    root = location_root(query_list, trips)
+    return _report(
+        context,
+        results,
+        data,
+        places=places,
+        root=root,
+        name=None,
+        options=options,
+        names_preference=names_preference,
+        trips=trips,
+    )
+
+
+def location_root(query_list: QueryList, trips: list[QTrip]) -> str | None:
+    """``TripUtils.getLocationRoot``: the place the trips' places all lie in, if they all
+    have one."""
+    root = trips[0].location_xml_id if trips else None
+    for trip in trips[1:]:
+        if trip.location_xml_id is None or root is None:
+            return None
+        root = _common_ancestor(query_list, root, trip.location_xml_id)
+    return root
+
+
+def _common_ancestor(query_list: QueryList, first: str, second: str) -> str | None:
+    def path(xml_id: str) -> list[str]:
+        found = []
+        current: str | None = xml_id
+        while current is not None:
+            found.append(current)
+            current = query_list.parent.get(current)
+        return found[::-1]
+
+    common = None
+    for left, right in zip(path(first), path(second), strict=False):
+        if left != right:
+            break
+        common = left
+    return common
+
+
+def _report(context: EngineContext, results: QueryResults, data: ReportListData, *,
+            places: PlaceNames, root: str | None, name: str | None,
+            options: TripReportOptions, names_preference: str,
+            trips: list[QTrip] | None) -> TripReport:  # fmt: skip
+    """``SaveAsTripReportAction``: the species table only for 1 to 200 visits, lifers by
+    the preferences' countable rule, and the trips (else those the sightings belong to)."""
     visits = report_visits(results)
     if len(visits) > MAXIMUM_VISITS_FOR_SPECIES_TABLE or not visits:
         options = replace(options, species_table=False)

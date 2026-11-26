@@ -20,7 +20,13 @@ from typing import Any
 
 import pytest
 
-from pipit.output.trip_report import TripReport, TripReportOptions, load_report_data, trip_report
+from pipit.output.trip_report import (
+    TripReport,
+    TripReportOptions,
+    load_report_data,
+    trip_report,
+    trips_trip_report,
+)
 from pipit.query.checklists import Checklists
 from pipit.query.engine import EngineContext
 from pipit.query.model import load_query_list
@@ -80,6 +86,11 @@ class Reporter:
         trips = None
         if "trips" in case:
             trips = [self.query_list.trips[xml_id] for xml_id in case["trips"]]
+        if case.get("fromTrips"):
+            assert trips is not None
+            return trips_trip_report(context=self.contexts[key], checklists=self.checklists,
+                                     data=self.data, trips=trips, options=_options(case),
+                                     names_preference=case["namesOrder"])  # fmt: skip
         return trip_report(context=self.contexts[key], checklists=self.checklists,
                            data=self.data, query_json=json.dumps(case["query"]),
                            options=_options(case), names_preference=case["namesOrder"],
@@ -103,6 +114,8 @@ def test_reports_match_scythebill(reporter: Reporter) -> None:
     docx_expected = {line["name"]: line for line in _jsonl(TRIP / "docx.jsonl")}
     differing = []
     for case in _jsonl(TRIP / "cases.jsonl"):
+        if html_expected[case["name"]].get("error"):
+            continue  # Scythebill fails on it (see make_trip_report_cases.py)
         report = reporter.report(case)
         html, text = report.html()
         name = case["name"]

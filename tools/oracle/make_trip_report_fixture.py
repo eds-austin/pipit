@@ -10,7 +10,8 @@ It is built to reach every part of a trip report:
 - visits with and without times, durations, distances, unusual protocols (banding, pelagic,
   nocturnal), comments (one with eBird's "Submitted from" tail), several visits on a day, a
   stay of several days at one lodge, and back-to-back visits to one stop;
-- two trips (one with notes over two lines) and sightings recorded on a trip, undated;
+- three trips (one with notes over two lines, one in California) and sightings recorded on
+  a trip, undated;
 - endemic, introduced and rarity species (Costa Rica's checklist), threatened ones, groups,
   subspecies, sp. and hybrids, a species at more than eight stops, and one never countable;
 - counts (exact and approximate), heard only, sex and age, statuses, breeding codes, notes,
@@ -59,6 +60,7 @@ TRIPS = [
     ("cr1", "_ct_cosric", "2025-02-01", "2025-02-06", "Costa Rica 2025 Part 1",
      "Rain most afternoons.\nGuide: Ernesto."),
     ("cr2", None, "2025-02-07", "2025-02-10", "Costa Rica 2025 Part 2", None),
+    ("ca24", "lakmer", "2024-05-01", "2024-05-01", "California day", None),
 ]  # fmt: skip
 
 #: Visits: (location, date, time or None, protocol, minutes, km, comments, trip).
@@ -85,7 +87,7 @@ VISITS: list[tuple[str, str, str | None, str, int | None, str | None, str | None
     ("ranchgar", "2025-02-09", "15:00", "stationary", 60, None, None, "cr2"),
     ("ranchfee", "2025-02-10", "06:00", "stationary", 75, None, None, "cr2"),
     ("hotel2", "2025-02-10", "18:00", "stationary", 10, None, None, "cr2"),
-    ("lakmer", "2024-05-01", "08:00", "stationary", 30, None, None, ""),
+    ("lakmer", "2024-05-01", "08:00", "stationary", 30, None, None, "ca24"),
 ]  # fmt: skip
 
 #: Common species spread over many families (Costa Rica natives).

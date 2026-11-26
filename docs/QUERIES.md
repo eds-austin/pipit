@@ -240,6 +240,15 @@ totals and offers it again: Open again, Copy, and Save as Word… (named after t
 in the US and a few other countries, A4 elsewhere (from the system locale). The options are
 remembered (`trip_*`, `distance_unit`).
 
+From the Trips screen (Ctrl+T, or "Trip report" beside the trip), the report covers the
+chosen trip's sightings, as Scythebill's Trips browser does (`trips_trip_report`): sightings
+within the trip's dates (and place), the trip's place as the region (several trips: the
+place they share), the checklist for one trip's place (the nearest place up with a
+built-in checklist) or else the union of its countries' checklists
+(`Checklists.trip_checklist_codes`, `checklist_for_codes`), and a title from the trip's
+name. Scythebill fails on a trip with no place that has a sighting with no place (it
+looks up the sighting's country); Pipit leaves such sightings out of the checklist lookup.
+
 
 `pipit/output/trip_report.py` is a port of Scythebill's `TripReportDocOutput` and
 `SaveAsTripReportAction`; `trip_stops.py` of `TripStops`; `report_document.py` of
@@ -278,7 +287,8 @@ countries, A4 elsewhere; a species table too wide for the page gets landscape pa
 own, and its date headings run up their columns if it's still too narrow.
 
 - **Checked against Scythebill.** PrintOracle's trip mode writes Scythebill's HTML, plain
-  text and Word document for 27 cases (`make_trip_report_cases.py`) on a made-up Costa Rica
+  text and Word document for 32 cases (27 from the Reports screen; 5 from the Trips screen,
+  as `TripsBrowsePanel.tripsQueryExecutor` runs them, 3 of which Scythebill fails on) (`make_trip_report_cases.py`) on a made-up Costa Rica
   trip (`make_trip_report_fixture.py`, built to reach every part of a report). The HTML,
   text and Word `document.xml` (with its relationships) are byte-identical (the fixtures
   keep their size and SHA-256). On Eric's list (private, `PIPIT_PRIVATE_TRIP`), 534 reports

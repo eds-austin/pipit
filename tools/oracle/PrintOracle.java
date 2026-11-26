@@ -58,6 +58,8 @@ import java.security.MessageDigest;
 import java.util.*;
 
 public class PrintOracle {
+  static Checklists CHECKLISTS;
+
   public static void main(String[] args) throws Exception {
     Locale.setDefault(Locale.US);
     // As ApplicationModule does: built-in places' display names, and synthetic regions' names
@@ -80,6 +82,7 @@ public class PrintOracle {
       }
     });
     Checklists checklists = injector.getInstance(Checklists.class);
+    CHECKLISTS = checklists;
     TaxonomyMappings mappings = new TaxonomyMappings(
         QueryOracle.loaders(Paths.get(args[2])), checklists);
 
@@ -223,8 +226,9 @@ public class PrintOracle {
           writeTripReport(testCase, options, reportSet, taxonomy, depth, restored,
               queryPreferences, singleChecklist, rootLocation, reportName, locationNames,
               outDir, caseName);
-        } catch (UnsupportedOperationException e) {
-          // Scythebill can't write this one (a synthetic region has no parent to ask for)
+        } catch (UnsupportedOperationException | NullPointerException e) {
+          // Scythebill can't write this one (a synthetic region has no parent to ask for; a
+          // trip with no place has a sighting with no place)
           Files.writeString(new File(outDir, caseName + ".error").toPath(), e.toString());
         }
         continue;
@@ -368,14 +372,49 @@ public class PrintOracle {
     prefs.showStatus = options.get("showStatus").getAsBoolean();
     prefs.lifersInBold = options.get("lifersInBold").getAsBoolean();
 
-    // ReportsPanel.executeQuery, with includeIncompatibleSightings
-    QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, checklist,
-        new LinkedHashMap<>());
-    processor.keepInvalidSightingsAfterUpdate();
-    processor.includingIncompatibleSightings();
-    QueryResults queryResults = processor.runQuery(
-        restored.rawQueryDefinition(taxonomy, reportSet, depth),
-        restored.countablePredicate(taxonomy, queryPreferences), depth);
+    QueryResults queryResults;
+    List<com.scythebill.birdlist.model.sighting.Trip> givenTrips = null;
+    if (testCase.has("trips")) {
+      givenTrips = new ArrayList<>();
+      for (var tripId : testCase.getAsJsonArray("trips")) {
+        for (var trip : reportSet.getTrips().allTrips()) {
+          if (trip.id().equals(tripId.getAsString())) {
+            givenTrips.add(trip);
+          }
+        }
+      }
+    }
+    if (testCase.has("fromTrips") && testCase.get("fromTrips").getAsBoolean()) {
+      // TripsBrowsePanel.tripsQueryExecutor, with includeIncompatibleSightings: the trips'
+      // sightings, their common place as the root, and their checklist codes' checklist
+      var trips = givenTrips;
+      Checklists checklistsForTrips = CHECKLISTS;
+      Checklist tripChecklist = checklistsForTrips.getChecklist(reportSet, taxonomy, null,
+          checklistsForTrips.getTripChecklistCodes(reportSet, taxonomy, trips));
+      rootLocation = com.scythebill.birdlist.model.sighting.TripUtils.getLocationRoot(
+          reportSet, trips);
+      reportName = com.google.common.base.Optional.absent();
+      QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, tripChecklist,
+          new LinkedHashMap<>());
+      processor.includingIncompatibleSightings();
+      java.util.function.Predicate<com.scythebill.birdlist.model.sighting.Sighting> any =
+          sighting -> false;
+      for (var trip : trips) {
+        any = any.or(com.scythebill.birdlist.model.sighting.TripUtils.tripPredicate(
+            reportSet, trip, null));
+      }
+      queryResults = processor.runQuery(any, queryPreferences.getCountablePredicate(
+          taxonomy, false, QueryPreferences.HeardOnlyFilter.USE_PREFERENCE), depth);
+    } else {
+      // ReportsPanel.executeQuery, with includeIncompatibleSightings
+      QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, checklist,
+          new LinkedHashMap<>());
+      processor.keepInvalidSightingsAfterUpdate();
+      processor.includingIncompatibleSightings();
+      queryResults = processor.runQuery(
+          restored.rawQueryDefinition(taxonomy, reportSet, depth),
+          restored.countablePredicate(taxonomy, queryPreferences), depth);
+    }
     // TripReportDialog: no species table for no visits or too many
     if (queryResults.getAllVisitInfoKeys().size() > 200
         || queryResults.getAllVisitInfoKeys().isEmpty()) {
@@ -418,16 +457,8 @@ public class PrintOracle {
     output.setLiferTaxonIds(liferTaxonIds);
     output.setShowAllTaxonomies(false);
     output.setIncludeFavoritePhotos(false);
-    if (testCase.has("trips")) {
-      List<com.scythebill.birdlist.model.sighting.Trip> trips = new ArrayList<>();
-      for (var tripId : testCase.getAsJsonArray("trips")) {
-        for (var trip : reportSet.getTrips().allTrips()) {
-          if (trip.id().equals(tripId.getAsString())) {
-            trips.add(trip);
-          }
-        }
-      }
-      output.setTrips(trips);
+    if (givenTrips != null) {
+      output.setTrips(givenTrips);
     } else {
       @SuppressWarnings("unchecked")
       Collection<com.scythebill.birdlist.model.sighting.Trip> trips =

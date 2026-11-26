@@ -20,6 +20,9 @@ def main() -> None:
         if not line.strip():
             continue
         name = json.loads(line)["name"]
+        if (pages / f"{name}.error").exists():  # Scythebill failed on it
+            print(json.dumps({"name": name, "error": True}))
+            continue
         data = (pages / f"{name}.{extension}").read_bytes()
         print(json.dumps({"name": name, "size": len(data),
                           "sha256": hashlib.sha256(data).hexdigest()}))  # fmt: skip

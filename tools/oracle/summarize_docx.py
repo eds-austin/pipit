@@ -33,6 +33,9 @@ def main() -> None:
     for line in Path(sys.argv[1]).read_text().split("\n"):
         if line.strip():
             name = json.loads(line)["name"]
+            if (directory / f"{name}.error").exists():  # Scythebill failed on it
+                print(json.dumps({"name": name, "error": True}))
+                continue
             print(json.dumps(summary(name, (directory / f"{name}.docx").read_bytes()),
                              ensure_ascii=False))  # fmt: skip
 

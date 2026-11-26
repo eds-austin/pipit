@@ -1,6 +1,7 @@
 // Trip report: Scythebill's trip report options (TripReportDialog), remembered between uses,
-// plus what to show (species, groups or subspecies; the screen's to start) and the distance
-// unit. Enter makes the report, which is copied to the clipboard and opened in the browser;
+// plus what to show (species, groups or subspecies; the Reports screen's to start) and the
+// distance unit. From the Reports screen it reports on the query; given trips (the Trips
+// screen), on their sightings. Enter makes the report, which is copied to the clipboard and opened in the browser;
 // then TripReportResult offers it again, and Save as Word.
 import QtQuick
 import QtQuick.Layouts
@@ -11,8 +12,10 @@ PDialog {
     objectName: "tripReportDialog"
     heading: qsTr("Trip report")
     width: Math.min(Theme.grid(620), parent ? parent.width - 2 * Theme.s7 : Theme.grid(620))
+    property var tripIds: []
 
-    function show() {
+    function show(ids) {
+        tripIds = ids || []
         const o = reports.tripReportOptions
         scientific.checked = o.includeScientific
         itinerary.checked = o.itinerary
@@ -26,12 +29,16 @@ PDialog {
         itinerary.forceActiveFocus()
     }
     function accept() {
-        reports.makeTripReport({
+        const options = {
             includeScientific: scientific.checked, itinerary: itinerary.checked,
             speciesTable: table.checked, speciesList: list.checked,
             showStatus: status.checked, lifersInBold: lifers.checked,
             depth: reports.depths[depth.currentIndex][0], useMiles: miles.currentIndex === 1
-        })
+        }
+        if (tripIds.length > 0)
+            reports.makeTripsTripReport(options, tripIds)
+        else
+            reports.makeTripReport(options)
         close()
     }
 

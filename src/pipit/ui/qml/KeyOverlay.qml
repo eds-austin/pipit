@@ -61,6 +61,7 @@ PDialog {
         ["Enter · Esc", qsTr("Into the trip's species, and back")],
         ["F2", qsTr("Edit the trip; Enter or Ctrl+S saves")],
         ["Ctrl+P", qsTr("Choose the trip's place")],
+        ["Ctrl+T", qsTr("Trip report of the trip: copied, opened in your browser")],
         ["Ctrl+Delete", qsTr("Delete the trip (sightings stay)")]
     ]
     readonly property var locationKeys: [

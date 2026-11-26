@@ -24,8 +24,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from pipit.datapack.pack import DataPack
+from pipit.domain.partial_date import after_or_equals, before_or_equals
 from pipit.query.engine import Resolver
-from pipit.query.model import QPlace, QueryList
+from pipit.query.model import QPlace, QSighting, QTrip, QueryList
 from pipit.storage.checklist_ops import read_checklist
 from pipit.taxa.model import Taxonomy, TaxonType
 from pipit.taxa.sighting_taxon import SightingTaxon, SightingTaxonType
@@ -176,6 +177,75 @@ class Checklists:
         if code is None or code not in self._region_codes(taxonomy):
             return self._custom_checklist(taxonomy, xml_id)
         return self._built_in_checklist(taxonomy, code)
+
+    def trip_checklist_codes(self, taxonomy: Taxonomy, trips: list[QTrip],
+                             query_list: QueryList) -> list[str] | None:  # fmt: skip
+        """``getTripChecklistCodes``: for one trip with a place, the nearest place with a
+        built-in checklist; otherwise each trip's country's codes (for a trip with no place,
+        the countries of the places its sightings are at). None if a country has none."""
+        codes: dict[str, None] = {}
+        undated: list[QTrip] = []
+        for trip in trips:
+            if trip.location_xml_id is not None and trip.location_xml_id in self._places:
+                if len(trips) == 1:
+                    nearest = self.nearest_built_in_code(taxonomy, trip.location_xml_id)
+                    if nearest is not None:
+                        return [nearest]
+                country = self._ancestor_of_type(trip.location_xml_id, "country")
+                if country is not None:
+                    found = self.checklist_codes(self._places[country])
+                    if not found:
+                        return None
+                    codes.update(dict.fromkeys(found))
+                    continue
+            undated.append(trip)
+        if undated:
+            matching: dict[str, None] = {}
+            for sighting in query_list.sightings:
+                # Scythebill fails on a sighting with no place here; Pipit skips it
+                if sighting.location_xml_id is not None and any(
+                    _in_trip(sighting, trip, query_list) for trip in undated
+                ):
+                    matching[sighting.location_xml_id] = None
+            for location in matching:
+                country = self._ancestor_of_type(location, "country")
+                if country is not None:
+                    found = self.checklist_codes(self._places[country])
+                    if not found:
+                        return None
+                    codes.update(dict.fromkeys(found))
+        return list(codes)
+
+    def nearest_built_in_code(self, taxonomy: Taxonomy, xml_id: str) -> str | None:
+        """``getLocationWithNearestBuiltInChecklist``."""
+        regions = set(self._pack.checklist_regions(_pack_taxonomy_id(taxonomy)))
+        place = self._places.get(xml_id)
+        while place is not None:
+            code = self.checklist_code(place)
+            if code is not None and code in regions:
+                return code
+            place = self._places.get(place.parent) if place.parent else None
+        return None
+
+    def _ancestor_of_type(self, xml_id: str, place_type: str) -> str | None:
+        place = self._places.get(xml_id)
+        while place is not None and place.type != place_type:
+            place = self._places.get(place.parent) if place.parent else None
+        return None if place is None else place.xml_id
+
+    def checklist_for_codes(self, taxonomy: Taxonomy, codes: list[str] | None) -> Checklist | None:
+        """``getChecklist(reportSet, taxonomy, synthesizer, codes)``: one code's checklist,
+        or several synthesized into one."""
+        if not codes:
+            return None
+        if len(codes) == 1:
+            code = codes[0]
+            if code in AGGREGATE_CHECKLIST_MEMBERS:
+                return self.synthesize(taxonomy, frozenset(AGGREGATE_CHECKLIST_MEMBERS[code]))
+            if code not in self._region_codes(taxonomy):
+                return None
+            return self._built_in_checklist(taxonomy, code)
+        return self.synthesize(taxonomy, frozenset(codes))
 
     def _transposed_codes(self, xml_id: str) -> frozenset[str] | None:
         """``getTransposedChecklistLocations``."""
@@ -386,6 +456,18 @@ class Checklists:
                         statuses[species] = status
                 self._custom[key] = Checklist(statuses, built_in=False)
         return self._custom[key]
+
+
+def _in_trip(sighting: QSighting, trip: QTrip, query_list: QueryList) -> bool:
+    """``TripUtils.tripPredicate``: within the trip's dates (and place)."""
+    start, end = sighting.start_date, sighting.end_date
+    if start is None or not after_or_equals(trip.start, start):
+        return False
+    if end is None or not before_or_equals(trip.end, end):
+        return False
+    if trip.location_xml_id is None:
+        return True
+    return sighting.location_xml_id in query_list.places_within(trip.location_xml_id)
 
 
 def _entry_taxon(kind: str, ids: tuple[str, ...], subspecies: str | None) -> SightingTaxon:

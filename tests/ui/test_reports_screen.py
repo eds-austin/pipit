@@ -293,3 +293,28 @@ def test_trip_report(costa_rica: Running, tmp_path: Path) -> None:
     # Qt's offscreen platform crashes at exit while its clipboard holds data (Wayland and X11
     # don't), so the test leaves it empty.
     QGuiApplication.clipboard().clear()
+
+
+def test_trip_report_from_trips(costa_rica: Running) -> None:
+    """Ctrl+T on the Trips screen: a report of the chosen trip's sightings, named after it.
+    The newest trip has no place and a sighting with no place, which Scythebill fails on."""
+    from PySide6.QtGui import QGuiApplication
+
+    running = costa_rica
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_5")
+    wait_focus(running, "tripList")
+    assert running.trips.trip["name"] == "Costa Rica 2025 Part 2"  # the newest
+    shots = os.environ.get("PIPIT_SHOTS")
+    if shots:
+        window.grabWindow().save(str(Path(shots) / "trips-trip-report.png"))
+    ctrl(window, "Key_T")
+    wait_focus(running, "tripItinerary")
+    key(window, "Key_Return")
+    wait_until(lambda: reports.hasTripReport and not reports.makingTripReport, timeout=60)
+    assert reports.tripReportTitle == "Costa Rica 2025 Part 2"
+    assert ["4", "Days"] in reports.tripReportSummary
+    wait_focus(running, "tripSaveWord")
+    assert QGuiApplication.clipboard().text().startswith("Costa Rica 2025 Part 2\n")
+    QGuiApplication.clipboard().clear()  # see test_trip_report

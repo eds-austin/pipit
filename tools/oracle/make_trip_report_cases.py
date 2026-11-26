@@ -81,6 +81,19 @@ def main() -> None:
     # As from the Trips screen: the trips given, not matched
     lines.append(case("trip_part_two", COSTA_RICA, trips=["cr2"]))
     lines.append(case("trips_both", {"fields": []}, trips=["cr2", "cr1"]))
+    # From the Trips screen: the selected trips' sightings, their place and checklist
+    trips_cases = [
+        ("trips_screen_cr1", ["cr1"], "species"),
+        ("trips_screen_cr2", ["cr2"], "species"),
+        ("trips_screen_both", ["cr1", "cr2"], "subspecies"),
+        ("trips_screen_california", ["ca24"], "species"),
+        ("trips_screen_all", ["ca24", "cr1", "cr2"], "species"),
+        ("trips_screen_two_countries", ["ca24", "cr1"], "species"),
+    ]
+    for name, trips, depth in trips_cases:
+        found = json.loads(case(name, {"fields": []}, depth=depth, trips=trips))
+        found["fromTrips"] = True
+        lines.append(json.dumps(found, ensure_ascii=False))
     Path(sys.argv[1]).write_text("\n".join(lines) + "\n")
 
 

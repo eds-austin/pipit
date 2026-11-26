@@ -750,6 +750,35 @@ def run_query(
     return results
 
 
+def run_predicate(predicate: Callable[[QSighting], bool], context: EngineContext, *,
+                  include_incompatible: bool = False) -> QueryResults:  # fmt: skip
+    """``QueryProcessor.runQuery(predicate, countablePredicate, depth)``, as the Trips screen
+    runs its trips' sightings: no query fields, the preferences' countable rule."""
+    countable = CountingPreferences().countable(StoredQuery(()), context.undescribed())
+    depth = context.depth
+    resolve_all = depth is not TaxonType.SUBSPECIES or isinstance(context.taxonomy,
+                                                                   MappedTaxonomy)  # fmt: skip
+    builder = ResultsBuilder()
+    for sighting in context.query_list.sightings:
+        if not predicate(sighting):
+            continue
+        if not _compatible(sighting):
+            if include_incompatible:
+                builder.incompatible.append(sighting)
+            continue
+        taxon: SightingTaxon | None = sighting.taxon
+        if resolve_all:
+            taxon = context.resolve.sighting_at(sighting, depth)
+            if taxon is None:
+                continue
+        assert taxon is not None
+        builder.add(sighting, taxon, None)
+    results = QueryResults(context.taxonomy, builder, depth, countable)
+    results.resolve = context.resolve
+    results.annotate = lambda _sighting, _taxon: None
+    return results
+
+
 def _undescribed(context: EngineContext) -> Callable[[QSighting], bool]:
     """``UndescribedTaxa``: sightings whose taxon is undescribed ("UN") in the display
     taxonomy (in AviList, its exact base mapping)."""

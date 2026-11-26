@@ -11,6 +11,7 @@ import QtQuick.Controls.Basic as B
 import QtQuick.Layouts
 import Pipit
 import "locations"
+import "reports"
 
 Item {
     id: root
@@ -21,6 +22,8 @@ Item {
     readonly property bool has: current.row !== undefined
     readonly property bool writable: !app.readOnly
     readonly property bool dialogOpen: placeDialog.visible || deleteDialog.visible
+                                       || tripReportDialog.visible || tripReportResult.visible
+    property bool awaitingTripReport: false
     property var edited: ({})
     readonly property bool dirty: Object.keys(edited).length > 0
 
@@ -57,6 +60,20 @@ Item {
     Shortcut { enabled: root.shown && root.working && root.has && root.writable && !root.dialogOpen; sequence: "F2"; onActivated: nameField.forceActiveFocus() }
     Shortcut { enabled: root.shown && root.working && root.has && root.writable && !root.dialogOpen; sequence: "Ctrl+P"; onActivated: placeDialog.show() }
     Shortcut { enabled: root.shown && root.working && root.has && root.writable && !root.dialogOpen; sequence: "Ctrl+Del"; onActivated: deleteDialog.open() }
+    Shortcut { enabled: root.shown && root.working && root.has && !root.dialogOpen && !reports.makingTripReport; sequence: "Ctrl+T"; onActivated: root.tripReport() }
+
+    function tripReport() { tripReportDialog.show([root.current.xmlId]) }
+    // The result opens when a report asked for here is ready.
+    Connections {
+        target: reports
+        function onTripReportChanged() {
+            if (root.awaitingTripReport && !reports.makingTripReport) {
+                root.awaitingTripReport = false
+                if (reports.hasTripReport)
+                    tripReportResult.show()
+            }
+        }
+    }
 
     EmptyState {
         anchors.centerIn: parent
@@ -319,6 +336,15 @@ Item {
                 }
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
                 ActionRow {
+                    objectName: "tripReportAction"
+                    Layout.fillWidth: true
+                    text: qsTr("Trip report")
+                    iconName: "file-text"
+                    keys: "Ctrl+T"
+                    enabled: !reports.makingTripReport
+                    onClicked: root.tripReport()
+                }
+                ActionRow {
                     Layout.fillWidth: true
                     text: qsTr("Edit the trip")
                     iconName: "pencil"
@@ -449,4 +475,10 @@ Item {
             }
         ]
     }
+
+    TripReportDialog {
+        id: tripReportDialog
+        onClosed: if (reports.makingTripReport) root.awaitingTripReport = true
+    }
+    TripReportResult { id: tripReportResult }
 }
