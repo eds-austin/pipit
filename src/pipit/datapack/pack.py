@@ -216,6 +216,14 @@ class DataPack:
             )
         ]
 
+    def location_display_names(self, locale: str = "") -> dict[str, str]:
+        """Scythebill's ``locations.properties`` (``locale`` "": English): display names of
+        built-in places by code, and of regions by key."""
+        return dict(self._connection.execute(
+            "SELECT key, name FROM display_names WHERE kind = 'location' AND locale = ?",
+            (locale,),
+        ).fetchall())  # fmt: skip
+
     def predefined_locations(self) -> PredefinedLocations:
         return PredefinedLocations.from_rows(
             self.location_rows("all-states.csv"), self.location_rows("us-counties.csv")

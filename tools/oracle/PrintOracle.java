@@ -217,6 +217,18 @@ public class PrintOracle {
             new File(outDir, testCase.get("name").getAsString() + ".xlsx"));
         continue;
       }
+      if (mode.equals("trip")) {
+        String caseName = testCase.get("name").getAsString();
+        try {
+          writeTripReport(testCase, options, reportSet, taxonomy, depth, restored,
+              queryPreferences, singleChecklist, rootLocation, reportName, locationNames,
+              outDir, caseName);
+        } catch (UnsupportedOperationException e) {
+          // Scythebill can't write this one (a synthetic region has no parent to ask for)
+          Files.writeString(new File(outDir, caseName + ".error").toPath(), e.toString());
+        }
+        continue;
+      }
       ReportPrintPreferences prefs = new ReportPrintPreferences();
       prefs.includeScientific = options.get("includeScientific").getAsBoolean();
       prefs.showFamilies = options.get("showFamilies").getAsBoolean();
@@ -335,6 +347,104 @@ public class PrintOracle {
     output.setSubspeciesInSeparateColumn(hasSubspecies && prefs.subspeciesInSeparateColumn);
     output.setUserOutput(reportSet.getUserSet() == null ? UserOutput.NONE : prefs.userOutput);
     output.writeSpeciesList(prefs.sortType, prefs.sortSightingsType.ordering());
+  }
+
+  /**
+   * SaveAsTripReportAction.actionPerformed, with ReportsPanel's query executor (trips null, so
+   * they're matched from the sightings) or the given trips. The lifers and matching trips are
+   * Scythebill's own private methods, called by reflection. Writes the HTML, the plain-text
+   * copy and the Word document.
+   */
+  static void writeTripReport(JsonObject testCase, JsonObject options, ReportSet reportSet,
+      Taxonomy taxonomy, Taxon.Type depth, StoredQueries.RestoredQuery restored,
+      QueryPreferences queryPreferences, Checklist checklist, Location rootLocation,
+      com.google.common.base.Optional<String> reportName, LocationNames locationNames,
+      File outDir, String name) throws Exception {
+    TripReportPreferences prefs = new TripReportPreferences();
+    prefs.includeScientific = options.get("includeScientific").getAsBoolean();
+    prefs.includeItinerary = options.get("includeItinerary").getAsBoolean();
+    prefs.includeSpeciesTable = options.get("includeSpeciesTable").getAsBoolean();
+    prefs.includeSpeciesList = options.get("includeSpeciesList").getAsBoolean();
+    prefs.showStatus = options.get("showStatus").getAsBoolean();
+    prefs.lifersInBold = options.get("lifersInBold").getAsBoolean();
+
+    // ReportsPanel.executeQuery, with includeIncompatibleSightings
+    QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, checklist,
+        new LinkedHashMap<>());
+    processor.keepInvalidSightingsAfterUpdate();
+    processor.includingIncompatibleSightings();
+    QueryResults queryResults = processor.runQuery(
+        restored.rawQueryDefinition(taxonomy, reportSet, depth),
+        restored.countablePredicate(taxonomy, queryPreferences), depth);
+    // TripReportDialog: no species table for no visits or too many
+    if (queryResults.getAllVisitInfoKeys().size() > 200
+        || queryResults.getAllVisitInfoKeys().isEmpty()) {
+      prefs.includeSpeciesTable = false;
+    }
+
+    var action = new SaveAsTripReportAction(reportSet, null, null, null, null, null,
+        locationNames, null, queryPreferences, null, null);
+    var computeLifers = SaveAsTripReportAction.class.getDeclaredMethod("computeLiferTaxonIds",
+        QueryResults.class, Taxonomy.class, java.util.function.Predicate.class);
+    computeLifers.setAccessible(true);
+    var matchingTrips = SaveAsTripReportAction.class.getDeclaredMethod("matchingTrips",
+        QueryResults.class);
+    matchingTrips.setAccessible(true);
+
+    var output = new com.scythebill.birdlist.ui.io.TripReportDocOutput(
+        queryResults, reportSet, rootLocation, locationNames);
+    reportName.toJavaUtil().ifPresent(output::setName);
+    output.setScientificOrCommon(scientificOrCommon(
+        ScientificOrCommon.valueOf(testCase.get("namesOrder").getAsString()),
+        prefs.includeScientific));
+    output.setWriteItinerary(prefs.includeItinerary);
+    output.setWriteSpeciesList(prefs.includeSpeciesList);
+    output.setWriteSpeciesTable(prefs.includeSpeciesTable);
+    output.setShowStatus(prefs.showStatus);
+    output.setLifersInBold(prefs.lifersInBold);
+    java.util.function.Predicate<com.scythebill.birdlist.model.sighting.Sighting> countable =
+        queryPreferences.getCountablePredicate(queryResults.getTaxonomy(), false,
+            QueryPreferences.HeardOnlyFilter.USE_PREFERENCE);
+    if (countable == null) {
+      countable = sighting -> true;
+    }
+    output.setCountablePredicate(countable);
+    output.setUseMiles(testCase.get("useMiles").getAsBoolean());
+    Map<Taxonomy, Set<String>> liferTaxonIds = new LinkedHashMap<>();
+    @SuppressWarnings("unchecked")
+    Set<String> lifers = (Set<String>) computeLifers.invoke(
+        action, queryResults, queryResults.getTaxonomy(), countable);
+    liferTaxonIds.put(queryResults.getTaxonomy(), lifers);
+    output.setLiferTaxonIds(liferTaxonIds);
+    output.setShowAllTaxonomies(false);
+    output.setIncludeFavoritePhotos(false);
+    if (testCase.has("trips")) {
+      List<com.scythebill.birdlist.model.sighting.Trip> trips = new ArrayList<>();
+      for (var tripId : testCase.getAsJsonArray("trips")) {
+        for (var trip : reportSet.getTrips().allTrips()) {
+          if (trip.id().equals(tripId.getAsString())) {
+            trips.add(trip);
+          }
+        }
+      }
+      output.setTrips(trips);
+    } else {
+      @SuppressWarnings("unchecked")
+      Collection<com.scythebill.birdlist.model.sighting.Trip> trips =
+          (Collection<com.scythebill.birdlist.model.sighting.Trip>) matchingTrips.invoke(
+              action, queryResults);
+      output.setTrips(trips);
+    }
+
+    StringWriter html = new StringWriter();
+    String plainText = output.writeReport(html);
+    Files.writeString(new File(outDir, name + ".html").toPath(), html.toString(),
+        StandardCharsets.UTF_8);
+    Files.writeString(new File(outDir, name + ".txt").toPath(), plainText,
+        StandardCharsets.UTF_8);
+    try (OutputStream out = new FileOutputStream(new File(outDir, name + ".docx"))) {
+      output.writeWordDocument(out);
+    }
   }
 
   /** ReportPrintDialog (and ReportXlsDialog).getScientificOrCommonFromConfiguration. */

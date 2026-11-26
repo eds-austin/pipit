@@ -5,7 +5,8 @@ writes it (``model/.../io``).
   hex character reference per UTF-16 unit (so an emoji is two: ``&#xd83d;&#xdc26;``).
 - ``<meta>``, ``<br>`` and the other empty elements get no end tag.
 - An element starts on a new line, indented two spaces per level (at most 50), except at the
-  top level; text after an element that just ended starts a new line too.
+  top level; text after an element that just ended starts a new line too. Without
+  ``indent`` (``HtmlResponseWriter`` alone, as trip reports use it), nothing is added.
 """
 
 from __future__ import annotations
@@ -39,7 +40,8 @@ def _escape(text: str, attribute: bool) -> str:
 
 
 class HtmlWriter:
-    def __init__(self) -> None:
+    def __init__(self, indent: bool = True) -> None:
+        self._indenting = indent
         self._out: list[str] = []
         self._close_start = False
         self._depth = 0
@@ -60,6 +62,8 @@ class HtmlWriter:
         self._out.append(text)
 
     def _indent(self, depth: int) -> None:
+        if not self._indenting:
+            return
         self._write("\n" + " " * min(depth * 2, _MAX_INDENT))
 
     def _see_if_just_ended(self) -> None:

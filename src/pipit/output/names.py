@@ -166,43 +166,91 @@ def resolved_status(resolved: Resolved) -> str:
 # ------------------------------------------------------------------ places
 
 
-class PlaceNames:
-    """``LocationNames`` with names shown as stored. Every place of the list is in use, so a
-    place is told apart only from the list's other places of the same name."""
+#: ``ResourceBundleLocationDisplayNames``: the states it translates (others keep their name).
+TRANSLATED_STATE_CODES = frozenset({"EC-W", "PM", "CO-SAP"})
+#: Built-in regions' keys in the bundle, by name.
+REGION_KEYS = {"North America": "NORTH_AMERICA", "Central America": "CENTRAL_AMERICA",
+               "West Indies": "WEST_INDIES", "South America": "SOUTH_AMERICA",
+               "Eurasia": "EURASIA", "Europe": "EUROPE", "Asia": "ASIA", "Africa": "AFRICA",
+               "Australasia": "AUSTRALASIA", "Pacific Ocean": "PACIFIC_OCEAN",
+               "Indian Ocean": "INDIAN_OCEAN", "Atlantic Ocean": "ATLANTIC_OCEAN",
+               "Arctic Ocean": "ARCTIC_OCEAN",
+               "South Polar Region": "SOUTH_POLAR_REGION"}  # fmt: skip
 
-    def __init__(self, places: dict[str, QPlace]) -> None:
+
+def display_names(places: dict[str, QPlace], bundle: dict[str, str]) -> dict[str, str]:
+    """``Location.getDisplayName`` where it isn't the stored name: built-in places named by
+    Scythebill's ``locations.properties`` (by code; regions by name; most states keep
+    theirs), such as "eSwatini" for Swaziland."""
+    found: dict[str, str] = {}
+    for xml_id, place in places.items():
+        if not place.built_in:
+            continue
+        if place.type == "state" and place.code not in TRANSLATED_STATE_CODES:
+            continue
+        name = None
+        if place.code is not None and place.code in bundle:
+            name = bundle[place.code]
+        elif place.type == "region" and place.name in REGION_KEYS:
+            name = bundle.get(REGION_KEYS[place.name])
+        if name is not None and name != place.name:
+            found[xml_id] = name
+    return found
+
+
+class PlaceNames:
+    """``LocationNames``, by each place's display name (``display``: those that differ from
+    the stored name, from ``display_names``). Every place of the list is in use, so a place
+    is told apart only from the list's other places of the same name."""
+
+    def __init__(self, places: dict[str, QPlace], display: dict[str, str] | None = None) -> None:
         self._places = places
+        self._display = display or {}
         self._by_name: dict[str, list[QPlace]] = {}
         for place in places.values():
-            self._by_name.setdefault(place.name, []).append(place)
+            self._by_name.setdefault(self.name(place), []).append(place)
+
+    @property
+    def places(self) -> dict[str, QPlace]:
+        return self._places
+
+    def name(self, place: QPlace) -> str:
+        """``getDisplayName``."""
+        return self._display.get(place.xml_id, place.name)
 
     def _parent(self, place: QPlace) -> QPlace | None:
         return self._places.get(place.parent) if place.parent else None
 
     def name_with_type(self, place: QPlace) -> str:
         if place.type is not None and place.type != "region":
-            return f"{place.name} ({_LOCATION_TYPES[place.type]})"
-        return place.name
+            return f"{self.name(place)} ({_LOCATION_TYPES[place.type]})"
+        return self.name(place)
 
     def _in_ancestor_list(self, place: QPlace) -> str:
         """``nameInAncestorList``: "Park--Trail" below "Park" is "Trail"."""
-        index = place.name.find("--")
+        name = self.name(place)
+        index = name.find("--")
         parent = self._parent(place)
-        if index >= 0 and parent is not None and parent.name == place.name[:index]:
-            return place.name[index + 2 :]
-        return place.name
+        if index >= 0 and parent is not None and self.name(parent) == name[:index]:
+            return name[index + 2 :]
+        return name
 
     def _disambiguated(self, place: QPlace, standalone: bool) -> str:
-        same = self._by_name.get(place.name, [place])
+        same = self._by_name.get(self.name(place), [place])
         if len(same) == 1:
-            return place.name if standalone else self._in_ancestor_list(place)
+            return self.name(place) if standalone else self._in_ancestor_list(place)
         by_type = all(other is place or other.type != place.type for other in same)
         parent = self._parent(place)
         if by_type or parent is None:
             return self.name_with_type(place)
         if standalone:
-            return f"{place.name} ({parent.name})"
+            return f"{self.name(place)} ({self.name(parent)})"
         return f"{self._in_ancestor_list(place)} ({self._in_ancestor_list(parent)})"
+
+    def disambiguated_name(self, xml_id: str) -> str:
+        """``disambiguatedName``: the name, with its type or parent's name when another
+        place has the same name."""
+        return self._disambiguated(self._places[xml_id], standalone=True)
 
     def _at_start(self, place: QPlace, standalone: bool) -> str:
         if place.type == "county":
@@ -229,7 +277,7 @@ class PlaceNames:
             if last:
                 break
             parent = self._parent(current)
-            if parent is not None and current.name == parent.name:
+            if parent is not None and self.name(current) == self.name(parent):
                 parent = self._parent(parent)
             current = parent
         return result or ""

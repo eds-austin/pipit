@@ -40,6 +40,7 @@ from pipit.output.print_html import (
     SCIENTIFIC_FIRST,
     SCIENTIFIC_ONLY,
     count_children,
+    list_place_names,
     run_report_query,
     short_date,
 )
@@ -557,7 +558,7 @@ def report_spreadsheet(*, context: EngineContext, checklists: Checklists, query_
     status_restricted = any(v.type == "SPECIES_STATUS" and not v.is_no_op
                             for v, _op in query.fields)  # fmt: skip
     return SpreadsheetReport(
-        results=results, places=PlaceNames(context.query_list.places), root=root,
+        results=results, places=list_place_names(context.query_list, checklists), root=root,
         users=users, options=options, names_order=names_order(names_preference, options),
         show_family_totals=not status_restricted,
         subspecies_in_separate_column=has_subspecies and options.subspecies_in_separate_column,

@@ -25,6 +25,7 @@ from pipit.browse.species import place_labels
 from pipit.datapack.pack import DataPack
 from pipit.domain import gson
 from pipit.domain.partial_date import PartialDate
+from pipit.output.names import display_names
 from pipit.output.print_html import (
     NameSources,
     PrintOptions,
@@ -790,6 +791,10 @@ class ReportsBackend(QObject):
         except (QueryJsonError, UnsupportedQueryError, ValueError, KeyError):
             return "report.xlsx"
         place_names = {xml_id: place.name for xml_id, place in context.query_list.places.items()}
+        pack = self._app.pack
+        if pack is not None:
+            bundle = pack.location_display_names()
+            place_names.update(display_names(context.query_list.places, bundle))
         place_names.update(REGION_NAMES)
         abbreviation = report_abbreviation(query, NameSources(place_names, users,
                                                               context.taxonomy))  # fmt: skip

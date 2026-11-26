@@ -203,3 +203,14 @@ mkdir -p "$XLSX"
 rm -rf "$WORK/xlsx"
 print_oracle "$BSXM/queries.bsxm" xlsx "$XLSX/cases.jsonl" "$WORK/xlsx"
 "$PY" -I -W ignore tools/oracle/summarize_xlsx.py "$XLSX/cases.jsonl" "$WORK/xlsx" > "$XLSX/sheets.jsonl"
+
+# Trip reports (PrintOracle.java's trip mode: TripReportDocOutput as SaveAsTripReportAction
+# sets it up) on a made-up Costa Rica trip; the HTML and text copies by size and SHA-256.
+TRIP=tests/fixtures/oracle/trip_report
+mkdir -p "$TRIP"
+"$PY" -I tools/oracle/make_trip_report_fixture.py "$BSXM/trip_report.bsxm"
+"$PY" -I tools/oracle/make_trip_report_cases.py "$TRIP/cases.jsonl"
+rm -rf "$WORK/trip"
+print_oracle "$BSXM/trip_report.bsxm" trip "$TRIP/cases.jsonl" "$WORK/trip"
+"$PY" -I tools/oracle/summarize_pages.py "$TRIP/cases.jsonl" "$WORK/trip" > "$TRIP/html.jsonl"
+"$PY" -I tools/oracle/summarize_pages.py "$TRIP/cases.jsonl" "$WORK/trip" txt > "$TRIP/text.jsonl"

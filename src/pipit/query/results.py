@@ -15,6 +15,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from pipit.domain.java_hash import guava_capacity, hashmap_order, sighting_taxon_hash, string_hash
 from pipit.query.definition import PostProcessor, Predicate
 from pipit.query.model import QSighting
 from pipit.query.ordering import greatest_of
@@ -34,11 +35,21 @@ class ResultsBuilder:
         default_factory=lambda: defaultdict(list)
     )
     annotations: dict[int, str] = field(default_factory=dict)  # sighting row -> annotation
+    #: Every key added, in order, even those post-processing removes (Java's hash table
+    #: never shrinks, so they decide where the others iterate).
+    inserted: list[str] = field(default_factory=list)
+    inserted_non_single: list[SightingTaxon] = field(default_factory=list)
+    #: Matching sightings of other taxonomies, when asked for (``addIncompatibleSighting``)
+    incompatible: list[QSighting] = field(default_factory=list)
 
     def add(self, sighting: QSighting, taxon: SightingTaxon, annotation: str | None) -> None:
         if taxon.type in _SINGLE_KINDS:
+            if taxon.ids[0] not in self.sightings:
+                self.inserted.append(taxon.ids[0])
             self.sightings[taxon.ids[0]].append(sighting)
         else:
+            if taxon not in self.non_single:
+                self.inserted_non_single.append(taxon)
             self.non_single[taxon].append(sighting)
         if annotation is not None:
             self.annotations[sighting.row] = annotation
@@ -68,6 +79,9 @@ class QueryResults:
         self.countable = countable
         self.sightings = dict(builder.sightings)
         self.non_single = dict(builder.non_single)
+        self._inserted = list(builder.inserted)
+        self._inserted_non_single = list(builder.inserted_non_single)
+        self.incompatible = list(builder.incompatible)
         self.annotations = builder.annotations
         #: Set by ``run_query``: the display taxonomy's resolver, the query's annotator (for
         #: lifers at other levels) and the checklist of the query's one place, if any.
@@ -132,6 +146,21 @@ class QueryResults:
         if resolved.type is SightingTaxonType.SINGLE:
             return self.sightings.get(resolved.taxon.id, [])
         return self.non_single.get(resolved.sighting_taxon, [])
+
+    def all_sightings(self) -> list[QSighting]:
+        """``getAllSightings()``: each ``ArrayListMultimap``'s values, by its keys in Java
+        ``HashMap`` order (a map made for 12 keys), single taxa then sp.s and hybrids."""
+        single = hashmap_order(self._inserted, [string_hash(key) for key in self._inserted],
+                               guava_capacity(12))  # fmt: skip
+        non_single = hashmap_order(
+            self._inserted_non_single,
+            [sighting_taxon_hash(taxon.type.value, taxon.ids)
+             for taxon in self._inserted_non_single],
+            guava_capacity(12),
+        )  # fmt: skip
+        found = [s for key in single for s in self.sightings.get(key, ())]
+        found.extend(s for taxon in non_single for s in self.non_single.get(taxon, ()))
+        return found
 
     def best_sightings(self, resolved: Resolved, ordering: Callable[[QSighting, QSighting], int],
                        count: int) -> list[QSighting]:  # fmt: skip

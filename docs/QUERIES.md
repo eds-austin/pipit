@@ -225,3 +225,40 @@ is written as a bare `<b/>`, as Scythebill's `SpreadsheetFonts` does for macOS N
 - **Not covered:** the "Ssp. Lifer" column never appears in either list (it needs a
   subspecies lifer that isn't a group lifer). Other taxonomies' sheets ("Show all
   taxonomies") wait for custom taxonomies.
+
+## Trip reports (in progress)
+
+`pipit/output/trip_report.py` is a port of Scythebill's `TripReportDocOutput` and
+`SaveAsTripReportAction`; `trip_stops.py` of `TripStops`; `report_document.py` of
+`ReportDocumentWriter`, `ReportPalette`, `HtmlReportDocumentWriter` and
+`TeeToPlainTextResponseWriter`. A report is its title (the query's name, or what its trips'
+names share; then its dates and region), a row of totals, and optionally an itinerary, a
+table of species by day and a species list, with a legend for the markers used. Lifers are
+species not seen anywhere in the list before the report's first date; species with no
+countable sighting are listed apart as "Not counted".
+
+Details that matter for matching Scythebill:
+
+- The report's visits are those of single taxa's sightings (not sp.s' or hybrids'), plus
+  those of matching sightings in other taxonomies (`run_query(include_incompatible=True)`),
+  which show in the itinerary with no species counts.
+- `QueryResults.all_sightings()` iterates as Scythebill's `getAllSightings()` does: each
+  Guava `ArrayListMultimap` by its keys in Java `HashMap` order (`domain/java_hash.py`).
+  It decides the order of stops met only through trips, and ties between trips.
+- Times are Java's US English short times, with a narrow no-break space ("6:15 AM"); a
+  day's distances are summed as `DoubleStream.sum` does and rounded half-even.
+- Place names everywhere (Print and spreadsheets too) are Scythebill's display names:
+  built-in places take their name from Scythebill's `locations.properties` (in the data
+  pack), so Swaziland is "eSwatini".
+- Scythebill fails on a trip report whose place is a synthetic region (it asks the region
+  for its parent); Pipit writes the report, with no region in the subtitle.
+
+Not ported yet: photos in the report (Pipit has no photos yet; sightings' photos online are
+still linked as "P"), other taxonomies' sections (no custom taxonomies yet).
+
+- **Checked against Scythebill.** PrintOracle's trip mode writes Scythebill's HTML, plain
+  text and Word document for 27 cases (`make_trip_report_cases.py`) on a made-up Costa Rica
+  trip (`make_trip_report_fixture.py`, built to reach every part of a report). The HTML and
+  text are byte-identical (the fixtures keep their size and SHA-256). On Eric's list
+  (private, `PIPIT_PRIVATE_TRIP`), 534 reports (his saved reports, every country in two
+  taxonomies and depths) are identical; Scythebill fails on two (a synthetic region).

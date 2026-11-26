@@ -161,6 +161,10 @@ class Checklists:
 
     # ------------------------------------------------------------ getChecklist
 
+    @property
+    def pack(self) -> DataPack:
+        return self._pack
+
     def checklist(self, taxonomy: Taxonomy, xml_id: str) -> Checklist | None:
         transposed = self._transposed_codes(xml_id)
         if transposed is not None:

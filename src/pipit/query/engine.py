@@ -700,9 +700,13 @@ def run_query(
     preferences: CountingPreferences | None = None,
     include_families: bool = True,
     only_countable: bool = False,
+    *,
+    include_incompatible: bool = False,
 ) -> QueryResults:
     """``QueryProcessor.runQuery`` as the Reports screen calls it (``only_countable``:
-    ``onlyIncludeCountableSightings``, as Print and Save as may ask)."""
+    ``onlyIncludeCountableSightings``, as Print and Save as may ask;
+    ``include_incompatible``: ``includingIncompatibleSightings``, keeping the matching
+    sightings of other taxonomies apart, as trip reports ask, for their visits)."""
     preferences = preferences or CountingPreferences()
     definition = composite(list(query.fields), context)
     undescribed = context.undescribed()
@@ -725,7 +729,11 @@ def run_query(
             return query_predicate(sighting) and countable(sighting)
 
     for sighting in sightings:
-        if not predicate(sighting) or not _compatible(sighting):
+        if not predicate(sighting):
+            continue
+        if not _compatible(sighting):
+            if include_incompatible:
+                builder.incompatible.append(sighting)
             continue
         taxon: SightingTaxon | None = sighting.taxon
         if resolve_all:

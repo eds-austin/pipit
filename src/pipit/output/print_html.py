@@ -22,6 +22,7 @@ from pipit.domain.partial_date import PartialDate, PartialField, common_partial_
 from pipit.output.html_writer import HtmlWriter
 from pipit.output.names import (
     PlaceNames,
+    display_names,
     resolved_common_name,
     resolved_full_name,
     resolved_simple_common_name,
@@ -38,7 +39,7 @@ from pipit.query.engine import (
 )
 from pipit.query.fields_place_time import DateValue, LocationValue
 from pipit.query.fields_simple import PhotographedValue
-from pipit.query.model import QSighting, QTrip
+from pipit.query.model import QSighting, QTrip, QueryList
 from pipit.query.results import QueryResults
 from pipit.query.sorting import SORT_TYPES, sorted_rows
 from pipit.query.synthetic import REGION_NAMES, regions_for
@@ -240,14 +241,17 @@ def _date_abbreviation(value: DateValue) -> str | None:
 def report_name(query: StoredQuery, sources: NameSources) -> str | None:
     """``getQueryName().or(getQueryAbbreviation())``: the fields' names (or abbreviations),
     "never ..." for never fields."""
+    return query_name(query, sources) or report_abbreviation(query, sources)
+
+
+def query_name(query: StoredQuery, sources: NameSources) -> str | None:
+    """``QueryPanel.getQueryName``: the fields' names, "never ..." for never fields."""
     names: list[str] = []
     for value, operation in query.fields:
         name = _field_name_and_abbreviation(value, sources)[0]
         if name is not None:
             names.append(f"never {name}" if operation in ("NEVER", "NEVER_ALL") else name)
-    if names:
-        return " ".join(names)
-    return report_abbreviation(query, sources)
+    return " ".join(names) if names else None
 
 
 def report_abbreviation(query: StoredQuery, sources: NameSources) -> str | None:
@@ -795,14 +799,30 @@ def family_totals_shown(query: StoredQuery, checklist: Checklist | None) -> bool
 # ------------------------------------------------------------------ PrintAction
 
 
+def list_place_names(query_list: QueryList, checklists: Checklists) -> PlaceNames:
+    """``LocationNames`` for the list: its places by their display names."""
+    bundle = checklists.pack.location_display_names()
+    return PlaceNames(query_list.places, display_names(query_list.places, bundle))
+
+
+def name_sources(places: PlaceNames, users: dict[str, tuple[str | None, str | None]],
+                 taxonomy: Taxonomy) -> NameSources:  # fmt: skip
+    """What the query's name is made of: places' display names, synthetic regions'."""
+    place_names = {xml_id: places.name(place) for xml_id, place in places.places.items()}
+    place_names.update(REGION_NAMES)
+    return NameSources(place_names, users, taxonomy)
+
+
 def run_report_query(context: EngineContext, checklists: Checklists, query_json: str,
-                     users: dict[str, tuple[str | None, str | None]], *, only_countable: bool
+                     users: dict[str, tuple[str | None, str | None]], *, only_countable: bool,
+                     include_incompatible: bool = False,
                      ) -> tuple[StoredQuery, QueryResults, str | None]:  # fmt: skip
     """``ReportsPanel``'s query executor: the results (with the checklist of the query's one
     place, if any) and the root place that sightings' place names are written below."""
     query_list = context.query_list
     query = parse_query(query_json, query_list, users.keys())
-    results = run_query(query, context, only_countable=only_countable)
+    results = run_query(query, context, only_countable=only_countable,
+                        include_incompatible=include_incompatible)  # fmt: skip
     locations = [v for v, _op in query.fields if isinstance(v, LocationValue)]
     known = set(query_list.places) | set(regions_for(query_list))
     places = {v.location_id if v.location_id in known else None for v in locations}
@@ -827,9 +847,8 @@ def print_report(*, context: EngineContext, checklists: Checklists, query_json: 
     query_list = context.query_list
     query, results, root = run_report_query(context, checklists, query_json, users,
                                             only_countable=options.only_countable)  # fmt: skip
-    place_names = {xml_id: place.name for xml_id, place in query_list.places.items()}
-    place_names.update(REGION_NAMES)
-    name = report_name(query, NameSources(place_names, users, context.taxonomy))
+    places = list_place_names(query_list, checklists)
+    name = report_name(query, name_sources(places, users, context.taxonomy))
     title = name or file_name
     if name is not None:
         details = [file_name, date]
@@ -838,7 +857,7 @@ def print_report(*, context: EngineContext, checklists: Checklists, query_json: 
         details = [date]
         document_title = f"{file_name} - {date}"
     page = PrintPage(
-        results=results, places=PlaceNames(query_list.places), root=root, title=title,
+        results=results, places=places, root=root, title=title,
         document_title=document_title, details=details, options=options,
         names_order=names_order(names_preference, options),
         show_family_totals=family_totals_shown(query, results.checklist),
