@@ -1,5 +1,5 @@
-"""Importing an eBird "My Data" file into the open list, as a sequence of questions and a
-review (QML: ImportDialog).
+"""Importing an eBird file (My Data, the Record Format or a life list) into the open list,
+as a sequence of questions and a review (QML: ImportDialog).
 
 One worker thread runs the whole import (``pipit.imports.session.ImportRun``) on its own
 read-only connection and the data pack, and waits for the answers to Scythebill's
@@ -25,7 +25,8 @@ from pipit.domain.locations import is_built_in
 from pipit.domain.partial_date import format_partial_date
 from pipit.domain.report import Location
 from pipit.imports.commit import ImportStoreError, store
-from pipit.imports.my_data import MissingHeaderError, MyDataFile
+from pipit.imports.formats import open_source
+from pipit.imports.my_data import MissingHeaderError
 from pipit.imports.session import ImportOutcome, ImportRefusedError, ImportRun
 from pipit.imports.taxa import TbdTaxon
 from pipit.query.checklists import Checklists
@@ -72,7 +73,7 @@ class ImportsBackend(QObject):
         self._matches: list[Any] = []
         self.matches_model = DictListModel(["name", "scientific"])
         self._failed_rows: list[list[str]] = []
-        self._header: list[str] = []
+        self._header: list[str] | None = None
         self._source: Path | None = None
 
     # ------------------------------------------------------------ state for QML
@@ -183,27 +184,15 @@ class ImportsBackend(QObject):
                     raise ImportRefusedError(
                         "This list has observers; Pipit can't yet ask which of them saw "
                         "imported sightings. Import the file in Scythebill instead.")  # fmt: skip
-                source = MyDataFile(job.source)
+                source = open_source(job.source)
                 checklists = Checklists(pack, connection, load_query_list(connection))
                 run = ImportRun(report, source, taxonomy=job.display, pack=pack,
                                 checklists=checklists)  # fmt: skip
                 self._run = run
                 self._header = source.header
                 run.check()
-                dates = run.dates()
-                if 0 < len(dates.new) < dates.in_file:
-                    self._post("dates", new=len(dates.new), inFile=dates.in_file,
-                               first=format_partial_date(dates.new[0]),
-                               last=format_partial_date(dates.new[-1]))  # fmt: skip
-                    answer = self._wait()
-                    if answer == _CANCEL:
-                        return self._cancelled()
-                    if answer:
-                        run.only_dates(dates.new)
-                elif not dates.new:
-                    self._post("allDates", inFile=dates.in_file)
-                    if self._wait() == _CANCEL:
-                        return self._cancelled()
+                if source.mass_export and self._ask_dates(run) == _CANCEL:
+                    return self._cancelled()
                 self._post("reading")
                 names = run.read_places_and_taxa()
                 if names:
@@ -234,6 +223,25 @@ class ImportsBackend(QObject):
                 self._dispatcher.post(lambda: self._stored(added))
         finally:
             connection.close()
+        return None
+
+    def _ask_dates(self, run: ImportRun) -> str | None:
+        """A mass export: only the dates new to the list? (where the format can narrow it),
+        or, if the list has every date, import anyway?"""
+        dates = run.dates()
+        if run.source.filters_dates and 0 < len(dates.new) < dates.in_file:
+            self._post("dates", new=len(dates.new), inFile=dates.in_file,
+                       first=format_partial_date(dates.new[0]),
+                       last=format_partial_date(dates.new[-1]))  # fmt: skip
+            answer = self._wait()
+            if answer == _CANCEL:
+                return _CANCEL
+            if answer:
+                run.only_dates(dates.new)
+        elif not dates.new:
+            self._post("allDates", inFile=dates.in_file)
+            if self._wait() == _CANCEL:
+                return _CANCEL
         return None
 
     def _cancelled(self) -> None:
@@ -365,7 +373,8 @@ class ImportsBackend(QObject):
             return ""
         with target.open("w", encoding="utf-8", newline="") as file:
             writer = csv.writer(file, lineterminator="\n")
-            writer.writerow(self._header)
+            if self._header is not None:  # Record Format files have none
+                writer.writerow(self._header)
             writer.writerows(self._failed_rows)
         self._app.message.emit(f"Saved the rows not imported as {target.name}")
         return str(target)

@@ -8,3 +8,18 @@
 {"format": "myData", "name": "trips_drop", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false, "duplicates": "drop"}
 {"format": "myData", "name": "trips_overwrite", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false, "duplicates": "overwrite"}
 {"format": "myData", "name": "trips_avilist", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "my_data.csv", "onlyNewDates": false, "display": "avilist", "duplicates": "drop"}
+{"format": "ebirdRecord", "name": "record_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "ebird_record.csv"}
+{"format": "ebirdRecord", "name": "record_new_avilist", "list": "../bsxm/new_list.scythebill.bsxm", "file": "ebird_record.csv", "display": "avilist"}
+{"format": "ebirdRecord", "name": "record_resolved", "list": "../bsxm/new_list.scythebill.bsxm", "file": "ebird_record.csv", "taxa": {"Pinkish Warbler|Setophaga|rosea": "spCardever"}}
+{"format": "ebirdRecord", "name": "record_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "ebird_record.csv", "duplicates": "drop"}
+{"format": "ebirdRecord", "name": "record_unknown_place", "list": "../bsxm/new_list.scythebill.bsxm", "file": "ebird_record_unknown_place.csv"}
+{"format": "ebirdRecord", "name": "record_export_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "trip_report.ebird.csv"}
+{"format": "ebirdRecord", "name": "record_export_avilist", "list": "../bsxm/new_list.scythebill.bsxm", "file": "trip_report.ebird.csv", "display": "avilist"}
+{"format": "ebirdRecord", "name": "record_export_back", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "trip_report.ebird.csv", "duplicates": "drop"}
+{"format": "ebirdRecord", "name": "record_export_overwrite", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "trip_report.ebird.csv", "duplicates": "overwrite"}
+{"format": "ebirdRecord", "name": "record_export_back_avilist", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "trip_report.ebird.csv", "display": "avilist", "duplicates": "drop"}
+{"format": "lifeList2023", "name": "life_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "life_list.csv"}
+{"format": "lifeList2023", "name": "life_avilist", "list": "../bsxm/new_list.scythebill.bsxm", "file": "life_list.csv", "display": "avilist"}
+{"format": "lifeList2023", "name": "life_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "life_list.csv", "duplicates": "drop", "taxa": {"Pinkish Warbler|Setophaga rosea": "spCardever"}}
+{"format": "lifeList", "name": "life_old_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "life_list_old.csv"}
+{"format": "lifeList", "name": "life_old_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "life_list_old.csv", "duplicates": "overwrite"}

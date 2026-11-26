@@ -64,10 +64,10 @@ COMMANDS: tuple[Command, ...] = (
     Command("app.import-scythebill", "Import Scythebill list…", "List", "", ("bsxm", "file")),
     Command(
         "app.import-ebird",
-        "Import from eBird (My Data)…",
+        "Import from eBird…",
         "List",
         "",
-        ("ebird", "my data", "csv", "zip", "import"),
+        ("ebird", "my data", "record format", "csv", "zip", "import"),
     ),
     Command("app.toggle-sidebar", "Toggle sidebar", "View", "Ctrl+B", ("collapse", "expand")),
     Command("app.keyboard", "Keyboard shortcuts", "Help", "F1", ("keys", "help")),

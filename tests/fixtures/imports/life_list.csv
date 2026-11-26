@@ -1,0 +1,11 @@
+Row #,Taxon Order,Category,Common Name,Scientific Name,Count,Location,S/P,Date,LocID,SubID,Exotic,Countable
+1,320,species,Mallard,Anas platyrhynchos,4,Madrona Marsh Preserve,US-CA,13 Apr 2024,L1001,S1001,,1
+2,2010,species,Rock Pigeon,Columba livia,X,"Home (33.85, -118.35)",US-CA,02 May 2024,,S1009,N,1
+3,640,species,Ring-necked Pheasant,Phasianus colchicus,1,Backyard,US-CA,15 Apr 2024,L1003,S1004,Y,1
+4,30001,species,Dark-eyed Junco,Junco hyemalis oreganus,1,Backyard,US-CA,15-Apr-24,L1003,S1004,,1
+5,8000,species,Scarlet Macaw,Ara macao,6,Carara,CR-P,02 Feb 2025,L2001,S2001,,1
+6,29000,species,Eurasian Blackbird,Turdus merula,3,Dungeness RSPB,GB-ENG,10 Sept 2023,L3001,S3001,,1
+7,31000,species,Pinkish Warbler,Setophaga rosea,1,Backyard,US-CA,16 Apr 2024,L1003,S1005,,1
+8,28000,species,Swainson's Thrush,Catharus ustulatus,14,Pond - 33.85x-118.35,US-CA,02-May-24,,S1010,,1
+9,7000,species,Common Ground Dove,Columbina passerina,3,"Lake 9.78, -84.60",CR-P,01 Feb 2025,,S2002,,1
+10,7100,species,Lesser Nighthawk,Chordeiles acutipennis,1,,CR-,2 Feb 2025,,S2003,,1

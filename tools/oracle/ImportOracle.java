@@ -2,7 +2,7 @@
 // with the choices made in advance, then saves the list:
 //   ImportOracle taxon.xml avilist.xml appResources in.bsxm cases.jsonl outDir
 // Each case is one line of JSON:
-//   {"name", "format": "myData", "file": path (relative to cases.jsonl), "list": the .bsxm to
+//   {"name", "format": "myData"|"ebirdRecord"|"lifeList2023"|"lifeList", "file": path (relative to cases.jsonl), "list": the .bsxm to
 //    import into (relative to cases.jsonl; in.bsxm if not given),
 //    "display": "clements"|"avilist", "onlyNewDates": true|false (the "import only the new
 //    dates?" question; default true), "taxa": {taxon key: base taxon ID} (as chosen while
@@ -149,6 +149,9 @@ public class ImportOracle {
     PredefinedLocations predefined = injector.getInstance(PredefinedLocations.class);
     SightingsImporter<?> importer = switch (testCase.get("format").getAsString()) {
       case "myData" -> new EBirdMyDataImporter(reportSet, taxonomy, checklists, predefined, file);
+      case "ebirdRecord" -> new EBirdImportImporter(reportSet, taxonomy, checklists, predefined, file);
+      case "lifeList2023" -> new EBird2023LifeListImporter(reportSet, taxonomy, checklists, predefined, file);
+      case "lifeList" -> new EBirdLifeListImporter(reportSet, taxonomy, checklists, predefined, file);
       default -> throw new IllegalArgumentException(testCase.get("format").getAsString());
     };
 

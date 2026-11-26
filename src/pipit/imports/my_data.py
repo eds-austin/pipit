@@ -16,7 +16,6 @@ Scythebill quirks kept, so imports match it:
 from __future__ import annotations
 
 import contextlib
-from dataclasses import dataclass
 from pathlib import Path
 
 from pipit.domain.partial_date import PartialDate
@@ -33,8 +32,9 @@ from pipit.imports.fields import (
     read_rows,
     string_at,
 )
-from pipit.imports.places import ImportedLocation
-from pipit.imports.taxa import WHITESPACE, after_binomial, just_binomial
+from pipit.imports.places import ImportedLocation, LocationShortcuts
+from pipit.imports.source import VisitFields
+from pipit.imports.taxa import WHITESPACE, TaxonResolver, after_binomial, just_binomial
 
 DATE_PARSERS = [JodaDateParser("yy-MM-dd"), JodaDateParser("yy/MM/dd")]
 MACAULAY_LIBRARY_URL = "https://macaulaylibrary.org/asset/{}"
@@ -97,34 +97,28 @@ class MissingHeaderError(ValueError):
     """``IMPORT_REQUIRED_HEADER_MISSING_FORMAT``."""
 
 
-@dataclass(frozen=True, slots=True)
-class VisitFields:
-    """What a row says about its checklist, before ``VisitInfo`` checks it."""
-
-    observation_type: ObservationType
-    duration_minutes: int | None
-    distance_km: float | None
-    area_hectares: float | None
-    party_size: int | None
-    complete: bool
-    comments: str | None
-
-
 class MyDataFile:
     """A My Data file's rows and columns (``computeMappings``)."""
 
     #: A mass export: everything the account has, so only new dates need importing.
     mass_export = True
+    filters_dates = True
     format_name = "eBird My Data"
+    name_distance = 1  # setMaximumNameDistance(1): eBird's names are current
+    unreadable_message = (
+        "Pipit could not read the dates in this eBird file. This often happens when the file "
+        "was opened and saved in a spreadsheet; download it from eBird again, and import it "
+        "without opening it.")  # fmt: skip
 
     def __init__(self, path: Path) -> None:
         self.path = path
         rows = read_rows(path)
         if not rows:
             raise MissingHeaderError("The file is empty.")
-        self.header = rows[0]
+        self.header: list[str] | None = rows[0]
+        columns = rows[0]
         self.rows = rows[1:]
-        index = {name.lower(): i for i, name in enumerate(self.header)}
+        index = {name.lower(): i for i, name in enumerate(columns)}
         self._time = index.get("time")
         self._breeding = index.get("breeding code")
         # "Species Comments" became "Observation Details" in October 2019
@@ -167,7 +161,9 @@ class MyDataFile:
 
     # -------------------------------------------------------------- places and names
 
-    def imported_location(self, row: list[str]) -> ImportedLocation:
+    def imported_location(self, row: list[str],
+                          shortcuts: LocationShortcuts) -> ImportedLocation:  # fmt: skip
+        del shortcuts  # every row has its country and state
         region = string_at(row, self._region) or ""
         parts = region.split("-")
         if len(parts) != 2:
@@ -181,7 +177,9 @@ class MyDataFile:
             longitude=string_at(row, self._longitude) or None,
         )  # fmt: skip
 
-    def names(self, row: list[str]) -> tuple[str | None, str | None, str | None]:
+    def names(self, row: list[str],
+              resolver: TaxonResolver) -> tuple[str | None, str | None, str | None]:  # fmt: skip
+        del resolver
         """Common name, binomial and what follows it (``FieldTaxonImporter`` with
         ``JustBinomial`` and ``AfterBinomial``)."""
         common = string_at(row, self._common)

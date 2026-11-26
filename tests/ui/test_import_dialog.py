@@ -85,10 +85,59 @@ def test_cancel_and_refusal(running: Running, tmp_path: Path) -> None:
     wait_until(lambda: imports.stage == "idle")
     assert app.sightingCount == before
     bad = tmp_path / "bad.csv"
-    bad.write_text("Submission ID,Common Name\nS1,Mallard\n", encoding="utf-8")
+    bad.write_text("Submission ID,Common Name,Checklist Comments\nS1,Mallard,\n", encoding="utf-8")
     imports.start(QUrl.fromLocalFile(str(bad)))
     _dialog(running).show()
     wait_until(lambda: imports.stage == "failed", timeout=60)
     assert "Date" in imports.error
     key(running.window, "Key_Escape")
     wait_until(lambda: imports.stage == "idle")
+
+
+def test_import_record_format(running: Running) -> None:
+    """The trip list's own Save for eBird file, imported back: every date is in the list
+    already (Import anyway), and nearly every sighting (Leave them out). There is no "only
+    new dates?" for this format: Scythebill imports every date anyway."""
+    from PySide6.QtCore import QUrl
+
+    imports = running.imports
+    app = running.app
+    wait_until(lambda: app.taxaReady, timeout=60)
+    before = app.sightingCount
+    imports.start(QUrl.fromLocalFile(str(FIXTURES / "imports" / "trip_report.ebird.csv")))
+    _dialog(running).show()
+    wait_until(lambda: imports.stage == "allDates", timeout=60)
+    key(running.window, "Key_Return")  # Import anyway
+    wait_until(lambda: imports.stage == "duplicates", timeout=60)
+    # The window counts in AviList: as Scythebill does (record_export_back_avilist)
+    assert imports.details["duplicates"] == 77
+    key(running.window, "Key_Return")  # Leave them out
+    wait_until(lambda: imports.stage == "review", timeout=60)
+    assert imports.details["added"] == 6
+    key(running.window, "Key_Return")
+    wait_until(lambda: imports.stage == "done", timeout=60)
+    wait_until(lambda: app.sightingCount == before + 6)
+
+
+def test_import_life_list(running: Running) -> None:
+    """A life list: no question about dates (it isn't a mass export), straight to the name
+    Pipit doesn't know, left out with Ctrl+L, then the review."""
+    from PySide6.QtCore import QUrl
+
+    imports = running.imports
+    app = running.app
+    wait_until(lambda: app.taxaReady, timeout=60)
+    before = app.sightingCount
+    imports.start(QUrl.fromLocalFile(str(FIXTURES / "imports" / "life_list.csv")))
+    _dialog(running).show()
+    wait_until(lambda: imports.stage == "names", timeout=60)
+    ctrl(running.window, "Key_L")
+    wait_until(lambda: imports.stage in ("duplicates", "review"), timeout=60)
+    if imports.stage == "duplicates":
+        key(running.window, "Key_Return")  # Leave them out
+        wait_until(lambda: imports.stage == "review", timeout=60)
+    assert imports.details["failed"] == 1
+    added = imports.details["added"]
+    key(running.window, "Key_Return")
+    wait_until(lambda: imports.stage == "done", timeout=60)
+    wait_until(lambda: app.sightingCount == before + added)

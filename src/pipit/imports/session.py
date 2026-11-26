@@ -43,8 +43,8 @@ from pipit.domain.report import (
 )
 from pipit.domain.values import ApproximateNumber, float32
 from pipit.imports.fields import DateParseError
-from pipit.imports.my_data import MyDataFile, VisitFields
 from pipit.imports.places import LocationShortcuts, PlaceBuilder, Places, load_aliases
+from pipit.imports.source import ImportSource, VisitFields
 from pipit.imports.taxa import (
     StatusOf,
     TaxonPossibilities,
@@ -97,7 +97,7 @@ class ImportOutcome:
 class ImportRun:
     """An import of one file into ``report`` (changed in place)."""
 
-    def __init__(self, report: ReportSet, source: MyDataFile, *, taxonomy: Taxonomy,
+    def __init__(self, report: ReportSet, source: ImportSource, *, taxonomy: Taxonomy,
                  pack: DataPack, checklists: Checklists) -> None:  # fmt: skip
         self.report = report
         #: The sightings as loaded, in stored order (for storing what the import removes).
@@ -139,10 +139,7 @@ class ImportRun:
             except DateParseError:
                 continue
             return
-        raise ImportRefusedError(
-            "Pipit could not read the dates in this eBird file. This often happens when the "
-            "file was opened and saved in a spreadsheet; download it from eBird again, and "
-            "import it without opening it.")  # fmt: skip
+        raise ImportRefusedError(self.source.unreadable_message)
 
     # -------------------------------------------------------------- 2. dates
 
@@ -169,8 +166,10 @@ class ImportRun:
         return NewDates(len(ordered), [date for date in ordered if date not in existing])
 
     def only_dates(self, dates: Iterable[PartialDate]) -> None:
-        """``onlyImportDatesIn``: import just these dates' rows."""
-        self._dates_filter = frozenset(dates)
+        """``onlyImportDatesIn``: import just these dates' rows (if the format can; for
+        eBird's Record Format, Scythebill asks but imports every date anyway)."""
+        if self.source.filters_dates:
+            self._dates_filter = frozenset(dates)
 
     def _rows(self) -> list[list[str]]:
         """``importLines``: the rows imported (all, or those on the chosen dates)."""
@@ -194,12 +193,15 @@ class ImportRun:
         }
 
     def _read_places(self) -> None:
-        for number, row in enumerate(self.source.rows, start=2):
+        first_line = 1 if self.source.header is None else 2
+        for number, row in enumerate(self.source.rows, start=first_line):
             key = self.source.location_key(row)
             if key in self._location_ids:
                 continue
             try:
-                location = self.place_builder.add(self.source.imported_location(row))
+                location = self.place_builder.add(
+                    self.source.imported_location(row, self.shortcuts)
+                )
             except (ValueError, AssertionError) as error:
                 raise ImportRefusedError(f"The import failed on line {number}: {error}") from error
             if location is None:
@@ -208,7 +210,7 @@ class ImportRun:
             self._location_codes[key] = self._nearest_checklist_code(location)
 
     def _read_taxa(self) -> dict[str, TbdTaxon]:
-        resolver = TaxonResolver(self.taxonomy, maximum_name_distance=1)
+        resolver = TaxonResolver(self.taxonomy, maximum_name_distance=self.source.name_distance)
         doubtful: dict[str, tuple[TaxonPossibilities, TbdTaxon, dict[str | None, None]]] = {}
         tbd: dict[str, TbdTaxon] = {}
         self.resolved_taxa = 0
@@ -222,7 +224,7 @@ class ImportRun:
             elif key in tbd:
                 self._note_place(tbd[key], location_key)
             elif key not in self._taxa:
-                common, binomial, rest = self.source.names(row)
+                common, binomial, rest = self.source.names(row, resolver)
                 found = resolver.map(common, binomial, rest)
                 if found is not None and found.good_match:
                     self._taxa[key] = found
@@ -357,7 +359,8 @@ class ImportRun:
                 by_visit[(key, sighting.taxon)] = sighting
             self._imports.append(sighting)
             if key is not None:
-                visit = _visit(key, self.source.visit(row))
+                fields = self.source.visit(row)
+                visit = None if fields is None else _visit(key, fields)
                 if visit is not None:
                     self._visits[key] = visit
         return self._count_duplicates()
@@ -404,8 +407,12 @@ class ImportRun:
         """``countDuplicates``, exactly."""
         if not self.report.sightings:
             return 0
-        existing = {_funnel(sighting) for sighting in self.report.sightings}
-        return sum(1 for sighting in self._imports if _funnel(sighting) in existing)
+        starts = self._trip_starts()
+        existing = {_funnel(sighting, starts) for sighting in self.report.sightings}
+        return sum(1 for sighting in self._imports if _funnel(sighting, starts) in existing)
+
+    def _trip_starts(self) -> dict[str, PartialDate]:
+        return {trip.id: trip.start_date for trip in self.report.trips}
 
     @property
     def imports(self) -> list[Sighting]:
@@ -470,19 +477,47 @@ class ImportRun:
             found = resolve(sighting.taxon, self.taxonomy)
             return None if found is None else found.sighting_taxon
 
-        keys = {key for sighting in imports if (key := _duplicate_key(sighting)) is not None}
-        existing = {(key, taxon_of(sighting)) for sighting in self.report.sightings
-                    if sighting.taxonomy_id is None
-                    and (key := _duplicate_key(sighting)) is not None and key in keys}  # fmt: skip
+        starts = self._trip_starts()
+        keys = {
+            key for sighting in imports if (key := _duplicate_key(sighting, starts)) is not None
+        }
+        existing = {
+            (key, taxon_of(sighting))
+            for sighting in self.report.sightings
+            if sighting.taxonomy_id is None
+            and (key := _duplicate_key(sighting, starts)) is not None
+            and key in keys
+        }
         return [sighting for sighting in imports
-                if (key := _duplicate_key(sighting)) is None
+                if (key := _duplicate_key(sighting, starts)) is None
                 or (key, taxon_of(sighting)) not in existing]  # fmt: skip
 
     def _existing_duplicates(self, imports: list[Sighting]) -> list[Sighting]:
+        starts = self._trip_starts()
         imported = {(key, sighting.taxon) for sighting in imports
-                    if (key := _duplicate_key(sighting)) is not None}  # fmt: skip
+                    if (key := _duplicate_key(sighting, starts)) is not None}  # fmt: skip
         return [sighting for sighting in self.report.sightings
-                if (_duplicate_key(sighting), sighting.taxon) in imported]  # fmt: skip
+                if (_duplicate_key(sighting, starts), sighting.taxon) in imported]  # fmt: skip
+
+    def _move_to_parent(self, location: Location) -> None:
+        """``ReportSet.deleteLocation``: a deleted place's checklist details (unless its
+        parent has some for the same visit) and trips go to its parent."""
+        parent = location.parent
+        visits = self.report.visits
+        keys = {visit.key for visit in visits}
+        for visit in [visit for visit in visits if visit.key.location_id == location.id]:
+            if parent is not None:
+                moved = VisitKey(parent.id, visit.key.date, visit.key.start_time)
+                if moved not in keys:
+                    keys.add(moved)
+                    visits.append(Visit(moved, visit.observation_type, visit.area_hectares,
+                                        visit.distance_km, visit.duration_minutes,
+                                        visit.party_size, visit.comments, visit.complete,
+                                        list(visit.photos)))  # fmt: skip
+            visits.remove(visit)
+        for trip in self.report.trips:
+            if trip.location_id == location.id:
+                trip.location_id = None if parent is None else parent.id
 
     def _clean_up(self) -> None:
         """``ImportCleanup.cleanUnneededLocationsAndTrips``, then ``LocationsToSave``."""
@@ -496,6 +531,7 @@ class ImportRun:
             if not unneeded:
                 break
             for location in unneeded:
+                self._move_to_parent(location)
                 self.places.delete(location)
         trips_used = {s.trip_id for s in self.report.sightings if s.trip_id}
         self.report.trips[:] = [
@@ -524,8 +560,9 @@ def _visit(key: VisitKey, fields: VisitFields) -> Visit | None:
     """``VisitInfo.Builder.build`` (historical if a required field is missing), kept only
     if it has more than a protocol (``hasData``; incidental counts)."""
     visit = Visit(key, fields.observation_type,
-                  area_hectares=float32(fields.area_hectares) if fields.area_hectares else None,
-                  distance_km=float32(fields.distance_km) if fields.distance_km else None,
+                  area_hectares=None if fields.area_hectares is None
+                  else float32(fields.area_hectares),
+                  distance_km=None if fields.distance_km is None else float32(fields.distance_km),
                   duration_minutes=fields.duration_minutes, party_size=fields.party_size,
                   complete=fields.complete,
                   comments=fields.comments)  # fmt: skip
@@ -603,17 +640,27 @@ def _plus(first: ApproximateNumber, second: ApproximateNumber) -> ApproximateNum
     return ApproximateNumber(total, first.prefix)
 
 
-def _funnel(sighting: Sighting) -> tuple[object, ...]:
-    """``SightingFunnel``'s fields: date, time, taxonomy and taxon."""
-    return (sighting.date, sighting.time, sighting.taxonomy_id, sighting.taxon.type,
-            sighting.taxon.ids)  # fmt: skip
+def _funnel(sighting: Sighting, trip_starts: dict[str, PartialDate]) -> tuple[object, ...]:
+    """``SightingFunnel``'s fields: start date, time, taxonomy and taxon."""
+    return (_start_date(sighting, trip_starts), sighting.time, sighting.taxonomy_id,
+            sighting.taxon.type, sighting.taxon.ids)  # fmt: skip
 
 
-def _duplicate_key(sighting: Sighting) -> tuple[object, ...] | None:
-    """``DuplicateSightingKey.forSighting``: date, time and taxonomy (not the place)."""
-    if sighting.date is None:
+def _start_date(sighting: Sighting, trip_starts: dict[str, PartialDate]) -> PartialDate | None:
+    """``getStartDateAsPartial``: an undated sighting on a trip has the trip's start."""
+    if sighting.date is not None or sighting.trip_id is None:
+        return sighting.date
+    return trip_starts.get(sighting.trip_id)
+
+
+def _duplicate_key(sighting: Sighting,
+                   trip_starts: dict[str, PartialDate]) -> tuple[object, ...] | None:  # fmt: skip
+    """``DuplicateSightingKey.forSighting``: start date, time and taxonomy (not the
+    place)."""
+    date = _start_date(sighting, trip_starts)
+    if date is None:
         return None
-    return (sighting.date, sighting.time, sighting.taxonomy_id)
+    return (date, sighting.time, sighting.taxonomy_id)
 
 
 def _int32(value: int) -> int:

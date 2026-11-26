@@ -112,7 +112,7 @@ def _store_visits(connection: sqlite3.Connection, visits: list[Visit]) -> None:
         date = format_partial_date(key.date)
         start = "" if key.start_time is None else f"{key.start_time:%H:%M}"
         values = (visit.observation_type.type_id, _float_text(visit.area_hectares),
-                  _float_text(visit.distance_km), visit.duration_minutes, visit.party_size,
+                  _float_text(visit.distance_km), visit.duration_minutes or None, visit.party_size,
                   visit.comments, int(visit.complete))  # fmt: skip
         found = stored.get((key.location_id, date, start))
         if found is None:

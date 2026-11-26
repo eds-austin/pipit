@@ -17,7 +17,7 @@ import pytest
 
 from pipit.bsxm.writer import write_bsxm
 from pipit.imports.commit import store
-from pipit.imports.my_data import MyDataFile
+from pipit.imports.formats import open_source
 from pipit.imports.session import ImportOutcome, ImportRefusedError, ImportRun
 from pipit.query.checklists import Checklists
 from pipit.query.model import load_query_list
@@ -44,6 +44,14 @@ class Imported:
 
 
 def run_case(pack: Any, case: dict[str, Any], base: Path, tmp_path: Path) -> Imported:
+    """``_run_case``; a refusal at any step is ``{"error": true}``, as ImportOracle writes."""
+    try:
+        return _run_case(pack, case, base, tmp_path)
+    except ImportRefusedError:
+        return Imported({"error": True}, ListDatabase.open(tmp_path / f"{case['name']}.pipit"))
+
+
+def _run_case(pack: Any, case: dict[str, Any], base: Path, tmp_path: Path) -> Imported:
     """The steps ImportOracle takes, with the case's choices; the summary it writes."""
     result = import_bsxm(base / case["list"], tmp_path / f"{case['name']}.pipit",
                          pack.base_taxonomy_id, pack.base_taxon_ids(),
@@ -52,19 +60,18 @@ def run_case(pack: Any, case: dict[str, Any], base: Path, tmp_path: Path) -> Imp
     connection = database.connection
     clements, avilist = pack.load_base_and_avilist()
     taxonomy = avilist if case.get("display") == "avilist" else clements
-    run = ImportRun(load_report(connection), MyDataFile(base / case["file"]), taxonomy=taxonomy,
+    run = ImportRun(load_report(connection), open_source(base / case["file"], case["format"]),
+                    taxonomy=taxonomy,
                     pack=pack, checklists=Checklists(pack, connection,
                                                      load_query_list(connection)))  # fmt: skip
     summary: dict[str, Any] = {}
-    try:
-        run.check()
-    except ImportRefusedError:
-        return Imported({"error": True}, database)
-    dates = run.dates()
-    summary["newDates"] = len(dates.new)
-    summary["datesInFile"] = dates.in_file
-    if 0 < len(dates.new) < dates.in_file and case.get("onlyNewDates", True):
-        run.only_dates(dates.new)
+    run.check()
+    if run.source.mass_export:
+        dates = run.dates()
+        summary["newDates"] = len(dates.new)
+        summary["datesInFile"] = dates.in_file
+        if 0 < len(dates.new) < dates.in_file and case.get("onlyNewDates", True):
+            run.only_dates(dates.new)
     left = run.read_places_and_taxa()
     summary["taxaToResolve"] = list(left)
     summary["resolvedTaxa"] = run.resolved_taxa

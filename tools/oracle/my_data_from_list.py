@@ -5,7 +5,10 @@ dated sighting of the base taxonomy at a place in a country, with eBird's names 
 protocol and details. Rows come in the list's order, so a checklist's rows may be apart, as
 they can be in eBird's files.
 
-    python -I tools/oracle/my_data_from_list.py pack.sqlite list.bsxm out.csv [limit]
+    python -I tools/oracle/my_data_from_list.py pack.sqlite list.bsxm out.csv [limit|life]
+
+With "life", writes an eBird life list (2023 form) instead: the first dated sighting of each
+taxon the rows above would have, its place's coordinates in its name, dates as "05 Mar 2024".
 
 For a private list, write the file somewhere private (it holds the list's contents).
 """
@@ -22,7 +25,7 @@ from pipit.bsxm.upgrades import apply_upgrades
 from pipit.datapack.pack import DataPack
 from pipit.domain.locations import location_code
 from pipit.domain.partial_date import format_partial_date
-from pipit.domain.report import Location, ObservationType, Sighting, Visit, VisitKey
+from pipit.domain.report import Location, ObservationType, ReportSet, Sighting, Visit, VisitKey
 from pipit.taxa.model import Taxon, Taxonomy, TaxonType, full_name
 from pipit.taxa.sighting_taxon import SightingTaxonType
 
@@ -112,12 +115,62 @@ def _time(sighting: Sighting) -> str:
     return f"{hour:02d}:{sighting.time.minute:02d} {'AM' if sighting.time.hour < 12 else 'PM'}"
 
 
+LIFE_HEADER = ["Row #", "Taxon Order", "Category", "Common Name", "Scientific Name", "Count",
+               "Location", "S/P", "Date", "LocID", "SubID", "Exotic", "Countable"]  # fmt: skip
+MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def write_life_list(report: ReportSet, taxonomy: Taxonomy, target: Path) -> None:
+    locations = {location.id: location for location in report.iter_locations()}
+    first: dict[tuple[str, str], tuple[Sighting, tuple[str, str, str]]] = {}
+    for sighting in report.sightings:
+        if sighting.taxonomy_id is not None or sighting.location_id is None:
+            continue
+        if sighting.date is None or not sighting.date.is_full_date:
+            continue
+        found_names = names(taxonomy, sighting)
+        found_place = place(locations[sighting.location_id])
+        if found_names is None or found_place is None:
+            continue
+        known = first.get(found_names)
+        if known is None or _date_key(sighting) < _date_key(known[0]):
+            first[found_names] = (sighting, found_place)
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(LIFE_HEADER)
+    for row, ((common, scientific), (sighting, found_place)) in enumerate(first.items(), 1):
+        location = locations[sighting.location_id or ""]
+        name = found_place[2]
+        if name and location.lat_long is not None:
+            name = f"{name} ({location.lat_long.latitude}, {location.lat_long.longitude})"
+        date = sighting.date
+        assert date is not None and date.day is not None and date.month is not None
+        writer.writerow([
+            str(row), str(row), "species", common, scientific,
+            str(sighting.count) if sighting.count is not None else "X", name, found_place[0],
+            f"{date.day:02d} {MONTHS[date.month - 1]} {date.year}",
+            location.ebird_hotspot_id or "", f"S{row}",
+            "Y" if sighting.status in ("intro", "notEstablished") else "", "1",
+        ])  # fmt: skip
+    target.write_text(out.getvalue(), encoding="utf-8")
+    print(f"{len(first)} rows")
+
+
+def _date_key(sighting: Sighting) -> tuple[int, ...]:
+    assert sighting.date is not None
+    return tuple(value for _, value in sighting.date.fields)
+
+
 def main() -> None:
     with DataPack(Path(sys.argv[1])) as pack:
         report = read_bsxm(Path(sys.argv[2]), pack.base_taxonomy_id, pack.base_taxon_ids()).report
         apply_upgrades(report)
         taxonomy = pack.load_taxonomy(pack.base_taxonomy_id)
-    limit = int(sys.argv[4]) if len(sys.argv) > 4 else None
+    life = len(sys.argv) > 4 and sys.argv[4] == "life"
+    limit = int(sys.argv[4]) if len(sys.argv) > 4 and not life else None
+    if life:
+        write_life_list(report, taxonomy, Path(sys.argv[3]))
+        return
     locations = {location.id: location for location in report.iter_locations()}
     visits: dict[VisitKey, Visit] = {visit.key: visit for visit in report.visits}
     submissions: dict[VisitKey, str] = {}

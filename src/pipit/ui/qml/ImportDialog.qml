@@ -200,7 +200,15 @@ PDialog {
         }
     }
 
-    // Enter presses the focused button (the page's main answer to start with); on the names
+    // The page's main answer (what Enter does unless a button has the focus).
+    function primary() {
+        if (stage === "dates") imports.answerDates(true)
+        else if (stage === "allDates") imports.importAnyway()
+        else if (stage === "duplicates") imports.answerDuplicates(d.all ? "importAll" : "drop")
+        else if (stage === "review") imports.confirm()
+        else if (stage === "failed") reject()
+    }
+    // Enter presses the focused button, else gives the page's main answer; on the names
     // page the species field takes Enter itself.
     Shortcut {
         enabled: root.visible && root.stage !== "names"
@@ -208,6 +216,7 @@ PDialog {
         onActivated: {
             const focused = closeButton.Window.activeFocusItem
             if (focused && focused.clicked && focused.visible && focused.enabled) focused.clicked()
+            else root.primary()
         }
     }
     Shortcut { enabled: root.visible && root.stage === "names"; sequence: "Ctrl+L"; onActivated: imports.leaveOut() }

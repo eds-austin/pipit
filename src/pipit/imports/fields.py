@@ -121,9 +121,25 @@ def _valid_day(year: int, month: int, day: int) -> bool:
     return not (year == 1582 and month == 10 and 5 <= day <= 14)
 
 
+#: ``PartialDateParsers``' English month names (case ignored), "sept" among them.
+MONTH_NAMES = {
+    name: month
+    for month, names in enumerate(
+        (("jan", "january"), ("feb", "february"), ("mar", "march"), ("apr", "april"),
+         ("may",), ("jun", "june"), ("jul", "july"), ("aug", "august"),
+         ("sep", "sept", "september"), ("oct", "october"), ("nov", "november"),
+         ("dec", "december")),
+        start=1,
+    )
+    for name in names
+}  # fmt: skip
+
+
 class JodaDateParser:
-    """``PartialDateParsers.forPattern`` for numeric patterns of y, M and d separated by
-    literals ("yy-MM-dd", "dd/MM/yyyy")."""
+    """``PartialDateParsers.forPattern`` for patterns of y, M and d separated by literals
+    ("yy-MM-dd", "dd/MM/yyyy", "dd MMM yy"). A month name ("MMM") is read as letters looked
+    up in English (followed by an abbreviation's period, unless the pattern has one there);
+    Joda's own month names, its fallback, are the same ones."""
 
     def __init__(self, pattern: str) -> None:
         self.pattern = pattern
@@ -143,6 +159,8 @@ class JodaDateParser:
                 continue
             if letter == "y":
                 year, position = self._year(text, position, len(token))
+            elif letter == "M" and len(token) >= 3:
+                month, position = self._month_name(text, position, token)
             else:
                 value, position = _digits(text, position, max(len(token), 2))
                 if letter == "M":
@@ -155,6 +173,18 @@ class JodaDateParser:
         if not _valid_day(check_year, month or 1, day or 1):
             raise DateParseError(f"{text!r} is not a valid date")
         return PartialDate.of(year, month, day)
+
+    def _month_name(self, text: str, position: int, token: str) -> tuple[int, int]:
+        end = position
+        while end < len(text) and text[end].isalpha():
+            end += 1
+        month = MONTH_NAMES.get(text[position:end].lower())
+        if month is None:
+            raise DateParseError(f"{text!r} has no month name at {position}")
+        after = self.pattern[self.pattern.index(token) + len(token) :]
+        if not after.startswith(".") and end < len(text) and text[end] == ".":
+            end += 1
+        return month, end
 
     @staticmethod
     def _year(text: str, position: int, width: int) -> tuple[int, int]:

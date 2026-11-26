@@ -168,6 +168,104 @@ def hours_header() -> list[str]:
     return [renamed.get(column, column) for column in HEADER]
 
 
+#: eBird Record Format rows (no header): common, genus, species, count, comments, location,
+#: latitude, longitude, date, time, state, country, protocol, observers, duration (min),
+#: complete, distance (miles), area (acres), checklist comments.
+RECORD_ROWS = [
+    ["Mallard", "Anas", "platyrhynchos", "4", "", "Madrona Marsh Preserve", "33.825",
+     "-118.341", "04/13/2024", "07:15", "CA", "US", "traveling", "2", "95", "Y", "1.3", "",
+     "Windy"],
+    ["Mallard", "Anas", "platyrhynchos", "2", "Second flock", "Madrona Marsh Preserve",
+     "33.825", "-118.341", "04/13/2024", "07:15", "CA", "US", "traveling", "2", "95", "Y",
+     "1.3", "", "Windy"],
+    ["Mallard (Domestic type)", "Anas", "platyrhynchos", "3", "", "Madrona Marsh Preserve",
+     "33.825", "-118.341", "04/13/2024", "07:15", "CA", "US", "traveling", "2", "95", "Y",
+     "1.3", "", "Windy"],
+    ["Dark-eyed Junco", "Junco", "hyemalis oreganus", "X", "", "Madrona Marsh Preserve",
+     "33.825", "-118.341", "04/13/2024", "07:15", "CA", "US", "traveling", "2", "95", "Y",
+     "1.3", "", "Windy"],
+    ["Greater/Lesser Yellowlegs", "Tringa", "melanoleuca/flavipes", "1", "",
+     "Madrona Marsh Preserve", "33.825", "-118.341", "04/13/2024", "07:15", "CA", "US",
+     "traveling", "2", "95", "Y", "1.3", "", "Windy"],
+    ["Mallard x American Black Duck (hybrid)", "Anas", "platyrhynchos x rubripes", "1", "",
+     "Madrona Marsh Preserve", "33.825", "-118.341", "04/13/2024", "07:15", "CA", "US",
+     "traveling", "2", "95", "Y", "1.3", "", "Windy"],
+    ["Mallerd", "Anas", "platyrhyncos", "5", "", "Ballona Wetlands", "", "", "04-14-24",
+     "4:30 PM", "CA", "US", "stationary", "1", "0", "N", "", "", ""],
+    ["Western Gull", "Larus", "occidentalis wymani", "10", "", "Ballona Wetlands", "", "",
+     "04-14-24", "4:30 PM", "CA", "US", "stationary", "1", "0", "N", "", "", ""],
+    ["Snowy Egret", "Egretta", "thula", "2", "", "Ballona Wetlands", "", "", "04/14/2024",
+     "", "CA", "US", "area", "3", "45", "Y", "", "2.5", "Marsh walk"],
+    ["Red-tailed Hawk", "Buteo", "jamaicensis", "1", "", "Backyard", "", "", "04/15/2024",
+     "08:00", "CA", "US", "casual", "", "", "", "", "", ""],
+    ["Anna's Hummingbird", "Calypte", "anna", "2", "", "Backyard", "", "", "04/16/2024",
+     "08:00", "CA", "US", "incidental", "", "", "", "", "", ""],
+    ["Scarlet Macaw", "Ara", "macao", "6", "", "Costa Rica", "", "", "02/02/2025", "06:15",
+     "", "", "traveling", "2", "120", "Y", "1.2", "", ""],
+    ["Steller's Jay", "Cyanocitta", "stelleri", "2", "", "Oregon", "", "", "05/01/2024",
+     "09:00", "", "", "", "", "", "", "", "", ""],
+    ["Gray Jay", "Perisoreus", "canadensis", "1", "", "Ontario", "", "", "06/01/2024",
+     "", "", "", "historical", "", "", "", "", "", ""],
+    ["Willow Ptarmigan", "Lagopus", "lagopus", "3", "Flushed [Denali Highway]", "Alaska",
+     "", "", "06/20/2023", "", "", "", "", "", "", "", "", "", ""],
+    ["Eurasian Blackbird", "Turdus", "merula", "3", "", "Dungeness RSPB", "50.926", "0.964",
+     "09/10/2023", "10:00", "ENG", "GB", "traveling", "4", "120", "Y", "1.9", "",
+     "Lovely day"],
+    ["Common Ground Dove", "Columbina", "passerina", "3", "", "Carara", "", "",
+     "02/02/2025", "06:15", "P", "CR", "traveling", "2", "120", "Y", "1.2", "", ""],
+    ["Pinkish Warbler", "Setophaga", "rosea", "1", "", "Carara", "", "", "02/02/2025",
+     "06:15", "P", "CR", "traveling", "2", "120", "Y", "1.2", "", ""],
+    ["duck sp.", "Anatidae", "sp.", "4", "", "Carara", "", "", "02/02/2025", "06:15", "P",
+     "CR", "traveling", "2", "120", "Y", "1.2", "", ""],
+]  # fmt: skip
+LIFE_2023 = [
+    ["Row #", "Taxon Order", "Category", "Common Name", "Scientific Name", "Count", "Location",
+     "S/P", "Date", "LocID", "SubID", "Exotic", "Countable"],
+    ["1", "320", "species", "Mallard", "Anas platyrhynchos", "4", "Madrona Marsh Preserve",
+     "US-CA", "13 Apr 2024", "L1001", "S1001", "", "1"],
+    ["2", "2010", "species", "Rock Pigeon", "Columba livia", "X", "Home (33.85, -118.35)",
+     "US-CA", "02 May 2024", "", "S1009", "N", "1"],
+    ["3", "640", "species", "Ring-necked Pheasant", "Phasianus colchicus", "1", "Backyard",
+     "US-CA", "15 Apr 2024", "L1003", "S1004", "Y", "1"],
+    ["4", "30001", "species", "Dark-eyed Junco", "Junco hyemalis oreganus", "1", "Backyard",
+     "US-CA", "15-Apr-24", "L1003", "S1004", "", "1"],
+    ["5", "8000", "species", "Scarlet Macaw", "Ara macao", "6", "Carara", "CR-P",
+     "02 Feb 2025", "L2001", "S2001", "", "1"],
+    ["6", "29000", "species", "Eurasian Blackbird", "Turdus merula", "3", "Dungeness RSPB",
+     "GB-ENG", "10 Sept 2023", "L3001", "S3001", "", "1"],
+    ["7", "31000", "species", "Pinkish Warbler", "Setophaga rosea", "1", "Backyard", "US-CA",
+     "16 Apr 2024", "L1003", "S1005", "", "1"],
+    ["8", "28000", "species", "Swainson's Thrush", "Catharus ustulatus", "14",
+     "Pond - 33.85x-118.35", "US-CA", "02-May-24", "", "S1010", "", "1"],
+    ["9", "7000", "species", "Common Ground Dove", "Columbina passerina", "3",
+     "Lake 9.78, -84.60", "CR-P", "01 Feb 2025", "", "S2002", "", "1"],
+    ["10", "7100", "species", "Lesser Nighthawk", "Chordeiles acutipennis", "1", "",
+     "CR-", "2 Feb 2025", "", "S2003", "", "1"],
+]  # fmt: skip
+LIFE_OLD = [
+    ["Row #", "Species", "Count", "Location", "S/P", "Date"],
+    ["1", "Mallard - Anas platyrhynchos", "4", "Madrona Marsh Preserve", "US-CA",
+     "13 Apr 2024"],
+    ["2", "Rock Pigeon (Feral Pigeon) (Columba livia (Domestic type))", "12",
+     "Home (33.85, -118.35)", "US-CA", "02 May 2024"],
+    ["3", "Anna's Hummingbird (Calypte anna)", "2", "Backyard", "US-CA", "15-Apr-24"],
+    ["4", "Haliaeetus leucocephalus", "1", "Madrona Marsh Preserve", "US-CA", "15 Jun 1998"],
+    ["5", "Scarlet Macaw", "6", "Carara", "CR-P", "02 Feb 2025"],
+    ["6", "Common Ground Dove", "3", "Carara", "CR-P", "1 Feb 2025"],
+    ["7", "Turdus merula", "3", "Dungeness RSPB", "GB-ENG", "10 Sep 2023"],
+]  # fmt: skip
+UNKNOWN_PLACE_ROWS = [
+    ["Mallard", "Anas", "platyrhynchos", "1", "", "Somewhere Pond", "", "", "04/13/2024",
+     "", "", "", "", "", "", "", "", "", ""],
+]  # fmt: skip
+
+
+def write_record(path: Path, rows: list[list[str]]) -> None:
+    out = io.StringIO()
+    csv.writer(out, lineterminator="\n").writerows(rows)
+    path.write_text(out.getvalue(), encoding="utf-8")
+
+
 def without_observers(source: Path, target: Path) -> None:
     """The list with its observers left out: Pipit imports only into lists without them."""
     text = source.read_text(encoding="utf-8")
@@ -193,6 +291,10 @@ def main() -> None:
                     "33.8250", "-118.3410", "2024-02-30", "08:00 AM", CASUAL)  # fmt: skip
     bad.species("Mallard", "Anas platyrhynchos", "1")
     write(target / "my_data_bad_date.csv", HEADER, [bad])
+    write_record(target / "ebird_record.csv", RECORD_ROWS)
+    write_record(target / "ebird_record_unknown_place.csv", UNKNOWN_PLACE_ROWS)
+    write_record(target / "life_list.csv", LIFE_2023)
+    write_record(target / "life_list_old.csv", LIFE_OLD)
     cases = [
         {"name": "new_list", "list": NEW, "file": "my_data.csv"},
         {"name": "new_list_avilist", "list": NEW, "file": "my_data.csv",
@@ -211,6 +313,39 @@ def main() -> None:
         {"name": "trips_avilist", "list": TRIPS, "file": "my_data.csv", "onlyNewDates": False,
          "display": "avilist", "duplicates": "drop"},
     ]  # fmt: skip
+    record = [
+        {"name": "record_new", "list": NEW, "file": "ebird_record.csv"},
+        {"name": "record_new_avilist", "list": NEW, "file": "ebird_record.csv",
+         "display": "avilist"},
+        {"name": "record_resolved", "list": NEW, "file": "ebird_record.csv",
+         "taxa": {"Pinkish Warbler|Setophaga|rosea": "spCardever"}},
+        {"name": "record_trips", "list": TRIPS, "file": "ebird_record.csv",
+         "duplicates": "drop"},
+        {"name": "record_unknown_place", "list": NEW, "file": "ebird_record_unknown_place.csv"},
+        # Pipit's own Save for eBird of trip_report.bsxm (checked against Scythebill's in
+        # tests/ebird), imported back
+        {"name": "record_export_new", "list": NEW, "file": "trip_report.ebird.csv"},
+        {"name": "record_export_avilist", "list": NEW, "file": "trip_report.ebird.csv",
+         "display": "avilist"},
+        {"name": "record_export_back", "list": TRIPS, "file": "trip_report.ebird.csv",
+         "duplicates": "drop"},
+        {"name": "record_export_overwrite", "list": TRIPS, "file": "trip_report.ebird.csv",
+         "duplicates": "overwrite"},
+        {"name": "record_export_back_avilist", "list": TRIPS, "file": "trip_report.ebird.csv",
+         "display": "avilist", "duplicates": "drop"},
+    ]  # fmt: skip
+    cases += [{**case, "format": "ebirdRecord"} for case in record]
+    life = [
+        {"name": "life_new", "list": NEW, "file": "life_list.csv", "format": "lifeList2023"},
+        {"name": "life_avilist", "list": NEW, "file": "life_list.csv", "display": "avilist",
+         "format": "lifeList2023"},
+        {"name": "life_trips", "list": TRIPS, "file": "life_list.csv", "duplicates": "drop",
+         "format": "lifeList2023", "taxa": {"Pinkish Warbler|Setophaga rosea": "spCardever"}},
+        {"name": "life_old_new", "list": NEW, "file": "life_list_old.csv", "format": "lifeList"},
+        {"name": "life_old_trips", "list": TRIPS, "file": "life_list_old.csv",
+         "duplicates": "overwrite", "format": "lifeList"},
+    ]  # fmt: skip
+    cases += life
     lines = [json.dumps({"format": "myData", **case}, ensure_ascii=False) for case in cases]
     (target / "cases.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -68,7 +68,7 @@ list came out swapped; checked against the JDK).
 reference queries; everything in both taxonomies, at every depth, Excel-compatible) are
 byte-identical, and 74 on Eric's list (private, `PIPIT_PRIVATE_CSV`).
 
-## Import from eBird (My Data) (Ctrl+K, "Import from eBird")
+## Import from eBird (Ctrl+K, "Import from eBird")
 
 The file eBird's "Download My Data" sends (the .zip, or the `MyEBirdData.csv` in it), read
 as Scythebill's `EBirdMyDataImporter` reads it and imported as `ImportController` does
@@ -113,12 +113,43 @@ Scythebill's import fail (Pipit imports it without party sizes); a name like "Ma
 Mallard" makes Scythebill's import fail (Pipit imports a Mallard). Lists with observers are
 refused for now (Scythebill asks which observers saw the sightings).
 
+### Other eBird files
+
+The same command reads the file type from its first row, as Scythebill's
+`EBird.chooseImporter` does: a "Checklist Comments" column is My Data; "Row #" with "S/P"
+and "LocID" is a life list (with "Countable", the 2023 form); anything else is the Record
+Format. (eBird's checklist download, which starts "Species", comes with the checklist
+download in 6d.)
+
+- **Record Format** (`EBirdImportImporter`; what eBird imports and Save for eBird writes: 19
+  columns, no header). Distances are miles and areas acres (converted as Scythebill does, in
+  float32); a duration of 0 counts as given (kept in memory, never written); names are matched
+  within two letters, a subspecies taken from the common name's last brackets or the species
+  column's last word. With no country code, the place may name a country or a US or Canadian
+  state, and old Birder's Diary files put a place in brackets in the comments. Scythebill
+  treats it as a mass export but never narrows it to new dates, so Pipit only asks the "every
+  date is in your list already" question. A place with no country Scythebill asks the user to
+  locate (and may look up online); Pipit refuses the file for now.
+- **Life lists** (`EBird2023LifeListImporter`, `EBirdLifeListImporter`): each species' first
+  sighting, dated "05 Mar 2024" (English month names, "Sept" too), with coordinates written
+  into place names ("Pond (12.34, -56.78)", "Pond - 12.34x-56.78", "Pond 12.34, -56.78").
+  "Exotic" rows are introduced but not established. The older form has one name column, which
+  may be the common name, the scientific name, or both ("Mallard - Anas platyrhynchos",
+  "Mallard (Anas platyrhynchos)"). No date questions, no checklist details.
+
+Found on the way: Scythebill dates an undated sighting on a trip by the trip's start, for
+duplicates too; and when the import's clean-up removes a new place nothing ended up using,
+its checklist details move to the place above (`ReportSet.deleteLocation`). Pipit does both.
+
 **Checked against Scythebill.** `tools/oracle/ImportOracle.java` runs Scythebill's importer
-with the choices made in advance and saves the list. Ten cases on made-up exports
-(`tools/oracle/make_import_fixtures.py`: every protocol, groups, forms, subspecies, sp.,
-slash and hybrid names, repeated rows, an unknown name, built-in counties, a county the list
-has under another name, a bad date), into a new list and into `trip_report.bsxm` (only new
-dates, all dates, drop, replace, AviList) come out byte-identical, with the same counts; each
-is also stored, exported and undone. Seven more on a My Data file made from Eric's list
-(`tools/oracle/my_data_from_list.py`, 8,397 rows; private, `PIPIT_PRIVATE_IMPORT`), into a new
-list, into his own (drop, replace 8,418, import all) and into the trip list.
+with the choices made in advance and saves the list. 25 cases on made-up files
+(`tools/oracle/make_import_fixtures.py`): My Data (every protocol, groups, forms, subspecies,
+sp., slash and hybrid names, repeated rows, an unknown name, built-in counties, a county the
+list has under another name, a bad date), the Record Format (a file of edge cases, one with a
+place without a country, and `trip_report.bsxm`'s own Save for eBird imported back) and both
+life lists, into a new list and into `trip_report.bsxm` (only new dates, all dates, drop,
+replace, AviList), come out byte-identical, with the same counts; each is also stored,
+exported and undone. Sixteen more on files made from Eric's list (private,
+`PIPIT_PRIVATE_IMPORT`): My Data (`tools/oracle/my_data_from_list.py`, 8,397 rows), his whole
+list through Save for eBird (23,632 rows) and his life list (`... life`, 3,546 species), into a
+new list, into his own (drop, replace, import all) and into the trip list.

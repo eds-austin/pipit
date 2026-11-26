@@ -373,6 +373,10 @@ class LocationShortcuts:
     def state_by_code(self, country_code: str, state_code: str) -> Location | None:
         return self._created(self._states_by_code.get((country_code, state_code)))
 
+    def state_by_name(self, country_code: str, name: str) -> Location | None:
+        """``getStateByName``: a state of a country (by code), its name in any case."""
+        return self._created(self._states_by_name.get(country_code, name))
+
     def region(self, name: str) -> Location | None:
         return self._created(self._growing_search(self._region_names, name))
 
