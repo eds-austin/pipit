@@ -1,7 +1,8 @@
 # Special reports (Ctrl+7)
 
 The Special screen holds Scythebill's analytical reports. The report list on the left shows
-which ones exist so far; the others are marked "Soon".
+which ones exist so far (Alt+1 and Alt+2 switch between them); the others are marked
+"Soon".
 
 ## Family report
 
@@ -63,3 +64,49 @@ cases are identical:
 - the US or Costa Rica
 
 Each case runs in under 0.4 s.
+
+## Checklist status
+
+The species you've seen at places with a checklist, whose status on that checklist is the
+one you choose: not on the checklist, rarity, endemic, escaped, extinct, introduced or
+provisional. This is Scythebill's `ChecklistStatusReportPanel`, ported in
+`pipit.special.checklist_status`.
+
+- **Which places.** Every place with its own checklist counts: a built-in one, or one you
+  made. A sighting counts at its place and at each place above it that has a checklist.
+  Checklists merged from others (the US outside North America, a region, a synthetic
+  region) are left out, as in Scythebill.
+- **Which sightings.** Sightings recorded as uncertain, domestic, not accepted, or
+  introduced but not established are left out. A subspecies or group counts as its
+  species. A sp. or hybrid of several species is left out.
+- **The list.** Places are listed in the list's own order, depth first. Your own checklists
+  are marked "Your checklist". Under each place come its species in taxonomic order, with
+  their expected range. Enter, or a double-click, shows the place on the Locations screen.
+- **Not on the checklist** adds Scythebill's warning that these may be mistakes in your
+  data.
+
+Pipit's wording differs from Scythebill's. It leaves out the request to mail
+support@scythebill.com.
+
+### Checked against Scythebill
+
+PrintOracle's status mode runs `showReport`'s steps for every status in both taxonomies.
+It runs on `tests/fixtures/bsxm/checklist_status.bsxm` (`make_checklist_status_fixture.py`),
+which is the Costa Rica trip plus:
+- your own checklists at Carara (every status, some species left off) and La Selva
+- species far from Costa Rica, plain, introduced, and with each skipped status
+- a subspecies, and a sp. of two subspecies, of a species not on the checklist
+- a sp. of two species, and an extinct species
+- a Costa Rica species in California
+
+The report finds every status somewhere in the fixture. All 14 runs are identical: the
+places, their order, built-in or yours, and the species and their order
+(`tests/special/test_checklist_status_against_scythebill.py`). On Eric's list (private),
+all 14 are identical, covering up to 29 places.
+
+The first run loads the checklists, which takes about 1.2 s on Eric's list. After that, each
+run takes 0.05 s, because the screen keeps the loaded checklists until the list changes.
+
+Scythebill's report fails on a list whose custom checklist names a taxon the taxonomy
+doesn't have (`ClementsChecklist.createTaxaMap`). `tests/fixtures/bsxm/checklists.bsxm` has
+one such entry. Pipit leaves such entries out.

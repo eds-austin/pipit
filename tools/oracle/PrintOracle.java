@@ -15,6 +15,8 @@
 // The checklists mode writes, for every place in use in the list and every synthetic place,
 // in both taxonomies, the checklist's size and a SHA-256 of its sorted "taxon=STATUS" lines
 // (and for a synthetic place, the codes its checklist is the union of).
+// The status mode writes, for each of ChecklistStatusReportPanel's choices in both
+// taxonomies, the places it lists (id, whether the checklist is custom) with their species.
 // The family mode writes outDir/<name>.json: the checklist's places (sorted ids), whether there
 // is a checklist, [id, seen, total] for each ORDER, FAMILY and GENUS in taxonomic order, and the
 // seen and total species.
@@ -109,6 +111,10 @@ public class PrintOracle {
 
     if (args[4].equals("checklists")) {
       writeChecklists(reportSet, syntheticLocations, checklists, clements, avilist, args[5]);
+      return;
+    }
+    if (args[4].equals("status")) {
+      writeChecklistStatus(reportSet, checklists, clements, avilist, args[5]);
       return;
     }
 
@@ -690,6 +696,106 @@ public class PrintOracle {
     }
     Files.writeString(new File(outDir, testCase.get("name").getAsString() + ".json").toPath(),
         out.toString());
+  }
+
+
+  /**
+   * ChecklistStatusReportPanel.showReport for each of its choices, in both taxonomies: the
+   * places in the order the report lists them (whether each checklist is custom) and the
+   * species listed under each, as one line of JSON per taxonomy and choice.
+   */
+  static void writeChecklistStatus(ReportSet reportSet, Checklists checklists,
+      Taxonomy clements, Taxonomy avilist, String outFile) throws IOException {
+    var lines = new ArrayList<String>();
+    for (Taxonomy taxonomy : List.of(clements, avilist)) {
+      // The sightings at each place with a checklist (and at each such place above them)
+      com.google.common.collect.Multimap<Location, SightingTaxon> byLocation =
+          com.google.common.collect.LinkedHashMultimap.create();
+      for (var sighting : reportSet.getSightings(taxonomy)) {
+        if (sighting.getLocationId() == null) {
+          continue;
+        }
+        Location location = reportSet.getLocations().getLocation(sighting.getLocationId());
+        var status = sighting.getSightingInfo().getSightingStatus();
+        String statusName = status.name();
+        if (statusName.equals("INTRODUCED_NOT_ESTABLISHED") || statusName.equals("ID_UNCERTAIN")
+            || statusName.equals("DOMESTIC") || statusName.equals("RECORD_NOT_ACCEPTED")) {
+          continue;
+        }
+        while (location != null) {
+          if (checklists.hasChecklist(taxonomy, reportSet, location)) {
+            byLocation.put(location, sighting.getTaxon());
+          }
+          location = location.getParent();
+        }
+      }
+      for (String choice : List.of("NOT_FOUND", "RARITY", "ENDEMIC", "ESCAPED", "EXTINCT",
+          "INTRODUCED", "PROVISIONAL")) {
+        com.google.common.collect.ListMultimap<Location,
+            SightingTaxon.Resolved> matching =
+            com.google.common.collect.ArrayListMultimap.create();
+        for (Location location : byLocation.keySet()) {
+          Checklist checklist = checklists.getChecklist(reportSet, taxonomy, location);
+          if (checklist == null || checklist.isSynthetic()) {
+            continue;
+          }
+          for (SightingTaxon taxon : byLocation.get(location)) {
+            var resolved = taxon.resolve(taxonomy);
+            if (resolved.getSmallestTaxonType() != Taxon.Type.species) {
+              resolved = resolved.getParentOfAtLeastType(Taxon.Type.species)
+                  .resolveInternal(taxonomy);
+            }
+            if (resolved.getType() != SightingTaxon.Type.SINGLE
+                && resolved.getType() != SightingTaxon.Type.SINGLE_WITH_SECONDARY_SUBSPECIES) {
+              continue;
+            }
+            Checklist.Status status = checklist.getStatus(taxonomy, resolved.getSightingTaxon());
+            boolean matches = switch (choice) {
+              case "NOT_FOUND" -> status == null;
+              case "RARITY" -> status == Checklist.Status.RARITY
+                  || status == Checklist.Status.RARITY_FROM_INTRODUCED;
+              default -> status != null && status.name().equals(choice);
+            };
+            if (matches) {
+              matching.put(location, resolved);
+            }
+          }
+        }
+        JsonObject out = new JsonObject();
+        out.addProperty("taxonomy", taxonomy == avilist ? "avilist" : "clements");
+        out.addProperty("choice", choice);
+        var places = new com.google.gson.JsonArray();
+        for (Location root : reportSet.getLocations().rootLocations()) {
+          appendStatusPlaces(places, matching, root, reportSet, checklists, taxonomy);
+        }
+        out.add("places", places);
+        lines.add(out.toString());
+      }
+    }
+    Files.write(Paths.get(outFile), lines, StandardCharsets.UTF_8);
+  }
+
+  private static void appendStatusPlaces(com.google.gson.JsonArray places,
+      com.google.common.collect.ListMultimap<Location,
+          SightingTaxon.Resolved> matching,
+      Location location, ReportSet reportSet, Checklists checklists, Taxonomy taxonomy) {
+    if (matching.containsKey(location)) {
+      Checklist checklist = checklists.getChecklist(reportSet, taxonomy, location);
+      var sorted = com.google.common.collect.ImmutableSortedSet.copyOf(
+          new com.scythebill.birdlist.model.util.ResolvedComparator(), matching.get(location));
+      JsonObject place = new JsonObject();
+      place.addProperty("id", location.getId());
+      place.addProperty("custom", !checklist.isBuiltIn());
+      var taxa = new com.google.gson.JsonArray();
+      for (var resolved : sorted) {
+        taxa.add(resolved.getTaxon().getId());
+      }
+      place.add("taxa", taxa);
+      places.add(place);
+    }
+    for (Location child : location.contents()) {
+      appendStatusPlaces(places, matching, child, reportSet, checklists, taxonomy);
+    }
   }
 
 }

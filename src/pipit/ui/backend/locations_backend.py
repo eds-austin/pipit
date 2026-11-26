@@ -399,6 +399,22 @@ class LocationsBackend(QObject):
         node = self._by_row.get(row)
         return node.name if node is not None else "place"
 
+    @Slot(str)
+    def showPlace(self, xml_id: str) -> None:
+        """Choose a place by its ID, opening the places above it (other screens link here)."""
+        connection = self._connection
+        if connection is None:
+            return
+        try:
+            row = location_ops.row_of(connection, xml_id)
+        except LocationError:
+            return
+        self._filter = ""
+        self.filterChanged.emit()
+        self._reveal(row)
+        self._rebuild_rows()
+        self._set_selected(row)
+
     @Slot(int, str, str, result=bool)
     def addPlace(self, parent: int, name: str, kind: str) -> bool:
         xml_id = self._apply(

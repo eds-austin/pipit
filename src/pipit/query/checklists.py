@@ -227,6 +227,10 @@ class Checklists:
             place = self._places.get(place.parent) if place.parent else None
         return None
 
+    def is_synthetic(self, xml_id: str) -> bool:
+        """Whether the place's checklist is merged from others (``Checklist.isSynthetic``)."""
+        return self._transposed_codes(xml_id) is not None
+
     def place(self, xml_id: str) -> _Place | None:
         return self._places.get(xml_id)
 

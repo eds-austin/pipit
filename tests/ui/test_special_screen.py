@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from qt_wait import wait_until
 from test_enter_screen import Running, _start, _stop, ctrl, key
+from test_import_dialog import _item
 
 from pipit.storage.lists import import_bsxm
 
@@ -82,3 +83,56 @@ def test_family_report(running: Running) -> None:
     world = _expected("everything_avilist")
     assert special.checklistName == ""
     assert special.speciesSummary == f"Species: {world['seen']:,} of {world['total']:,}"
+
+
+@pytest.fixture
+def status_running(qapp: object, pack: Any, built_pack: Path, tmp_path: Path) -> Iterator[Running]:
+    path = tmp_path / "checklist_status.pipit"
+    import_bsxm(FIXTURES / "bsxm" / "checklist_status.bsxm", path, pack.base_taxonomy_id,
+                pack.base_taxon_ids(), pack.predefined_locations())  # fmt: skip
+    started = _start(path, built_pack, tmp_path / "backups")
+    yield started
+    _stop(started)
+
+
+def test_checklist_status(status_running: Running) -> None:
+    from PySide6.QtCore import Qt
+
+    running = status_running
+    window = running.window
+    special = running.special
+    expected = {
+        (line["taxonomy"], line["choice"]): line["places"]
+        for line in map(json.loads, (FIXTURES / "oracle" / "checklist_status" / "expected.jsonl")
+                        .read_text().splitlines())
+    }  # fmt: skip
+    ctrl(window, "Key_7")
+    wait_until(lambda: running.shell.currentKey == "special")
+    key(window, "Key_2", Qt.KeyboardModifier.AltModifier)
+    wait_until(lambda: special.report == "status")
+    special.run_now()
+    places = expected[("avilist", "NOT_FOUND")]
+    rows = special.status_model.rows()
+    assert [row["placeId"] for row in rows if row["heading"]] == [p["id"] for p in places]
+    assert len(rows) == len(places) + sum(len(p["taxa"]) for p in places)
+    assert special.statusNote != ""
+    species = sum(len(p["taxa"]) for p in places)
+    assert special.statusSummary == f"{species} species at {len(places)} places"
+
+    # Rarities: Costa Rica's checklist, then the list's own at Carara
+    special.setStatusChoice("RARITY")
+    special.run_now()
+    rows = special.status_model.rows()
+    headings = [row for row in rows if row["heading"]]
+    assert [(r["placeId"], r["custom"]) for r in headings] == [
+        (p["id"], p["custom"]) for p in expected[("avilist", "RARITY")]]  # fmt: skip
+    assert special.statusNote == ""
+
+    # Ctrl+R into the list (headings skipped); Enter shows the place on Locations
+    ctrl(window, "Key_R")
+    first = 1  # the row after the first heading
+    status_list = _item(running, "statusList")
+    wait_until(lambda: status_list.property("currentIndex") == first)
+    key(window, "Key_Return", Qt.KeyboardModifier.NoModifier)
+    wait_until(lambda: running.shell.currentKey == "locations")
+    assert running.locations.details["xmlId"] == rows[0]["placeId"]

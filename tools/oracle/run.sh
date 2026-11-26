@@ -224,6 +224,13 @@ mkdir -p "$FAMILY"
 find "$FAMILY" -name '*.json' -delete
 print_oracle "$BSXM/trip_report.bsxm" family "$FAMILY/cases.jsonl" "$FAMILY"
 
+# The checklist status report (PrintOracle.java's status mode: ChecklistStatusReportPanel for
+# each status, in both taxonomies) on the trip with custom checklists and far-off species.
+STATUS=tests/fixtures/oracle/checklist_status
+mkdir -p "$STATUS"
+"$PY" -I tools/oracle/make_checklist_status_fixture.py
+print_oracle "$BSXM/checklist_status.bsxm" status "$STATUS/expected.jsonl"
+
 # eBird Record Format exports (PrintOracle.java's ebird mode: EbirdExportAction and
 # EBirdCsvExport): the reference queries, and everything in two more lists (edge_cases
 # without its February 30 sighting, which Scythebill's export fails on).

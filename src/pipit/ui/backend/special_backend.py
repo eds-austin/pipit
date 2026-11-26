@@ -1,5 +1,6 @@
-"""The Special screen's family report: the Reports screen's query, counted by order, family
-or genus against the checklist of the query's places (Scythebill's ``FamilyReportPanel``)."""
+"""The Special screen: the family report (the Reports screen's query counted by order, family
+or genus against the checklist of the query's places, Scythebill's ``FamilyReportPanel``) and
+the checklist status report (``ChecklistStatusReportPanel``)."""
 
 from __future__ import annotations
 
@@ -14,9 +15,11 @@ from pipit.query.checklists import Checklists
 from pipit.query.engine import EngineContext, parse_query
 from pipit.query.fields_place_time import UnsupportedQueryError
 from pipit.query.fields_simple import QueryJsonError
+from pipit.query.model import QueryList
 from pipit.query.synthetic import REGION_NAMES
+from pipit.special.checklist_status import CHOICES, StatusPlace, checklist_status
 from pipit.special.family import FamilyReport, FamilyTotals, GroupTotal, family_report
-from pipit.taxa.model import TaxonType
+from pipit.taxa.model import Taxon, TaxonType, full_name
 from pipit.ui.backend.app_controller import AppController
 from pipit.ui.backend.list_model import DictListModel
 from pipit.ui.backend.reports_backend import ReportsBackend
@@ -29,6 +32,21 @@ SORTS = [["TAXONOMIC", "Taxonomic order"], ["SPECIES_SEEN", "Species seen"],
          ["FRACTION_SEEN", "Fraction seen"], ["SPECIES_UNSEEN", "Species unseen"],
          ["TOTAL_SPECIES", "Total species"]]  # fmt: skip
 _GROUPS_OF = {"ORDER": "Orders", "FAMILY": "Families", "GENUS": "Genera"}
+REPORTS = ("family", "status")
+#: Countries Scythebill names with their parent in this report (``CODES_WITH_MULTIPLE_REGIONS``).
+_NAMED_WITH_PARENT = frozenset({"XX", "RU", "ID"})
+#: Scythebill's ``Species`` class: species, groups and subspecies.
+_BELOW_GENUS = (TaxonType.SPECIES, TaxonType.GROUP, TaxonType.SUBSPECIES)
+
+
+def expected_range(species: Taxon) -> str | None:
+    """``TaxonUtils.getRange``: the species' range, else its groups' and subspecies' joined
+    with ";"."""
+    if species.range is not None:
+        return species.range
+    ranges = [found for child in species.children
+              if child.type in _BELOW_GENUS and (found := expected_range(child))]  # fmt: skip
+    return ";".join(ranges) if ranges else None
 
 
 def join_names(names: list[str]) -> str:
@@ -46,13 +64,22 @@ class SpecialBackend(QObject):
     familyChanged = Signal()
     optionsChanged = Signal()
     selectionChanged = Signal()
+    reportChanged = Signal()
+    statusChanged = Signal()
 
     def __init__(self, app: AppController, reports: ReportsBackend) -> None:
         super().__init__()
         self._app = app
         self._reports = reports
         self._active = False
-        self._stale = True
+        self._stale = {report: True for report in REPORTS}
+        self._current_report = "family"
+        self._checklists: tuple[QueryList, str, Checklists] | None = None
+        self._status_choice = "NOT_FOUND"
+        self._status_places: list[StatusPlace] = []
+        self._status_custom = False
+        self.status_model = DictListModel(["heading", "placeId", "name", "scientific", "range",
+                                           "custom"])  # fmt: skip
         self._group_by = "FAMILY"
         self._sort = "TAXONOMIC"
         self._descending = True
@@ -69,24 +96,55 @@ class SpecialBackend(QObject):
         self._timer.setSingleShot(True)
         self._timer.setInterval(RUN_DELAY_MS)
         self._timer.timeout.connect(self.run)
-        reports.queryChanged.connect(self._invalidate)
-        app.listChanged.connect(self._invalidate)
-        app.dataChanged.connect(self._invalidate)
-        app.taxaReadyChanged.connect(self._invalidate)
+        reports.queryChanged.connect(self._query_changed)
+        app.listChanged.connect(self._data_changed)
+        app.dataChanged.connect(self._data_changed)
+        app.taxaReadyChanged.connect(self._data_changed)
 
     # ------------------------------------------------------------ running
 
-    def _invalidate(self) -> None:
-        self._stale = True
-        if self._active:
+    def _query_changed(self) -> None:
+        self._stale["family"] = True
+        self._schedule()
+
+    def _data_changed(self) -> None:
+        self._checklists = None
+        self._stale = dict.fromkeys(REPORTS, True)
+        self._schedule()
+
+    def _schedule(self) -> None:
+        if self._active and self._stale[self._current_report]:
             self._timer.start()
 
     @Slot(bool)
     def setActive(self, active: bool) -> None:
         """Counts only while the screen is shown (the query may change many times on Reports)."""
         self._active = active
-        if active and self._stale:
-            self._timer.start()
+        self._schedule()
+
+    @Property(str, notify=reportChanged)
+    def report(self) -> str:
+        return self._current_report
+
+    @Slot(str)
+    def setReport(self, report: str) -> None:
+        if report == self._current_report or report not in REPORTS:
+            return
+        self._current_report = report
+        self.reportChanged.emit()
+        self._schedule()
+
+    def _checklists_for(self, query_list: QueryList, taxonomy_id: str) -> Checklists | None:
+        """One ``Checklists`` (whose loaded checklists are cached) until the list changes."""
+        database = self._app.database
+        pack = self._app.pack
+        if database is None or pack is None:
+            return None
+        cached = self._checklists
+        if cached is None or cached[0] is not query_list or cached[1] != taxonomy_id:
+            checklists = Checklists(pack, database.connection, query_list)
+            cached = self._checklists = (query_list, taxonomy_id, checklists)
+        return cached[2]
 
     def run_now(self) -> None:
         """Tests and screenshots: skip the settle delay."""
@@ -95,16 +153,23 @@ class SpecialBackend(QObject):
 
     @Slot()
     def run(self) -> None:
-        self._stale = False
+        if self._current_report == "status":
+            self._run_status()
+        else:
+            self._run_family()
+
+    def _run_family(self) -> None:
+        self._stale["family"] = False
         self._report = None
         self._error = ""
         self._checklist_name = ""
         context = self._context()
-        if context is not None:
-            database = self._app.database
-            pack = self._app.pack
-            assert database is not None and pack is not None
-            checklists = Checklists(pack, database.connection, context.query_list)
+        checklists = (
+            None
+            if context is None
+            else self._checklists_for(context.query_list, context.taxonomy.id)
+        )
+        if context is not None and checklists is not None:
             try:
                 query = parse_query(self._reports.query_json(), context.query_list,
                                     context.users)  # fmt: skip
@@ -310,3 +375,95 @@ class SpecialBackend(QObject):
             return
         target = max(0, min(len(self._shown) - 1, index + step))
         self.select(target)
+
+    # ------------------------------------------------------------ checklist status
+
+    @Property("QVariantList", constant=True)
+    def statusChoices(self) -> list[list[str]]:
+        return [list(choice) for choice in CHOICES]
+
+    @Property(str, notify=statusChanged)
+    def statusChoice(self) -> str:
+        return self._status_choice
+
+    @Slot(str)
+    def setStatusChoice(self, choice: str) -> None:
+        if choice == self._status_choice or choice not in dict(CHOICES):
+            return
+        self._status_choice = choice
+        self._stale["status"] = True
+        self.statusChanged.emit()
+        self._schedule()
+
+    def _run_status(self) -> None:
+        self._stale["status"] = False
+        self._status_places = []
+        context = self._context()
+        checklists = (
+            None
+            if context is None
+            else self._checklists_for(context.query_list, context.taxonomy.id)
+        )
+        rows: list[dict[str, Any]] = []
+        if context is not None and checklists is not None:
+            self._status_places = checklist_status(context.query_list, checklists,
+                                                   context.taxonomy, self._status_choice,
+                                                   context.resolve)  # fmt: skip
+            names = list_place_names(context.query_list, checklists)
+            for place in self._status_places:
+                rows.append({"heading": True, "placeId": place.xml_id,
+                             "name": self._status_place_name(names, place.xml_id),
+                             "scientific": "", "range": "", "custom": place.custom})  # fmt: skip
+                for species in place.species:
+                    found = expected_range(species)
+                    rows.append({"heading": False, "placeId": place.xml_id,
+                                 "name": species.common_name or species.name,
+                                 "scientific": full_name(species),
+                                 "range": found or "", "custom": place.custom})  # fmt: skip
+        self.status_model.replace_all(rows)
+        self.statusChanged.emit()
+
+    @staticmethod
+    def _status_place_name(names: PlaceNames, xml_id: str) -> str:
+        """Its name, with its parent's for countries split across regions (Russia, Indonesia)."""
+        place = names.places.get(xml_id)
+        if place is None:
+            return xml_id
+        name = names.name(place)
+        parent = names.places.get(place.parent) if place.parent else None
+        if place.code in _NAMED_WITH_PARENT and parent is not None:
+            return f"{name} ({names.name(parent)})"
+        return name
+
+    @Property(str, notify=statusChanged)
+    def statusSummary(self) -> str:
+        label = dict(CHOICES)[self._status_choice]
+        if not self._status_places:
+            return f"No sightings with the status “{label}” on their place's checklist."
+        species = sum(len(place.species) for place in self._status_places)
+        places = len(self._status_places)
+        return (
+            f"{_count(species)} species at {_count(places)} {'places' if places != 1 else 'place'}"
+        )
+
+    @Property(str, notify=statusChanged)
+    def statusNote(self) -> str:
+        """Scythebill's warning for species not on the checklist."""
+        if self._status_choice != "NOT_FOUND" or not self._status_places:
+            return ""
+        return "These may be mistakes in your data: the wrong place, or the wrong species."
+
+    @Property(QObject, constant=True)
+    def statusRows(self) -> DictListModel:
+        return self.status_model
+
+    @Slot(int, result=bool)
+    def statusIsHeading(self, index: int) -> bool:
+        rows = self.status_model.rows()
+        return not 0 <= index < len(rows) or bool(rows[index]["heading"])
+
+    @Slot(int, result=str)
+    def statusPlace(self, index: int) -> str:
+        """The place a row is listed under (its ID)."""
+        rows = self.status_model.rows()
+        return str(rows[index]["placeId"]) if 0 <= index < len(rows) else ""

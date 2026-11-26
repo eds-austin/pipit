@@ -1,0 +1,14 @@
+{"taxonomy":"clements","choice":"NOT_FOUND","places":[{"id":"_ct_cosric","custom":false,"taxa":["spStrutcam","spEctopmig","spFratearc","spAptenfor"]},{"id":"laselva","custom":true,"taxa":["spTinam1maj","spCryptbou","spPhaet2aet","spHylommom","spGalburuf","spAulacpra"]},{"id":"_ct_unista","custom":false,"taxa":["spMicro3cup"]},{"id":"_usst_califo","custom":false,"taxa":["spMicro3cup"]}]}
+{"taxonomy":"clements","choice":"RARITY","places":[{"id":"_ct_cosric","custom":false,"taxa":["spSarkisyl"]},{"id":"carara","custom":true,"taxa":["spCraxrub","spBombyced"]}]}
+{"taxonomy":"clements","choice":"ENDEMIC","places":[{"id":"_ct_cosric","custom":false,"taxa":["spMicro3cup","spChrys3bou","spMelozcab"]},{"id":"carara","custom":true,"taxa":["spChordacu"]}]}
+{"taxonomy":"clements","choice":"ESCAPED","places":[{"id":"carara","custom":true,"taxa":["spAulacpra"]}]}
+{"taxonomy":"clements","choice":"EXTINCT","places":[{"id":"carara","custom":true,"taxa":["spCypsecry"]}]}
+{"taxonomy":"clements","choice":"INTRODUCED","places":[{"id":"_ct_cosric","custom":false,"taxa":["spColumliv","spPassedom"]},{"id":"carara","custom":true,"taxa":["spGalburuf"]},{"id":"_ct_unista","custom":false,"taxa":["spColumliv"]},{"id":"_usst_califo","custom":false,"taxa":["spColumliv"]}]}
+{"taxonomy":"clements","choice":"PROVISIONAL","places":[{"id":"carara","custom":true,"taxa":["spCincl3mex"]}]}
+{"taxonomy":"avilist","choice":"NOT_FOUND","places":[{"id":"_ct_cosric","custom":false,"taxa":["spStrutcam","spEctopmig","spFratearc","spAptenfor"]},{"id":"laselva","custom":true,"taxa":["spTinam1maj","spCryptbou","spPhaet1aet","spHylommom","spGalburuf","spAulacpra"]},{"id":"_ct_unista","custom":false,"taxa":["spMicro5cup"]},{"id":"_usst_califo","custom":false,"taxa":["spMicro5cup"]}]}
+{"taxonomy":"avilist","choice":"RARITY","places":[{"id":"_ct_cosric","custom":false,"taxa":["spSarkisyl"]},{"id":"carara","custom":true,"taxa":["spCraxrub","spBombyced"]}]}
+{"taxonomy":"avilist","choice":"ENDEMIC","places":[{"id":"_ct_cosric","custom":false,"taxa":["spMicro5cup","spChrys3bou","spMelozcab"]},{"id":"carara","custom":true,"taxa":["spChordacu"]}]}
+{"taxonomy":"avilist","choice":"ESCAPED","places":[{"id":"carara","custom":true,"taxa":["spAulacpra"]}]}
+{"taxonomy":"avilist","choice":"EXTINCT","places":[{"id":"carara","custom":true,"taxa":["spCypsecry"]}]}
+{"taxonomy":"avilist","choice":"INTRODUCED","places":[{"id":"_ct_cosric","custom":false,"taxa":["spColum1liv","spPassedom"]},{"id":"carara","custom":true,"taxa":["spGalburuf"]},{"id":"_ct_unista","custom":false,"taxa":["spColum1liv"]},{"id":"_usst_califo","custom":false,"taxa":["spColum1liv"]}]}
+{"taxonomy":"avilist","choice":"PROVISIONAL","places":[{"id":"carara","custom":true,"taxa":["spCincl4mex"]}]}
