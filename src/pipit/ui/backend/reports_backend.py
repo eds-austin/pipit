@@ -10,6 +10,7 @@ import copy
 import datetime
 import json
 import logging
+import re
 import sqlite3
 import tempfile
 from collections.abc import Callable
@@ -17,8 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import Property, QObject, QTimer, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import Property, QLocale, QMimeData, QObject, QTimer, QUrl, Signal, Slot
+from PySide6.QtGui import QDesktopServices, QGuiApplication
 
 from pipit.browse.dates import display_date
 from pipit.browse.species import place_labels
@@ -33,6 +34,13 @@ from pipit.output.print_html import (
     report_abbreviation,
     safe_file_name,
     short_date,
+)
+from pipit.output.report_docx import LETTER_PAPER_COUNTRIES
+from pipit.output.trip_report import (
+    TripReport,
+    TripReportOptions,
+    load_report_data,
+    trip_report,
 )
 from pipit.output.xlsx_report import SpreadsheetOptions, report_spreadsheet
 from pipit.query import stored
@@ -187,6 +195,7 @@ class ReportsBackend(QObject):
     selectionChanged = Signal()
     savedChanged = Signal()
     printingChanged = Signal()
+    tripReportChanged = Signal()
 
     def __init__(
         self, app: AppController, open_url: Callable[[QUrl], object] = QDesktopServices.openUrl
@@ -199,6 +208,9 @@ class ReportsBackend(QObject):
         self.last_printed: Path | None = None
         self._saving_spreadsheet = False
         self.last_spreadsheet: Path | None = None
+        self._making_trip_report = False
+        self._trip_report: _MadeTripReport | None = None
+        self.last_trip_report_word: Path | None = None
         self._rows: list[dict[str, Any]] = []
         self._depth = TaxonType.SPECIES
         self._query_list: QueryList | None = None
@@ -857,6 +869,142 @@ class ReportsBackend(QObject):
             self._open_url(QUrl.fromLocalFile(str(path)))
         self._app.message.emit(message)
 
+    # ------------------------------------------------------------ trip reports
+
+    @Property("QVariantMap", notify=tripReportChanged)
+    def tripReportOptions(self) -> dict[str, Any]:
+        """Scythebill's trip report options, as last chosen, the distance unit, and the
+        depth (the screen's)."""
+        settings = self._app.settings
+        options: dict[str, Any] = {key: getattr(settings, f"trip_{name}")
+                                   for key, name in _TRIP_SETTINGS.items()}  # fmt: skip
+        options["useMiles"] = _uses_miles(settings.distance_unit)
+        options["depth"] = self.depth
+        return options
+
+    @Property(bool, notify=tripReportChanged)
+    def makingTripReport(self) -> bool:
+        return self._making_trip_report
+
+    @Property(bool, notify=tripReportChanged)
+    def hasTripReport(self) -> bool:
+        return self._trip_report is not None
+
+    @Property(str, notify=tripReportChanged)
+    def tripReportTitle(self) -> str:
+        made = self._trip_report
+        return "" if made is None else (made.report.name or "Trip report")
+
+    @Property("QVariantList", notify=tripReportChanged)
+    def tripReportSummary(self) -> list[list[str]]:
+        made = self._trip_report
+        return [] if made is None else [list(item) for item in made.summary]
+
+    @Slot("QVariantMap")
+    def makeTripReport(self, options: dict[str, Any]) -> None:
+        """Save as trip report, as Scythebill does: the report is copied to the clipboard
+        (HTML and plain text) and opened in the browser to read."""
+        database = self._app.database
+        taxa = self._app.entry_taxa
+        pack = self._app.pack
+        if database is None or taxa is None or pack is None or self._making_trip_report:
+            return
+        self._app.update_settings(**{f"trip_{name}": options[key]
+                                     for key, name in _TRIP_SETTINGS.items()
+                                     if key in options})  # fmt: skip
+        if "useMiles" in options:
+            self._app.update_settings(distance_unit="mi" if options["useMiles"] else "km")
+        settings = self._app.settings
+        report_options = TripReportOptions(
+            include_scientific=settings.trip_include_scientific,
+            itinerary=settings.trip_itinerary,
+            species_table=settings.trip_species_table,
+            species_list=settings.trip_species_list,
+            show_status=settings.trip_show_status,
+            lifers_in_bold=settings.trip_lifers_in_bold,
+            use_miles=_uses_miles(settings.distance_unit),
+        )
+        depth = TaxonType[str(options.get("depth", self.depth)).upper()]
+        job = _TripReportJob(Path(database.path), pack.path, taxa.display, depth,
+                             self.query_json(), report_options)  # fmt: skip
+        self._making_trip_report = True
+        self.tripReportChanged.emit()
+        run_in_thread("trip-report", lambda: self._make_trip_report(job))
+
+    def _make_trip_report(self, job: _TripReportJob) -> None:
+        """On a worker thread, from the list as last committed."""
+        try:
+            made = _write_trip_report(job)
+        except (OSError, sqlite3.Error, ValueError, KeyError, QueryJsonError,
+                UnsupportedQueryError) as error:  # fmt: skip
+            log.warning("the trip report failed: %s", error)
+            message = f"Could not make the trip report: {error}"
+            self._dispatcher.post(lambda: self._trip_report_made(None, message))
+            return
+        message = "Trip report copied to the clipboard and opened in your browser"
+        self._dispatcher.post(lambda: self._trip_report_made(made, message))
+
+    def _trip_report_made(self, made: _MadeTripReport | None, message: str) -> None:
+        self._making_trip_report = False
+        if made is not None:
+            self._trip_report = made
+            self._copy(made)
+            self._open_url(QUrl.fromLocalFile(str(made.page)))
+        self.tripReportChanged.emit()
+        self._app.message.emit(message)
+
+    @staticmethod
+    def _copy(made: _MadeTripReport) -> None:
+        data = QMimeData()
+        data.setHtml(made.html)
+        data.setText(made.text)
+        QGuiApplication.clipboard().setMimeData(data)
+
+    @Slot()
+    def openTripReport(self) -> None:
+        if self._trip_report is not None:
+            self._open_url(QUrl.fromLocalFile(str(self._trip_report.page)))
+
+    @Slot()
+    def copyTripReport(self) -> None:
+        if self._trip_report is not None:
+            self._copy(self._trip_report)
+            self._app.message.emit("Trip report copied to the clipboard")
+
+    @Slot(result=str)
+    def tripReportFileName(self) -> str:
+        """``saveAsWordDocument``'s suggestion: the report's name, else "trip-report"."""
+        made = self._trip_report
+        name = (made.report.name or "").strip() if made is not None else ""
+        if not name:
+            return "trip-report.docx"
+        return re.sub(r'[\\/:*?"<>|]', "-", name) + ".docx"
+
+    @Slot(QUrl)
+    def saveTripReportAsWord(self, url: QUrl) -> None:
+        made = self._trip_report
+        if made is None:
+            return
+        path = Path(url.toLocalFile())
+        if path.suffix.lower() != ".docx":
+            path = path.with_name(path.name + ".docx")
+        run_in_thread("trip-report-word", lambda: self._save_word(made, path))
+
+    def _save_word(self, made: _MadeTripReport, path: Path) -> None:
+        try:
+            path.write_bytes(made.report.word(letter_paper=_letter_paper())[0])
+        except OSError as error:
+            message = f"Could not save the Word document: {error}"
+            self._dispatcher.post(lambda: self._word_saved(None, message))
+            return
+        self._dispatcher.post(lambda: self._word_saved(path, f"Saved {path.name}"))
+
+    def _word_saved(self, path: Path | None, message: str) -> None:
+        if path is not None:
+            self.last_trip_report_word = path
+            self._open_url(QUrl.fromLocalFile(str(path)))
+        self._app.message.emit(message)
+
     # ------------------------------------------------------------ models and lists
 
     @Property("QVariantList", constant=True)
@@ -909,6 +1057,9 @@ _PRINT_SETTINGS = {"includeScientific": "include_scientific", "showFamilies": "s
                    "sortType": "sort_type", "sortSightingsType": "sort_sightings_type",
                    "compact": "compact", "onlyCountable": "only_countable",
                    "omitSpAndHybrid": "omit_sp_and_hybrid"}  # fmt: skip
+_TRIP_SETTINGS = {"includeScientific": "include_scientific", "itinerary": "itinerary",
+                  "speciesTable": "species_table", "speciesList": "species_list",
+                  "showStatus": "show_status", "lifersInBold": "lifers_in_bold"}  # fmt: skip
 _XLSX_SETTINGS = {"includeScientific": "include_scientific", "showFamilies": "show_families",
                   "showStatus": "show_status", "showNotes": "show_notes",
                   "onlyCountable": "only_countable", "omitSpAndHybrid": "omit_sp_and_hybrid",
@@ -961,6 +1112,63 @@ def _write_spreadsheet(job: _SpreadsheetJob) -> None:
     finally:
         connection.close()
     job.path.write_bytes(data)
+
+
+@dataclass(frozen=True)
+class _TripReportJob:
+    list_path: Path
+    pack_path: Path
+    display: Taxonomy
+    depth: TaxonType
+    query_json: str
+    options: TripReportOptions
+
+
+@dataclass(frozen=True)
+class _MadeTripReport:
+    report: TripReport
+    html: str
+    text: str
+    page: Path  # the HTML, in a temporary folder, named after the report
+    summary: list[tuple[str, str]]
+
+
+def _write_trip_report(job: _TripReportJob) -> _MadeTripReport:
+    connection = sqlite3.connect(f"file:{job.list_path}?mode=ro", uri=True)
+    try:
+        with DataPack(job.pack_path) as pack:
+            query_list = load_query_list(connection)
+            data = load_report_data(connection, query_list)
+            context = EngineContext(query_list, job.display, job.depth,
+                                    users=frozenset(data.users))  # fmt: skip
+            report = trip_report(context=context,
+                                 checklists=Checklists(pack, connection, query_list),
+                                 data=data, query_json=job.query_json,
+                                 options=job.options)  # fmt: skip
+            html, text = report.html()
+            summary = report.summary()
+    finally:
+        connection.close()
+    directory = Path(tempfile.mkdtemp(prefix="trip-report"))
+    page = directory / f"{safe_file_name(report.name or 'Trip report', 'trip-report')}.html"
+    page.write_text(html, encoding="utf-8")
+    return _MadeTripReport(report, html, text, page, summary)
+
+
+def _country() -> str:
+    name = str(QLocale.system().name())  # "en_US"
+    return name.partition("_")[2].upper()
+
+
+def _uses_miles(unit: str) -> bool:
+    """``VisitInfoPreferences``: miles in the US and UK unless chosen otherwise."""
+    if unit in ("km", "mi"):
+        return unit == "mi"
+    return _country() in ("US", "UK", "GB")
+
+
+def _letter_paper() -> bool:
+    return _country() in LETTER_PAPER_COUNTRIES
 
 
 def _users(connection: sqlite3.Connection) -> dict[str, tuple[str | None, str | None]]:

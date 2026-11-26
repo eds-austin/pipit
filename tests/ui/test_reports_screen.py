@@ -240,3 +240,56 @@ def test_save_as_spreadsheet(running: Running, tmp_path: Path) -> None:
     assert running.app.settings.xlsx_show_notes
     assert reports.spreadsheetOptions["userOutput"] == "USER_ABBREVIATIONS"
     assert not reports.savingSpreadsheet
+
+
+@pytest.fixture
+def costa_rica(qapp: object, pack: Any, built_pack: Path, tmp_path: Path) -> Iterator[Running]:
+    path = tmp_path / "trip.pipit"
+    import_bsxm(FIXTURES / "bsxm" / "trip_report.bsxm", path, pack.base_taxonomy_id,
+                pack.base_taxon_ids(), pack.predefined_locations())  # fmt: skip
+    started = _start(path, built_pack, tmp_path / "backups")
+    yield started
+    _stop(started)
+
+
+def test_trip_report(costa_rica: Running, tmp_path: Path) -> None:
+    """Ctrl+T: the options (remembered), then the report: copied to the clipboard (HTML and
+    plain text), opened in the browser (stubbed here), and offered as a Word document."""
+    import zipfile
+
+    from PySide6.QtCore import QUrl
+    from PySide6.QtGui import QGuiApplication
+
+    running = costa_rica
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_6")
+    wait_until(lambda: running.shell.currentKey == "reports")
+    reports.setRowValue(0, "id", "_ct_cosric")
+    reports.run_now()
+    wait_until(lambda: reports.sightingCount > 0)
+    ctrl(window, "Key_T")
+    wait_focus(running, "tripItinerary")
+    shots = os.environ.get("PIPIT_SHOTS")
+    if shots:
+        window.grabWindow().save(str(Path(shots) / "trip-report-dialog.png"))
+    key(window, "Key_Return")  # Enter makes the report
+    wait_until(lambda: reports.hasTripReport and not reports.makingTripReport, timeout=60)
+    assert reports.tripReportTitle == "Costa Rica"
+    assert reports.tripReportSummary[0] == ["41", "Species"]
+    clipboard = QGuiApplication.clipboard().mimeData()
+    assert "<h1" in clipboard.html()
+    assert clipboard.text().startswith("Costa Rica\n")
+    wait_focus(running, "tripSaveWord")  # the result dialog, ready to save as Word
+    if shots:
+        window.grabWindow().save(str(Path(shots) / "trip-report-result.png"))
+    assert reports.tripReportFileName() == "Costa Rica.docx"
+    reports.saveTripReportAsWord(QUrl.fromLocalFile(str(tmp_path / "costa")))
+    wait_until(lambda: reports.last_trip_report_word is not None, timeout=60)
+    assert reports.last_trip_report_word == tmp_path / "costa.docx"
+    document = zipfile.ZipFile(tmp_path / "costa.docx").read("word/document.xml")
+    assert b"Costa Rica" in document
+    assert running.app.settings.trip_itinerary
+    # Qt's offscreen platform crashes at exit while its clipboard holds data (Wayland and X11
+    # don't), so the test leaves it empty.
+    QGuiApplication.clipboard().clear()

@@ -226,7 +226,20 @@ is written as a bare `<b/>`, as Scythebill's `SpreadsheetFonts` does for macOS N
   subspecies lifer that isn't a group lifer). Other taxonomies' sheets ("Show all
   taxonomies") wait for custom taxonomies.
 
-## Trip reports (in progress)
+## Trip reports (Ctrl+T on the Reports screen)
+
+Trip reports work as Scythebill's Save as trip report does, from the Reports screen's
+query: a dialog with Scythebill's options (itinerary, species table, species list,
+scientific names, threatened status, lifers in bold), what to show (species, groups or
+subspecies; the screen's to start) and the distance unit (miles in the US and UK unless
+chosen, as Scythebill's visit preferences). The report is made on a worker thread, copied
+to the clipboard (HTML and plain text, to paste into Word or Pages) and opened in the
+browser to read, since Qt Quick can't show its HTML faithfully. A dialog then shows its
+totals and offers it again: Open again, Copy, and Save as Word… (named after the report,
+"trip-report.docx" without a name), which writes the .docx and opens it. Paper is Letter
+in the US and a few other countries, A4 elsewhere (from the system locale). The options are
+remembered (`trip_*`, `distance_unit`).
+
 
 `pipit/output/trip_report.py` is a port of Scythebill's `TripReportDocOutput` and
 `SaveAsTripReportAction`; `trip_stops.py` of `TripStops`; `report_document.py` of

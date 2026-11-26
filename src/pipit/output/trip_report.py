@@ -547,39 +547,44 @@ class TripReport:
                 if any(self.countable(s) for taxon in entry.taxa
                        for s in self.results.sightings_of(taxon))]  # fmt: skip
 
-    def _write_summary(self, out: ReportDocumentWriter, all_sightings: list[QSighting]) -> None:
-        numbers: list[str] = []
-        labels: list[str] = []
+    def summary(self) -> list[tuple[str, str]]:
+        """The row of totals under the title, as (number, label): species, lifers, endemics,
+        days and sites (stops), each only if there are some (species always)."""
+        if not hasattr(self, "stops"):
+            self.stops = self._compute_stops(self.results.all_sightings())
+        return self._summary(self.results.all_sightings())
+
+    def _summary(self, all_sightings: list[QSighting]) -> list[tuple[str, str]]:
+        found: list[tuple[str, str]] = []
         counted = self._counted(self.entries)
-        numbers.append(_number(len(counted)))
-        labels.append("Species")
+        found.append((_number(len(counted)), "Species"))
         if self.options.lifers_in_bold:
             lifers = sum(1 for entry in counted if self._is_lifer(entry.species))
             if lifers > 0:
-                numbers.append(_number(lifers))
-                labels.append("Lifers")
+                found.append((_number(lifers), "Lifers"))
         endemics = sum(1 for entry in counted if self._checklist_status(entry.species) == "ENDEMIC")
         if endemics > 0:
-            numbers.append(_number(endemics))
-            labels.append("Endemics")
+            found.append((_number(endemics), "Endemics"))
         days = len({key.date for key in self.visits})
         if days > 0:
-            numbers.append(_number(days))
-            labels.append("Days")
+            found.append((_number(days), "Days"))
         site_ids = {key.location for key in self.visits}
         site_ids |= {s.location_xml_id for s in all_sightings
                      if s.trip is not None and s.location_xml_id is not None}  # fmt: skip
         sites = len({self._stop_key(site) for site in site_ids})
         if sites > 0:
-            numbers.append(_number(sites))
-            labels.append("Sites")
-        out.start_table(TableStyle.SUMMARY, len(numbers))
+            found.append((_number(sites), "Sites"))
+        return found
+
+    def _write_summary(self, out: ReportDocumentWriter, all_sightings: list[QSighting]) -> None:
+        summary = self._summary(all_sightings)
+        out.start_table(TableStyle.SUMMARY, len(summary))
         out.start_row(RowStyle.PLAIN)
-        for number in numbers:
+        for number, _label in summary:
             _cell(out, CellStyle.SUMMARY_NUMBER, number)
         out.end_row()
         out.start_row(RowStyle.PLAIN)
-        for label in labels:
+        for _number_text, label in summary:
             _cell(out, CellStyle.SUMMARY_LABEL, label)
         out.end_row()
         out.end_table()

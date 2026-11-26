@@ -4,6 +4,7 @@
 //   Ctrl+S          save the query as a report (Scythebill sees it too)
 //   Ctrl+P          print (options, then the browser prints the page)
 //   Ctrl+E          save as spreadsheet (options, then where; it opens once saved)
+//   Ctrl+T          trip report (options; copied, opened in the browser; Save as Word)
 //   Ctrl+L          into the saved reports: Enter loads, F2 renames, Delete, Alt+Up/Down
 //   Ctrl+R          into the results; Up/Down choose (family headings skipped)
 //   Esc             (in the results) back to the query
@@ -20,6 +21,7 @@ Item {
     readonly property bool working: app.hasList && app.taxaReady
     readonly property bool dialogOpen: saveDialog.visible || renameDialog.visible || deleteDialog.visible
                                        || printDialog.visible || spreadsheetDialog.visible
+                                       || tripReportDialog.visible || tripReportResult.visible
     readonly property bool keysOn: shown && working && !dialogOpen
 
     function focusResults() { if (results.count > 0) { results.forceActiveFocus(); if (reports.selectedIndex < 0) reports.selectStep(0, 1) } }
@@ -30,6 +32,20 @@ Item {
     Shortcut { enabled: root.keysOn; sequence: "Ctrl+L"; onActivated: saved.focusList() }
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0; sequence: "Ctrl+P"; onActivated: printDialog.show() }
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.savingSpreadsheet; sequence: "Ctrl+E"; onActivated: spreadsheetDialog.show() }
+    Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.makingTripReport; sequence: "Ctrl+T"; onActivated: tripReportDialog.show() }
+
+    // The result opens when a report asked for here is ready.
+    property bool awaitingTripReport: false
+    Connections {
+        target: reports
+        function onTripReportChanged() {
+            if (root.awaitingTripReport && !reports.makingTripReport) {
+                root.awaitingTripReport = false
+                if (reports.hasTripReport)
+                    tripReportResult.show()
+            }
+        }
+    }
 
     EmptyState {
         anchors.centerIn: parent
@@ -89,6 +105,15 @@ Item {
                         implicitWidth: Theme.controlHCompact
                         implicitHeight: Theme.controlHCompact
                         onClicked: spreadsheetDialog.show()
+                    }
+                    PIconButton {
+                        objectName: "tripReport"
+                        enabled: reports.sightingCount > 0 && !reports.makingTripReport
+                        iconName: "file-text"
+                        tip: qsTr("Trip report (Ctrl+T)")
+                        implicitWidth: Theme.controlHCompact
+                        implicitHeight: Theme.controlHCompact
+                        onClicked: tripReportDialog.show()
                     }
                     PLabel { kind: "caption"; text: qsTr("Show") }
                     PComboBox {
@@ -301,6 +326,11 @@ Item {
 
     PrintDialog { id: printDialog }
     SpreadsheetDialog { id: spreadsheetDialog }
+    TripReportDialog {
+        id: tripReportDialog
+        onClosed: if (reports.makingTripReport) root.awaitingTripReport = true
+    }
+    TripReportResult { id: tripReportResult }
 
     PDialog {
         id: saveDialog

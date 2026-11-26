@@ -46,6 +46,15 @@ class AppSettings:
     xlsx_sort_sightings_type: str = "DEFAULT"
     xlsx_user_output: str = "NONE"
     xlsx_subspecies_in_separate_column: bool = False
+    # Trip reports (Scythebill's TripReportPreferences, with its defaults)
+    trip_include_scientific: bool = True
+    trip_itinerary: bool = True
+    trip_species_table: bool = True
+    trip_species_list: bool = True
+    trip_show_status: bool = True
+    trip_lifers_in_bold: bool = True
+    #: "km", "mi", or "auto": miles in the US and UK, as Scythebill's VisitInfoPreferences
+    distance_unit: str = "auto"
 
     def validated(self) -> AppSettings:
         """Clamp or replace invalid values (hand-edited files)."""
@@ -61,6 +70,7 @@ class AppSettings:
             xlsx_maximum_sightings=min(100, max(0, self.xlsx_maximum_sightings)),
             xlsx_sort_type=_sort(self.xlsx_sort_type),
             xlsx_sort_sightings_type=_sort(self.xlsx_sort_sightings_type),
+            distance_unit=self.distance_unit if self.distance_unit in ("km", "mi") else "auto",
             xlsx_user_output=self.xlsx_user_output
             if self.xlsx_user_output in USER_OUTPUTS
             else "NONE",
