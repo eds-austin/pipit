@@ -3,6 +3,7 @@
 //   Ctrl+Shift+A    add a condition (the first kind not used yet, as Scythebill does)
 //   Ctrl+S          save the query as a report (Scythebill sees it too)
 //   Ctrl+P          print (options, then the browser prints the page)
+//   Ctrl+E          save as spreadsheet (options, then where; it opens once saved)
 //   Ctrl+L          into the saved reports: Enter loads, F2 renames, Delete, Alt+Up/Down
 //   Ctrl+R          into the results; Up/Down choose (family headings skipped)
 //   Esc             (in the results) back to the query
@@ -18,7 +19,7 @@ Item {
     readonly property bool shown: shell.currentKey === "reports"
     readonly property bool working: app.hasList && app.taxaReady
     readonly property bool dialogOpen: saveDialog.visible || renameDialog.visible || deleteDialog.visible
-                                       || printDialog.visible
+                                       || printDialog.visible || spreadsheetDialog.visible
     readonly property bool keysOn: shown && working && !dialogOpen
 
     function focusResults() { if (results.count > 0) { results.forceActiveFocus(); if (reports.selectedIndex < 0) reports.selectStep(0, 1) } }
@@ -28,6 +29,7 @@ Item {
     Shortcut { enabled: root.keysOn && !app.readOnly; sequence: "Ctrl+S"; onActivated: saveDialog.show() }
     Shortcut { enabled: root.keysOn; sequence: "Ctrl+L"; onActivated: saved.focusList() }
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0; sequence: "Ctrl+P"; onActivated: printDialog.show() }
+    Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.savingSpreadsheet; sequence: "Ctrl+E"; onActivated: spreadsheetDialog.show() }
 
     EmptyState {
         anchors.centerIn: parent
@@ -78,6 +80,15 @@ Item {
                         implicitWidth: Theme.controlHCompact
                         implicitHeight: Theme.controlHCompact
                         onClicked: printDialog.show()
+                    }
+                    PIconButton {
+                        objectName: "spreadsheetReport"
+                        enabled: reports.sightingCount > 0 && !reports.savingSpreadsheet
+                        iconName: "sheet"
+                        tip: qsTr("Save as spreadsheet (Ctrl+E)")
+                        implicitWidth: Theme.controlHCompact
+                        implicitHeight: Theme.controlHCompact
+                        onClicked: spreadsheetDialog.show()
                     }
                     PLabel { kind: "caption"; text: qsTr("Show") }
                     PComboBox {
@@ -289,6 +300,7 @@ Item {
     // ------------------------------------------------------------ dialogs
 
     PrintDialog { id: printDialog }
+    SpreadsheetDialog { id: spreadsheetDialog }
 
     PDialog {
         id: saveDialog

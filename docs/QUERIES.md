@@ -186,3 +186,42 @@ the ones its quickselect leaves, not the first ones.
 
 The page is built on a worker thread with its own read-only connections, so the window
 doesn't wait.
+
+## Save as spreadsheet (Ctrl+E on the Reports screen)
+
+Save as spreadsheet works as Scythebill's does: a dialog with Scythebill's options, then
+where to save (it suggests Scythebill's name, "report-Washington.xlsx", else
+"report.xlsx"), then the .xlsx is written on a worker thread and opened. The options are
+remembered (app settings, `xlsx_*`).
+
+- **What data?** Scientific names, families, threatened status, notes (notes, number, and
+  a "Y" column each for heard only, adult, immature, female and male), subspecies in their
+  own column (when showing groups or subspecies), and observers (names, abbreviations,
+  both; only offered when the list has observers).
+- **Which species?** As for Print: omit uncountable, omit sp. and hybrids, the species
+  order (the date orders get a "#" column, counting down to 1).
+- **Which sightings?** How many per species (0 to 100, used in every order) and their
+  order (taxonomic order only).
+
+The workbook has the same content as Scythebill's (`pipit/output/xlsx_report.py`, a port of
+`ReportXlsOutput` and `SaveAsXlsAction`): one sheet named after the taxonomy, a bold header
+row, family rows (merged over two columns, with "seen / on the checklist" totals unless the
+query restricts species status) after a blank row, a row per species and one more per extra
+sighting, full dates as real dates (`[$-0409]M/d/yy;@`) and partial ones as text, lifer
+columns when the query highlights lifers, and the totals after a blank row. Column widths
+are Scythebill's, including the autosized "#" column. Scythebill's quirks are kept: without
+notes, the observer columns land one column further on when the sighting has a status. Bold
+is written as a bare `<b/>`, as Scythebill's `SpreadsheetFonts` does for macOS Numbers.
+
+- **Checked against Scythebill.** PrintOracle's xlsx mode runs `ReportXlsOutput` as
+  `SaveAsXlsAction` does on 154 cases (`make_xlsx_cases.py`): the 30 reference queries,
+  and every option, sort, names order, observer column, taxonomy and depth (with and
+  without the subspecies column) on a few of them. The files are POI's and openpyxl's, so
+  they're compared by content: `summarize_xlsx.py` reduces each to its cells (value, bold,
+  italic, number format), merges and column widths, and the fixture keeps each snapshot's
+  SHA-256. All 154 are equal. On Eric's list (private, `PIPIT_PRIVATE_XLSX`), 545 workbooks
+  (his saved reports with five option sets, and every country in two taxonomies, which
+  covers endemics and checklist family totals) are all equal.
+- **Not covered:** the "Ssp. Lifer" column never appears in either list (it needs a
+  subspecies lifer that isn't a group lifer). Other taxonomies' sheets ("Show all
+  taxonomies") wait for custom taxonomies.

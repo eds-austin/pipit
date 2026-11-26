@@ -241,16 +241,24 @@ def report_name(query: StoredQuery, sources: NameSources) -> str | None:
     """``getQueryName().or(getQueryAbbreviation())``: the fields' names (or abbreviations),
     "never ..." for never fields."""
     names: list[str] = []
-    abbreviations: list[str] = []
     for value, operation in query.fields:
-        name, abbreviation = _field_name_and_abbreviation(value, sources)
-        never = operation in ("NEVER", "NEVER_ALL")
+        name = _field_name_and_abbreviation(value, sources)[0]
         if name is not None:
-            names.append(f"never {name}" if never else name)
-        if abbreviation is not None:
-            abbreviations.append(f"never {abbreviation}" if never else abbreviation)
+            names.append(f"never {name}" if operation in ("NEVER", "NEVER_ALL") else name)
     if names:
         return " ".join(names)
+    return report_abbreviation(query, sources)
+
+
+def report_abbreviation(query: StoredQuery, sources: NameSources) -> str | None:
+    """``QueryPanel.getQueryAbbreviation``: the fields' abbreviations joined with "-" (which
+    names saved files, "report-Washington.xlsx")."""
+    abbreviations: list[str] = []
+    for value, operation in query.fields:
+        abbreviation = _field_name_and_abbreviation(value, sources)[1]
+        if abbreviation is not None:
+            never = operation in ("NEVER", "NEVER_ALL")
+            abbreviations.append(f"never {abbreviation}" if never else abbreviation)
     if abbreviations:
         return "-".join(abbreviations).replace("/", "-")
     return None
@@ -787,17 +795,14 @@ def family_totals_shown(query: StoredQuery, checklist: Checklist | None) -> bool
 # ------------------------------------------------------------------ PrintAction
 
 
-def print_report(*, context: EngineContext, checklists: Checklists, query_json: str,
-                 users: dict[str, tuple[str | None, str | None]], file_name: str, date: str,
-                 options: PrintOptions, names_preference: str = COMMON_FIRST,
-                 print_on_load: bool = True) -> PrintedReport:  # fmt: skip
-    """``PrintAction.actionPerformed`` on the Reports screen's query: the page.
-
-    ``file_name`` is the list's file name without its extension, and ``date`` today's date
-    as Scythebill writes it (``short_date``)."""
+def run_report_query(context: EngineContext, checklists: Checklists, query_json: str,
+                     users: dict[str, tuple[str | None, str | None]], *, only_countable: bool
+                     ) -> tuple[StoredQuery, QueryResults, str | None]:  # fmt: skip
+    """``ReportsPanel``'s query executor: the results (with the checklist of the query's one
+    place, if any) and the root place that sightings' place names are written below."""
     query_list = context.query_list
     query = parse_query(query_json, query_list, users.keys())
-    results = run_query(query, context, only_countable=options.only_countable)
+    results = run_query(query, context, only_countable=only_countable)
     locations = [v for v, _op in query.fields if isinstance(v, LocationValue)]
     known = set(query_list.places) | set(regions_for(query_list))
     places = {v.location_id if v.location_id in known else None for v in locations}
@@ -808,6 +813,20 @@ def print_report(*, context: EngineContext, checklists: Checklists, query_json: 
     root = None
     if len(locations) == 1 and locations[0].query in ("IN", "IS"):
         root = locations[0].location_id if locations[0].location_id in known else None
+    return query, results, root
+
+
+def print_report(*, context: EngineContext, checklists: Checklists, query_json: str,
+                 users: dict[str, tuple[str | None, str | None]], file_name: str, date: str,
+                 options: PrintOptions, names_preference: str = COMMON_FIRST,
+                 print_on_load: bool = True) -> PrintedReport:  # fmt: skip
+    """``PrintAction.actionPerformed`` on the Reports screen's query: the page.
+
+    ``file_name`` is the list's file name without its extension, and ``date`` today's date
+    as Scythebill writes it (``short_date``)."""
+    query_list = context.query_list
+    query, results, root = run_report_query(context, checklists, query_json, users,
+                                            only_countable=options.only_countable)  # fmt: skip
     place_names = {xml_id: place.name for xml_id, place in query_list.places.items()}
     place_names.update(REGION_NAMES)
     name = report_name(query, NameSources(place_names, users, context.taxonomy))

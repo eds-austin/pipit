@@ -34,6 +34,18 @@ class AppSettings:
     print_compact: bool = False
     print_only_countable: bool = False
     print_omit_sp_and_hybrid: bool = False
+    # Save as spreadsheet (Scythebill's ReportSpreadsheetPreferences, with its defaults)
+    xlsx_include_scientific: bool = True
+    xlsx_show_families: bool = True
+    xlsx_show_status: bool = True
+    xlsx_show_notes: bool = False
+    xlsx_only_countable: bool = False
+    xlsx_omit_sp_and_hybrid: bool = False
+    xlsx_maximum_sightings: int = 1
+    xlsx_sort_type: str = "DEFAULT"
+    xlsx_sort_sightings_type: str = "DEFAULT"
+    xlsx_user_output: str = "NONE"
+    xlsx_subspecies_in_separate_column: bool = False
 
     def validated(self) -> AppSettings:
         """Clamp or replace invalid values (hand-edited files)."""
@@ -46,11 +58,21 @@ class AppSettings:
             print_maximum_sightings=min(100, max(0, self.print_maximum_sightings)),
             print_sort_type=_sort(self.print_sort_type),
             print_sort_sightings_type=_sort(self.print_sort_sightings_type),
+            xlsx_maximum_sightings=min(100, max(0, self.xlsx_maximum_sightings)),
+            xlsx_sort_type=_sort(self.xlsx_sort_type),
+            xlsx_sort_sightings_type=_sort(self.xlsx_sort_sightings_type),
+            xlsx_user_output=self.xlsx_user_output
+            if self.xlsx_user_output in USER_OUTPUTS
+            else "NONE",
         )
 
 
 SORT_TYPES = ("DEFAULT", "BY_DATE", "BY_DATE_DESCENDING", "BY_DAY_OF_YEAR",
               "BY_DAY_OF_YEAR_DESCENDING", "BY_SIGHTING_COUNT")  # fmt: skip
+
+
+#: ``UserOutput``: which observer columns a spreadsheet has.
+USER_OUTPUTS = ("NONE", "USER_NAMES", "USER_ABBREVIATIONS", "BOTH")
 
 
 def _sort(value: str) -> str:

@@ -25,7 +25,15 @@ from pipit.browse.species import place_labels
 from pipit.datapack.pack import DataPack
 from pipit.domain import gson
 from pipit.domain.partial_date import PartialDate
-from pipit.output.print_html import PrintOptions, print_report, safe_file_name, short_date
+from pipit.output.print_html import (
+    NameSources,
+    PrintOptions,
+    print_report,
+    report_abbreviation,
+    safe_file_name,
+    short_date,
+)
+from pipit.output.xlsx_report import SpreadsheetOptions, report_spreadsheet
 from pipit.query import stored
 from pipit.query.checklists import Checklists
 from pipit.query.engine import EngineContext, parse_query, run_query
@@ -188,6 +196,8 @@ class ReportsBackend(QObject):
         self._dispatcher = Dispatcher()
         self._printing = False
         self.last_printed: Path | None = None
+        self._saving_spreadsheet = False
+        self.last_spreadsheet: Path | None = None
         self._rows: list[dict[str, Any]] = []
         self._depth = TaxonType.SPECIES
         self._query_list: QueryList | None = None
@@ -748,6 +758,100 @@ class ReportsBackend(QObject):
             self._open_url(QUrl.fromLocalFile(str(path)))
         self._app.message.emit(message)
 
+    # ------------------------------------------------------------ spreadsheets
+
+    @Property("QVariantMap", notify=printingChanged)
+    def spreadsheetOptions(self) -> dict[str, Any]:
+        """Scythebill's Save as spreadsheet options, as last chosen."""
+        settings = self._app.settings
+        return {key: getattr(settings, f"xlsx_{name}") for key, name in _XLSX_SETTINGS.items()}
+
+    @Property(bool, notify=queryChanged)
+    def hasObservers(self) -> bool:
+        database = self._app.database
+        if database is None:
+            return False
+        return database.connection.execute("SELECT 1 FROM users LIMIT 1").fetchone() is not None
+
+    @Property(bool, notify=printingChanged)
+    def savingSpreadsheet(self) -> bool:
+        return self._saving_spreadsheet
+
+    @Slot(result=str)
+    def spreadsheetFileName(self) -> str:
+        """``SaveAsXlsAction``'s suggestion: "report-<abbreviation>.xlsx", else "report.xlsx"."""
+        context = self._context()
+        database = self._app.database
+        if context is None or database is None:
+            return "report.xlsx"
+        users = _users(database.connection)
+        try:
+            query = parse_query(self.query_json(), context.query_list, users.keys())
+        except (QueryJsonError, UnsupportedQueryError, ValueError, KeyError):
+            return "report.xlsx"
+        place_names = {xml_id: place.name for xml_id, place in context.query_list.places.items()}
+        place_names.update(REGION_NAMES)
+        abbreviation = report_abbreviation(query, NameSources(place_names, users,
+                                                              context.taxonomy))  # fmt: skip
+        if abbreviation is None:
+            return "report.xlsx"
+        return f"{safe_file_name(f'report-{abbreviation}', 'report')}.xlsx"
+
+    @Slot("QVariantMap", QUrl)
+    def saveSpreadsheet(self, options: dict[str, Any], url: QUrl) -> None:
+        """Save as spreadsheet, as Scythebill does: the .xlsx is written, then opened."""
+        database = self._app.database
+        taxa = self._app.entry_taxa
+        pack = self._app.pack
+        if database is None or taxa is None or pack is None or self._saving_spreadsheet:
+            return
+        path = Path(url.toLocalFile())
+        if path.suffix.lower() != ".xlsx":
+            path = path.with_name(path.name + ".xlsx")
+        self._app.update_settings(**{f"xlsx_{name}": options[key]
+                                     for key, name in _XLSX_SETTINGS.items()
+                                     if key in options})  # fmt: skip
+        settings = self._app.settings
+        spreadsheet_options = SpreadsheetOptions(
+            include_scientific=settings.xlsx_include_scientific,
+            show_families=settings.xlsx_show_families,
+            show_status=settings.xlsx_show_status,
+            show_notes=settings.xlsx_show_notes,
+            only_countable=settings.xlsx_only_countable,
+            omit_sp_and_hybrid=settings.xlsx_omit_sp_and_hybrid,
+            maximum_sightings=settings.xlsx_maximum_sightings,
+            sort_type=settings.xlsx_sort_type,
+            sort_sightings_type=settings.xlsx_sort_sightings_type,
+            user_output=settings.xlsx_user_output,
+            subspecies_in_separate_column=settings.xlsx_subspecies_in_separate_column,
+        )
+        job = _SpreadsheetJob(Path(database.path), pack.path, taxa.display, self._depth,
+                              self.query_json(), spreadsheet_options, path)  # fmt: skip
+        self._saving_spreadsheet = True
+        self.printingChanged.emit()
+        run_in_thread("report-xlsx", lambda: self._save_spreadsheet(job))
+
+    def _save_spreadsheet(self, job: _SpreadsheetJob) -> None:
+        """On a worker thread, from the list as last committed."""
+        try:
+            _write_spreadsheet(job)
+        except (OSError, sqlite3.Error, ValueError, KeyError, QueryJsonError,
+                UnsupportedQueryError) as error:  # fmt: skip
+            log.warning("saving the spreadsheet failed: %s", error)
+            message = f"Could not save the spreadsheet: {error}"
+            self._dispatcher.post(lambda: self._spreadsheet_saved(None, message))
+            return
+        message = f"Saved {job.path.name}"
+        self._dispatcher.post(lambda: self._spreadsheet_saved(job.path, message))
+
+    def _spreadsheet_saved(self, path: Path | None, message: str) -> None:
+        self._saving_spreadsheet = False
+        self.printingChanged.emit()
+        if path is not None:
+            self.last_spreadsheet = path
+            self._open_url(QUrl.fromLocalFile(str(path)))
+        self._app.message.emit(message)
+
     # ------------------------------------------------------------ models and lists
 
     @Property("QVariantList", constant=True)
@@ -800,6 +904,12 @@ _PRINT_SETTINGS = {"includeScientific": "include_scientific", "showFamilies": "s
                    "sortType": "sort_type", "sortSightingsType": "sort_sightings_type",
                    "compact": "compact", "onlyCountable": "only_countable",
                    "omitSpAndHybrid": "omit_sp_and_hybrid"}  # fmt: skip
+_XLSX_SETTINGS = {"includeScientific": "include_scientific", "showFamilies": "show_families",
+                  "showStatus": "show_status", "showNotes": "show_notes",
+                  "onlyCountable": "only_countable", "omitSpAndHybrid": "omit_sp_and_hybrid",
+                  "maximumSightings": "maximum_sightings", "sortType": "sort_type",
+                  "sortSightingsType": "sort_sightings_type", "userOutput": "user_output",
+                  "subspeciesInSeparateColumn": "subspecies_in_separate_column"}  # fmt: skip
 #: ``SortType.toString``: sorting a species' sightings.
 _SIGHTING_SORT_LABELS = {"DEFAULT": "Best first", "BY_DATE": "Oldest first",
                          "BY_DATE_DESCENDING": "Newest first",
@@ -818,6 +928,34 @@ class _PrintJob:
     file_name: str
     date: str
     options: PrintOptions
+
+
+@dataclass(frozen=True)
+class _SpreadsheetJob:
+    list_path: Path
+    pack_path: Path
+    display: Taxonomy
+    depth: TaxonType
+    query_json: str
+    options: SpreadsheetOptions
+    path: Path
+
+
+def _write_spreadsheet(job: _SpreadsheetJob) -> None:
+    connection = sqlite3.connect(f"file:{job.list_path}?mode=ro", uri=True)
+    try:
+        with DataPack(job.pack_path) as pack:
+            query_list = load_query_list(connection)
+            users = _users(connection)
+            context = EngineContext(query_list, job.display, job.depth, users=frozenset(users))
+            report = report_spreadsheet(context=context,
+                                        checklists=Checklists(pack, connection, query_list),
+                                        query_json=job.query_json, users=users,
+                                        options=job.options)  # fmt: skip
+            data = report.xlsx()
+    finally:
+        connection.close()
+    job.path.write_bytes(data)
 
 
 def _users(connection: sqlite3.Connection) -> dict[str, tuple[str | None, str | None]]:

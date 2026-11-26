@@ -69,6 +69,8 @@ class QSighting:
     favorite_photo: bool = False
     #: Sorts exactly as Scythebill's MoreRecentComparator (set by ``load_query_list``).
     recency: tuple[Any, ...] = ()
+    #: The observers in the list's order (``SightingInfo.getUsers``).
+    user_order: tuple[str, ...] = ()
 
     # ------------------------------------------------------------ Scythebill's dates
 
@@ -152,9 +154,11 @@ def load_query_list(connection: sqlite3.Connection) -> QueryList:
         "SELECT sighting_id, taxon_id FROM sighting_taxa ORDER BY sighting_id, ord"
     ):
         parts[sighting].append(taxon_id)
-    users: dict[int, set[str]] = defaultdict(set)
-    for sighting, user in connection.execute("SELECT sighting_id, user_xml_id FROM sighting_users"):
-        users[sighting].add(user)
+    users: dict[int, list[str]] = defaultdict(list)
+    for sighting, user in connection.execute(
+        "SELECT sighting_id, user_xml_id FROM sighting_users ORDER BY sighting_id, ord"
+    ):
+        users[sighting].append(user)
     photos: dict[int, tuple[int, int]] = {
         sighting: (count, favorites)
         for sighting, count, favorites in connection.execute(
@@ -184,7 +188,7 @@ def load_query_list(connection: sqlite3.Connection) -> QueryList:
                 count, bool(heard_only), bool(photographed), bool(male), bool(female),
                 bool(adult), bool(immature), status, breeding, description or "",
                 frozenset(users.get(row, ())), photos.get(row, (0, 0))[0],
-                photos.get(row, (0, 0))[1] > 0,
+                photos.get(row, (0, 0))[1] > 0, user_order=tuple(users.get(row, ())),
             )
         )  # fmt: skip
     subtree: dict[str, set[str]] = defaultdict(set)

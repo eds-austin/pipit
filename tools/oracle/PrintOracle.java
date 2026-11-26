@@ -1,6 +1,7 @@
 // Prints reports through Scythebill's own HtmlOutput, as its Print button does, and lists the
 // checklist Scythebill finds for each place (Checklists.getChecklist):
 //   PrintOracle taxon.xml avilist.xml appResources in.bsxm print cases.jsonl outDir
+//   PrintOracle taxon.xml avilist.xml appResources in.bsxm xlsx cases.jsonl outDir
 //   PrintOracle taxon.xml avilist.xml appResources in.bsxm checklists out.jsonl
 // Each print case is one line of JSON:
 //   {"name", "query": {stored query}, "display": "clements"|"avilist", "depth",
@@ -8,7 +9,8 @@
 // and is written to outDir/<name>.html. Everything PrintAction does is here, with the
 // ReportsPanel query executor it is given (the query restored as StoredQueries restores it,
 // the single location's checklist, QueryPreferences' countable predicate) and with the date
-// and file name taken from the case.
+// and file name taken from the case. The xlsx mode does what SaveAsXlsAction does instead
+// (options: ReportSpreadsheetPreferences), to outDir/<name>.xlsx.
 // The checklists mode writes, for every place in use in the list and every synthetic place,
 // in both taxonomies, the checklist's size and a SHA-256 of its sorted "taxon=STATUS" lines
 // (and for a synthetic place, the codes its checklist is the union of).
@@ -44,6 +46,7 @@ import com.scythebill.birdlist.model.taxa.names.NamesPreferences.ScientificOrCom
 import com.scythebill.birdlist.model.xml.XmlReportSetImport;
 import com.scythebill.birdlist.model.xml.XmlTaxonImport;
 import com.scythebill.birdlist.ui.io.HtmlOutput;
+import com.scythebill.birdlist.ui.io.ReportXlsOutput;
 import com.scythebill.birdlist.ui.messages.Messages;
 import com.scythebill.birdlist.ui.messages.Messages.Name;
 import com.scythebill.birdlist.ui.util.LocationNames;
@@ -120,6 +123,7 @@ public class PrintOracle {
     java.lang.reflect.Field locationType =
         LocationQueryField.Value.class.getDeclaredField("type");
     locationType.setAccessible(true);
+    String mode = args[4];
     File outDir = new File(args[6]);
     outDir.mkdirs();
 
@@ -200,6 +204,19 @@ public class PrintOracle {
           : com.google.common.base.Optional.of(joinedAbbreviations);
 
       JsonObject options = testCase.getAsJsonObject("options");
+      Checklist singleChecklist = null;
+      if (locations.size() == 1) {
+        Location location = locations.iterator().next();
+        if (location != null) {
+          singleChecklist = checklists.getChecklist(reportSet, taxonomy, location);
+        }
+      }
+      if (mode.equals("xlsx")) {
+        writeSpreadsheet(testCase, options, reportSet, taxonomy, depth, restored,
+            queryPreferences, singleChecklist, rootLocation, reportHints, locationNames,
+            new File(outDir, testCase.get("name").getAsString() + ".xlsx"));
+        continue;
+      }
       ReportPrintPreferences prefs = new ReportPrintPreferences();
       prefs.includeScientific = options.get("includeScientific").getAsBoolean();
       prefs.showFamilies = options.get("showFamilies").getAsBoolean();
@@ -211,17 +228,12 @@ public class PrintOracle {
       prefs.onlyCountable = options.get("onlyCountable").getAsBoolean();
       prefs.omitSpAndHybrid = options.get("omitSpAndHybrid").getAsBoolean();
       ScientificOrCommon namesOrder = scientificOrCommon(
-          ScientificOrCommon.valueOf(testCase.get("namesOrder").getAsString()), prefs);
+          ScientificOrCommon.valueOf(testCase.get("namesOrder").getAsString()),
+          prefs.includeScientific);
 
       // ReportsPanel.executeQuery
-      Checklist checklist = null;
-      if (locations.size() == 1) {
-        Location location = locations.iterator().next();
-        if (location != null) {
-          checklist = checklists.getChecklist(reportSet, taxonomy, location);
-        }
-      }
-      QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, checklist, null);
+      QueryProcessor processor =
+          new QueryProcessor(reportSet, taxonomy, singleChecklist, null);
       processor.keepInvalidSightingsAfterUpdate();
       if (prefs.onlyCountable) {
         processor.onlyIncludeCountableSightings();
@@ -279,10 +291,56 @@ public class PrintOracle {
     }
   }
 
-  /** ReportPrintDialog.getScientificOrCommonFromConfiguration. */
+  /** SaveAsXlsAction.actionPerformed, with ReportsPanel's query executor. */
+  static void writeSpreadsheet(JsonObject testCase, JsonObject options, ReportSet reportSet,
+      Taxonomy taxonomy, Taxon.Type depth, StoredQueries.RestoredQuery restored,
+      QueryPreferences queryPreferences, Checklist checklist, Location rootLocation,
+      Set<ReportHints> reportHints, LocationNames locationNames, File out) throws Exception {
+    ReportSpreadsheetPreferences prefs = new ReportSpreadsheetPreferences();
+    prefs.includeScientific = options.get("includeScientific").getAsBoolean();
+    prefs.showFamilies = options.get("showFamilies").getAsBoolean();
+    prefs.showStatus = options.get("showStatus").getAsBoolean();
+    prefs.showNotes = options.get("showNotes").getAsBoolean();
+    prefs.onlyCountable = options.get("onlyCountable").getAsBoolean();
+    prefs.omitSpAndHybrid = options.get("omitSpAndHybrid").getAsBoolean();
+    prefs.maximumSightings = options.get("maximumSightings").getAsInt();
+    prefs.sortType = SortType.valueOf(options.get("sortType").getAsString());
+    prefs.sortSightingsType = SortType.valueOf(options.get("sortSightingsType").getAsString());
+    prefs.userOutput = UserOutput.valueOf(options.get("userOutput").getAsString());
+    prefs.subspeciesInSeparateColumn = options.get("subspeciesInSeparateColumn").getAsBoolean();
+    boolean hasSubspecies = depth != Taxon.Type.species;
+
+    QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, checklist, null);
+    processor.keepInvalidSightingsAfterUpdate();
+    if (prefs.onlyCountable) {
+      processor.onlyIncludeCountableSightings();
+    }
+    QueryResults queryResults = processor.runQuery(
+        restored.rawQueryDefinition(taxonomy, reportSet, depth),
+        restored.countablePredicate(taxonomy, queryPreferences), depth);
+
+    ReportXlsOutput output = new ReportXlsOutput(
+        out, queryResults, reportSet.getLocations(), locationNames);
+    output.setScientificOrCommon(scientificOrCommon(
+        ScientificOrCommon.valueOf(testCase.get("namesOrder").getAsString()),
+        prefs.includeScientific));
+    output.setShowFamilies(prefs.showFamilies);
+    output.setShowFamilyTotals(!reportHints.contains(ReportHints.SPECIES_STATUS_RESTRICTION));
+    output.setRootLocation(rootLocation);
+    output.setSightingsCount(prefs.maximumSightings);
+    output.setShowStatus(prefs.showStatus);
+    output.setShowNotes(prefs.showNotes);
+    output.setShowAllTaxonomies(false);
+    output.setOmitSpAndHybrid(prefs.omitSpAndHybrid);
+    output.setSubspeciesInSeparateColumn(hasSubspecies && prefs.subspeciesInSeparateColumn);
+    output.setUserOutput(reportSet.getUserSet() == null ? UserOutput.NONE : prefs.userOutput);
+    output.writeSpeciesList(prefs.sortType, prefs.sortSightingsType.ordering());
+  }
+
+  /** ReportPrintDialog (and ReportXlsDialog).getScientificOrCommonFromConfiguration. */
   static ScientificOrCommon scientificOrCommon(ScientificOrCommon preference,
-      ReportPrintPreferences prefs) {
-    if (prefs.includeScientific) {
+      boolean includeScientific) {
+    if (includeScientific) {
       if (preference == ScientificOrCommon.COMMON_ONLY) {
         return ScientificOrCommon.COMMON_FIRST;
       }

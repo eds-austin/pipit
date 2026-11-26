@@ -201,3 +201,42 @@ def test_print(running: Running) -> None:
     assert running.app.settings.print_compact
     assert reports.printOptions["compact"] is True
     assert not reports.printing
+
+
+def test_save_as_spreadsheet(running: Running, tmp_path: Path) -> None:
+    """Ctrl+E: the options (remembered), then where to save (the file chooser is skipped
+    here: its result goes to ``saveSpreadsheet``); the .xlsx is written, then opened."""
+    from openpyxl import load_workbook
+    from PySide6.QtCore import QUrl
+
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_6")
+    wait_until(lambda: running.shell.currentKey == "reports")
+    reports.run_now()
+    wait_until(lambda: reports.sightingCount > 0)
+    ctrl(window, "Key_E")
+    wait_focus(running, "xlsxScientific")
+    shots = os.environ.get("PIPIT_SHOTS")
+    if shots:  # screenshots for checking the look by eye
+        window.grabWindow().save(str(Path(shots) / "spreadsheet-dialog.png"))
+    assert reports.hasObservers
+    # An empty place condition has no abbreviation; Washington's is its name.
+    assert reports.spreadsheetFileName() == "report.xlsx"
+    reports.setRowValue(0, "id", "wa")
+    reports.run_now()
+    assert reports.spreadsheetFileName() == "report-Washington.xlsx"
+    options = dict(reports.spreadsheetOptions)
+    options.update(showNotes=True, userOutput="USER_ABBREVIATIONS")
+    reports.saveSpreadsheet(options, QUrl.fromLocalFile(str(tmp_path / "washington")))
+    wait_until(lambda: reports.last_spreadsheet is not None, timeout=60)
+    path = reports.last_spreadsheet
+    assert path == tmp_path / "washington.xlsx"
+    sheet = load_workbook(path).active
+    assert sheet is not None
+    header = [cell.value for cell in sheet[1]]
+    assert header[:5] == ["Common name", "Scientific name", "Location", "Date", "Sighting"]
+    assert header[-2:] == ["Male", "Observers"]
+    assert running.app.settings.xlsx_show_notes
+    assert reports.spreadsheetOptions["userOutput"] == "USER_ABBREVIATIONS"
+    assert not reports.savingSpreadsheet

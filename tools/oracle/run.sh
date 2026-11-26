@@ -194,3 +194,12 @@ rm -rf "$WORK/print"
 print_oracle "$BSXM/queries.bsxm" print "$PRINT/cases.jsonl" "$WORK/print"
 "$PY" -I tools/oracle/summarize_pages.py "$PRINT/cases.jsonl" "$WORK/print" > "$PRINT/pages.jsonl"
 print_oracle "$BSXM/queries.bsxm" checklists "$PRINT/checklists.queries.jsonl"
+
+# Spreadsheets (PrintOracle.java's xlsx mode: ReportXlsOutput as SaveAsXlsAction sets it up).
+# Pipit writes them with openpyxl, so only each workbook's content snapshot is kept.
+XLSX=tests/fixtures/oracle/xlsx
+mkdir -p "$XLSX"
+"$PY" -I tools/oracle/make_xlsx_cases.py "$FIXTURES/queries.txt" "$XLSX/cases.jsonl"
+rm -rf "$WORK/xlsx"
+print_oracle "$BSXM/queries.bsxm" xlsx "$XLSX/cases.jsonl" "$WORK/xlsx"
+"$PY" -I -W ignore tools/oracle/summarize_xlsx.py "$XLSX/cases.jsonl" "$WORK/xlsx" > "$XLSX/sheets.jsonl"
