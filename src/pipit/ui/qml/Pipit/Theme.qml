@@ -73,6 +73,7 @@ QtObject {
     readonly property int cardPadH: 16
     readonly property int iconSm: grid(16)
     readonly property int iconMd: grid(18)
+    readonly property int brandMark: grid(24)   // app mark in the sidebar
     readonly property int sidebarW: grid(200)
     readonly property int sidebarCollapsedW: grid(48)
     readonly property int sidePaneW: grid(320)

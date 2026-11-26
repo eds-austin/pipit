@@ -19,12 +19,14 @@ Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.titleStripH - Theme.s2
             spacing: Theme.s2
-            PIcon {
+            Image {
                 visible: !root.collapsed
                 Layout.leftMargin: Theme.s2
-                name: "bird"
-                color: Theme.accent
-                size: Theme.iconMd + Theme.s1
+                Layout.preferredWidth: Theme.brandMark
+                Layout.preferredHeight: Theme.brandMark
+                source: Qt.resolvedUrl("../icons/brand-mark.svg")
+                sourceSize: Qt.size(Theme.brandMark, Theme.brandMark)
+                smooth: true
             }
             PLabel {
                 visible: !root.collapsed

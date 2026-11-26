@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Pipit
-GenericName=Bird List
+GenericName=Bird Listing
 Comment=Keep your bird and wildlife lists with fast keyboard entry
 Exec=pipit %f
 Icon=io.github.pipit.Pipit
