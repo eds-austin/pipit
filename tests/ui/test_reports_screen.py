@@ -338,3 +338,23 @@ def test_save_for_ebird(running: Running, tmp_path: Path) -> None:
     text = (tmp_path / "wa.csv").read_text(encoding="utf-8")
     assert text.count("\n") > 100
     assert text.startswith('"Ornate Tinamou","Nothoprocta","ornata","X",,"Site 11"')
+
+
+def test_save_as_scythebill_csv(running: Running, tmp_path: Path) -> None:
+    """Save as Scythebill CSV: written where chosen (its content is checked against
+    Scythebill in tests/csvio)."""
+    from PySide6.QtCore import QUrl
+
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_6")
+    wait_until(lambda: running.shell.currentKey == "reports")
+    reports.setRowValue(0, "id", "wa")
+    reports.run_now()
+    wait_until(lambda: reports.sightingCount > 0)
+    assert reports.scythebillCsvFileName() == "export-queries-Washington.csv"
+    reports.saveScythebillCsv(QUrl.fromLocalFile(str(tmp_path / "wa")))
+    wait_until(lambda: reports.last_ebird == tmp_path / "wa.csv" and not reports.savingEBird,
+               timeout=60)  # fmt: skip
+    text = (tmp_path / "wa.csv").read_text(encoding="utf-8")
+    assert text.startswith('"Common","Scientific","Subspecies","Index"')

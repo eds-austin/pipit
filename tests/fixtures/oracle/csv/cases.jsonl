@@ -1,0 +1,35 @@
+{"name": "q01", "query": {"fields": []}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q02", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q03", "query": {"fields": [{"type": "LOCATION", "value": {"type": "NOT_IN", "id": "oregon"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q04", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IS", "id": "sit4"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q05", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IS_NOT_SET"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q06", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IS_NEARER_THAN", "id": "sit3", "milesOrKilometers": "KILOMETERS", "distance": 150.0}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q07", "query": {"fields": [{"type": "DATE", "value": {"type": "DURING", "from": "2010"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q08", "query": {"fields": [{"type": "DATE", "value": {"type": "BETWEEN", "from": "1990-05-01", "to": "1999-08"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q09", "query": {"fields": [{"type": "DATE", "value": {"type": "BETWEEN", "from": "M12", "to": "M02"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q10", "query": {"fields": [{"type": "DATE", "value": {"type": "AFTER", "from": "2015-06"}, "bool": "ALL"}, {"type": "DATE", "value": {"type": "BEFORE", "to": "2020"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q11", "query": {"fields": [{"type": "DATE", "value": {"type": "NOT_SET"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q12", "query": {"fields": [{"type": "DATE", "value": {"type": "NOT_DURING", "from": "2000"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q13", "query": {"fields": [{"type": "ALLOW_HEARD_ONLY", "value": false, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q14", "query": {"fields": [{"type": "ALLOW_HEARD_ONLY", "value": true, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q15", "query": {"fields": [{"type": "SIGHTING_STATUS", "value": {"type": "IS", "statusId": "intro"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q16", "query": {"fields": [{"type": "SIGHTING_STATUS", "value": {"type": "IS_NOT", "statusId": "none"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q17", "query": {"fields": [{"type": "PHOTOGRAPHED", "value": {"type": "HAS_PHOTO"}, "bool": "ALL"}, {"type": "SEX_AGE", "value": {"type": "IS_MALE"}, "bool": "ANY"}, {"type": "SEX_AGE", "value": {"type": "IS_FEMALE"}, "bool": "ANY"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q18", "query": {"fields": [{"type": "BREEDING_CODE", "value": {"type": "IS_AT_LEAST", "level": "PROBABLE"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q19", "query": {"fields": [{"type": "SIGHTING_NOTES", "value": {"type": "CONTAINS", "text": "pair"}, "bool": "ANY"}, {"type": "VISIT_COMMENTS", "value": {"type": "STARTS_WITH_WORD", "text": "calm"}, "bool": "ANY"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q20", "query": {"fields": [{"type": "FAMILY", "value": {"type": "IS_IN", "id": "famAna"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q21", "query": {"fields": [{"type": "FAMILY", "value": {"type": "IS_NOT_IN", "id": "ordPas"}, "bool": "ALL"}, {"type": "SPECIES_STATUS", "value": {"type": "IS_OR_WORSE", "statusId": "NT"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q22", "query": {"fields": [{"type": "SP_OR_HYBRID", "value": {"type": "IS", "statusType": "SP"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q23", "query": {"fields": [{"type": "USER", "value": {"type": "INCLUDES", "id": "ann"}, "bool": "ANY"}, {"type": "USER", "value": {"type": "IS_ONLY", "id": "ben"}, "bool": "ANY"}, {"type": "USER", "value": {"type": "ARE_EMPTY"}, "bool": "ANY"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q24", "query": {"fields": [{"type": "TIMES_SIGHTED", "value": {"type": "AT_LEAST", "count": 3}, "bool": "ALL"}, {"type": "LOCATION", "value": {"type": "IN", "id": "idaho"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q25", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}, {"type": "LOCATION", "value": {"type": "IN", "id": "oregon"}, "bool": "NEVER"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q26", "query": {"fields": [{"type": "DATE", "value": {"type": "DURING", "from": "2018"}, "bool": "ALL"}, {"type": "LOCATION", "value": {"type": "IN", "id": "montan"}, "bool": "NEVER_ALL"}, {"type": "DATE", "value": {"type": "BEFORE", "to": "2018"}, "bool": "NEVER_ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q27", "query": {"fields": [{"type": "FIRST_SIGHTINGS", "value": {"type": "INCLUDED"}, "bool": "ALL"}, {"type": "DATE", "value": {"type": "DURING", "from": "2012"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q28", "query": {"fields": [{"type": "FIRST_SIGHTINGS", "value": {"type": "INCLUDED", "query": "{\"fields\":[{\"type\":\"LOCATION\",\"value\":{\"type\":\"IN\",\"id\":\"wa\"},\"bool\":\"ALL\"}]}"}, "bool": "ALL"}, {"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q29", "query": {"fields": [{"type": "FIRST_SIGHTINGS", "value": {"type": "HIGHLIGHTED"}, "bool": "ALL"}, {"type": "SUBSPECIES_ALLOCATED", "value": {"type": "IS_NOT"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "q30", "query": {"type": "ANY", "fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "idaho"}}, {"type": "LOCATION", "value": {"type": "IN", "id": "montan"}}]}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "everything", "query": {"fields": []}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "everything_clements", "query": {"fields": []}, "display": "clements", "depth": "species", "excel": false}
+{"name": "everything_subspecies", "query": {"fields": []}, "display": "clements", "depth": "subspecies", "excel": false}
+{"name": "everything_avilist_group", "query": {"fields": []}, "display": "avilist", "depth": "group", "excel": false}
+{"name": "everything_excel", "query": {"fields": []}, "display": "avilist", "depth": "species", "excel": true}

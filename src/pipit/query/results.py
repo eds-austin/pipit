@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from pipit.domain.java_hash import guava_capacity, hashmap_order, sighting_taxon_hash, string_hash
+from pipit.domain.java_hash import hashmap_order, sighting_taxon_hash, string_hash
 from pipit.query.definition import PostProcessor, Predicate
 from pipit.query.model import QSighting
 from pipit.query.ordering import greatest_of
@@ -25,6 +25,8 @@ from pipit.taxa.sighting_taxon import Resolved, SightingTaxon, SightingTaxonType
 if TYPE_CHECKING:
     from pipit.query.checklists import Checklist
 
+#: ``ArrayListMultimap.create()``: ``HashMap.newHashMap(12)``, room for 12 keys at 0.75.
+_MULTIMAP_CAPACITY = 16
 _SINGLE_KINDS = (SightingTaxonType.SINGLE, SightingTaxonType.SINGLE_WITH_SECONDARY_SUBSPECIES)
 
 
@@ -149,14 +151,15 @@ class QueryResults:
 
     def all_sightings(self) -> list[QSighting]:
         """``getAllSightings()``: each ``ArrayListMultimap``'s values, by its keys in Java
-        ``HashMap`` order (a map made for 12 keys), single taxa then sp.s and hybrids."""
+        ``HashMap`` order, single taxa then sp.s and hybrids. Guava makes the map with
+        ``HashMap.newHashMap(12)``: a table of 16 (checked against the JDK)."""
         single = hashmap_order(self._inserted, [string_hash(key) for key in self._inserted],
-                               guava_capacity(12))  # fmt: skip
+                               _MULTIMAP_CAPACITY)  # fmt: skip
         non_single = hashmap_order(
             self._inserted_non_single,
             [sighting_taxon_hash(taxon.type.value, taxon.ids)
              for taxon in self._inserted_non_single],
-            guava_capacity(12),
+            _MULTIMAP_CAPACITY,
         )  # fmt: skip
         found = [s for key in single for s in self.sightings.get(key, ())]
         found.extend(s for taxon in non_single for s in self.non_single.get(taxon, ()))

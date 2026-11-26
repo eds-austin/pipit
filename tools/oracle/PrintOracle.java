@@ -220,6 +220,22 @@ public class PrintOracle {
             new File(outDir, testCase.get("name").getAsString() + ".xlsx"));
         continue;
       }
+      if (mode.equals("csv")) {
+        // ScythebillCsvExportAction: ReportsPanel's query, in the display taxonomy and depth
+        QueryProcessor processor = new QueryProcessor(reportSet, taxonomy, singleChecklist, null);
+        processor.keepInvalidSightingsAfterUpdate();
+        QueryResults csvResults = processor.runQuery(
+            restored.rawQueryDefinition(taxonomy, reportSet, depth),
+            restored.countablePredicate(taxonomy, queryPreferences), depth);
+        var export = new com.scythebill.birdlist.model.export.FullReportExport();
+        if (testCase.has("excel") && testCase.get("excel").getAsBoolean()) {
+          export.useExcelCompatibleCsv();
+        }
+        export.exportReportSet(com.google.common.io.Files.asByteSink(
+            new File(outDir, testCase.get("name").getAsString() + ".csv")),
+            reportSet, taxonomy, csvResults);
+        continue;
+      }
       if (mode.equals("ebird")) {
         writeEBird(reportSet, clements, restored, queryPreferences, singleChecklist, outDir,
             testCase.get("name").getAsString());

@@ -6,6 +6,7 @@
 //   Ctrl+E          save as spreadsheet (options, then where; it opens once saved)
 //   Ctrl+T          trip report (options; copied, opened in the browser; Save as Word)
 //   Ctrl+Shift+E    save for eBird (Record Format CSV; where, then written)
+//   Ctrl+Shift+C    save as Scythebill CSV (every detail; where, then written)
 //   Ctrl+L          into the saved reports: Enter loads, F2 renames, Delete, Alt+Up/Down
 //   Ctrl+R          into the results; Up/Down choose (family headings skipped)
 //   Esc             (in the results) back to the query
@@ -38,6 +39,20 @@ Item {
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.makingTripReport; sequence: "Ctrl+T"; onActivated: tripReportDialog.show() }
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.savingEBird; sequence: "Ctrl+Shift+E"; onActivated: root.saveForEBird() }
 
+    Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.savingEBird; sequence: "Ctrl+Shift+C"; onActivated: root.saveScythebillCsv() }
+    function saveScythebillCsv() {
+        csvDialog.selectedFile = csvDialog.currentFolder + "/" + reports.scythebillCsvFileName()
+        csvDialog.open()
+    }
+    FileDialog {
+        id: csvDialog
+        title: qsTr("Save as Scythebill CSV")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "csv"
+        nameFilters: [qsTr("CSV files (*.csv)")]
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        onAccepted: reports.saveScythebillCsv(selectedFile)
+    }
     function saveForEBird() {
         ebirdDialog.selectedFile = ebirdDialog.currentFolder + "/" + reports.ebirdFileName()
         ebirdDialog.open()
@@ -133,6 +148,15 @@ Item {
                         implicitWidth: Theme.controlHCompact
                         implicitHeight: Theme.controlHCompact
                         onClicked: root.saveForEBird()
+                    }
+                    PIconButton {
+                        objectName: "saveScythebillCsv"
+                        enabled: reports.sightingCount > 0 && !reports.savingEBird
+                        iconName: "database"
+                        tip: qsTr("Save as Scythebill CSV (Ctrl+Shift+C)")
+                        implicitWidth: Theme.controlHCompact
+                        implicitHeight: Theme.controlHCompact
+                        onClicked: root.saveScythebillCsv()
                     }
                     PIconButton {
                         objectName: "tripReport"

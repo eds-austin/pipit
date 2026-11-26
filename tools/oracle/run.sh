@@ -232,3 +232,18 @@ for list in queries:cases trip_report:cases.everything edge_cases.ebird:cases.ev
     "$PY" -I tools/oracle/summarize_ebird.py "$EBIRD/$cases.jsonl" "$WORK/ebird-$name" \
         > "$EBIRD/$name.jsonl"
 done
+
+# Scythebill CSV exports (PrintOracle.java's csv mode: FullReportExport as
+# ScythebillCsvExportAction runs it).
+CSVX=tests/fixtures/oracle/csv
+mkdir -p "$CSVX"
+"$PY" -I tools/oracle/make_csv_cases.py "$FIXTURES/queries.txt" "$CSVX/cases.jsonl" \
+    "$CSVX/cases.everything.jsonl"
+for list in queries:cases trip_report:cases.everything edge_cases:cases.everything; do
+    name=${list%%:*}
+    cases=${list##*:}
+    rm -rf "$WORK/csv-$name"
+    print_oracle "$BSXM/$name.bsxm" csv "$CSVX/$cases.jsonl" "$WORK/csv-$name"
+    "$PY" -I tools/oracle/summarize_ebird.py "$CSVX/$cases.jsonl" "$WORK/csv-$name" \
+        > "$CSVX/$name.jsonl"
+done

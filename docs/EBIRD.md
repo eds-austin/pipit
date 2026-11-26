@@ -1,4 +1,4 @@
-# eBird (M6)
+# eBird and CSV (M6)
 
 ## Save for eBird (Ctrl+Shift+E on the Reports screen)
 
@@ -37,3 +37,33 @@ reference queries and everything in queries.bsxm, trip_report.bsxm and edge_case
 reports and every country) are identical, 281 files in all. Scythebill's own
 `EBirdCsvExportTest` cases are ported (`tests/ebird`); its British-names case doesn't
 apply, as Pipit writes eBird's English names.
+
+## Save as Scythebill CSV (Ctrl+Shift+C on the Reports screen)
+
+`pipit/csvio/scythebill_csv.py` is a port of Scythebill's `FullReportExport` and
+`ScythebillCsvExportAction`: every detail of the query's sightings (in the display taxonomy,
+at the screen's depth), one line each after a header, sorted by `MoreRecentComparator`
+(ties in `getAllSightings()` order). Scythebill's file name is suggested
+("export-<list>-<report>.csv", or today's date for a report without a name).
+
+- **Columns.** Names (a group's or subspecies' common name is its group's, then the
+  species' scientific name and its own), the taxonomic index (a sp. or hybrid ".5" after its
+  last taxon), date and time as stored, count as written, sex and age, status (as
+  Scythebill exports it), breeding code, photos ("[* name](uri)" lines), notes, the
+  place's coordinates as stored, its description, then region, country, state, county and
+  city (display names) and the rest of its places as "Location 1"... Then the visit's
+  details once per visit, observers (abbreviations, then names), and the trip (notes once
+  per trip; never an end time: Scythebill's parser keeps none).
+- **"Location N" columns.** As many as the deepest place in the list needs, counted after
+  Scythebill adds its predefined places when a file opens (`populated_tree` replays
+  `PredefinedLocationPopulator`), so lists with nested built-in places get the same columns.
+- **Excel-compatible** (Scythebill's import preference; `csv_excel_compatible`, off):
+  spaces for line breaks.
+
+`QueryResults.all_sightings()` orders keys as Guava's `ArrayListMultimap` does: it makes
+its `HashMap` with `HashMap.newHashMap(12)`, a table of 16 (found when two sp.s on Eric's
+list came out swapped; checked against the JDK).
+
+**Checked against Scythebill.** PrintOracle's csv mode: 45 exports on three lists (the 30
+reference queries; everything in both taxonomies, at every depth, Excel-compatible) are
+byte-identical, and 74 on Eric's list (private, `PIPIT_PRIVATE_CSV`).

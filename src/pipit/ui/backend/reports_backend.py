@@ -23,6 +23,8 @@ from PySide6.QtGui import QDesktopServices, QGuiApplication
 
 from pipit.browse.dates import display_date
 from pipit.browse.species import place_labels
+from pipit.csvio.scythebill_csv import export as export_scythebill_csv
+from pipit.csvio.scythebill_csv import load_csv_data
 from pipit.datapack.pack import DataPack
 from pipit.domain import gson
 from pipit.domain.partial_date import PartialDate
@@ -31,6 +33,7 @@ from pipit.output.names import display_names
 from pipit.output.print_html import (
     NameSources,
     PrintOptions,
+    list_place_names,
     print_report,
     report_abbreviation,
     run_report_query,
@@ -919,6 +922,47 @@ class ReportsBackend(QObject):
         self.printingChanged.emit()
         self._app.message.emit(message)
 
+    # ------------------------------------------------------------ Scythebill CSV
+
+    @Slot(result=str)
+    def scythebillCsvFileName(self) -> str:
+        """``ScythebillCsvExportAction``: "export-<list>-<abbreviation or today>.csv"."""
+        database = self._app.database
+        list_name = Path(database.path).stem if database is not None else "list"
+        name = str(self.spreadsheetFileName())
+        if name == "report.xlsx":
+            year, month, day = _today()
+            suffix = f"{year:04d}-{month:02d}-{day:02d}"
+        else:
+            suffix = name.removeprefix("report-").removesuffix(".xlsx")
+        return f"export-{list_name}-{suffix}.csv"
+
+    @Slot(QUrl)
+    def saveScythebillCsv(self, url: QUrl) -> None:
+        """Save as Scythebill CSV: every detail of the query's sightings."""
+        database = self._app.database
+        taxa = self._app.entry_taxa
+        pack = self._app.pack
+        if database is None or taxa is None or pack is None or self._saving_ebird:
+            return
+        path = Path(url.toLocalFile())
+        if path.suffix.lower() != ".csv":
+            path = path.with_name(path.name + ".csv")
+        job = _CsvJob(Path(database.path), pack.path, taxa.display, self._depth,
+                      self.query_json(), path, self._app.settings.csv_excel_compatible)  # fmt: skip
+        self._saving_ebird = True
+        self.printingChanged.emit()
+        run_in_thread("scythebill-csv", lambda: self._save_csv(job))
+
+    def _save_csv(self, job: _CsvJob) -> None:
+        try:
+            message = _write_csv(job)
+        except (OSError, sqlite3.Error, ValueError, KeyError, QueryJsonError,
+                UnsupportedQueryError) as error:  # fmt: skip
+            log.warning("the Scythebill CSV export failed: %s", error)
+            message = f"Could not save as Scythebill CSV: {error}"
+        self._dispatcher.post(lambda: self._ebird_saved(job.path, message))
+
     # ------------------------------------------------------------ trip reports
 
     @Property("QVariantMap", notify=tripReportChanged)
@@ -1170,6 +1214,41 @@ def _write_spreadsheet(job: _SpreadsheetJob) -> None:
     finally:
         connection.close()
     job.path.write_bytes(data)
+
+
+@dataclass(frozen=True)
+class _CsvJob:
+    list_path: Path
+    pack_path: Path
+    display: Taxonomy
+    depth: TaxonType
+    query_json: str
+    path: Path
+    excel_compatible: bool
+
+
+def _write_csv(job: _CsvJob) -> str:
+    connection = sqlite3.connect(f"file:{job.list_path}?mode=ro", uri=True)
+    try:
+        with DataPack(job.pack_path) as pack:
+            query_list = load_query_list(connection)
+            users = _users(connection)
+            context = EngineContext(query_list, job.display, job.depth, users=frozenset(users))
+            checklists = Checklists(pack, connection, query_list)
+            _query, results, _root = run_report_query(context, checklists, job.query_json,
+                                                      users, only_countable=False)  # fmt: skip
+            content = export_scythebill_csv(
+                results,
+                query_list,
+                list_place_names(query_list, checklists),
+                load_csv_data(connection),
+                pack.predefined_locations(),
+                excel_compatible=job.excel_compatible,
+            )
+    finally:
+        connection.close()
+    job.path.write_bytes(content)
+    return f"Saved {results.sightings_count():,d} sightings as Scythebill CSV in {job.path.name}"
 
 
 @dataclass(frozen=True)

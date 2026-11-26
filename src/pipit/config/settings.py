@@ -55,6 +55,8 @@ class AppSettings:
     trip_lifers_in_bold: bool = True
     #: "km", "mi", or "auto": miles in the US and UK, as Scythebill's VisitInfoPreferences
     distance_unit: str = "auto"
+    #: Scythebill CSV with spaces for line breaks (Scythebill's import preference)
+    csv_excel_compatible: bool = False
 
     def validated(self) -> AppSettings:
         """Clamp or replace invalid values (hand-edited files)."""

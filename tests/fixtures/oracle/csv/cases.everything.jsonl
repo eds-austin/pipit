@@ -1,0 +1,5 @@
+{"name": "everything", "query": {"fields": []}, "display": "avilist", "depth": "species", "excel": false}
+{"name": "everything_clements", "query": {"fields": []}, "display": "clements", "depth": "species", "excel": false}
+{"name": "everything_subspecies", "query": {"fields": []}, "display": "clements", "depth": "subspecies", "excel": false}
+{"name": "everything_avilist_group", "query": {"fields": []}, "display": "avilist", "depth": "group", "excel": false}
+{"name": "everything_excel", "query": {"fields": []}, "display": "avilist", "depth": "species", "excel": true}
