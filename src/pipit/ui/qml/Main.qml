@@ -64,8 +64,8 @@ B.ApplicationWindow {
     }
     FileDialog {
         id: ebirdFileDialog
-        title: qsTr("Import from eBird: My Data download, or a Record Format file")
-        nameFilters: [qsTr("eBird files (*.csv *.zip)")]
+        title: qsTr("Import sightings: an eBird download, or Scythebill CSV")
+        nameFilters: [qsTr("CSV files (*.csv *.zip)")]
         onAccepted: { imports.start(selectedFile); ebirdImport.show() }
     }
 

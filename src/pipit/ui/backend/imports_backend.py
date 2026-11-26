@@ -27,6 +27,7 @@ from pipit.domain.report import Location
 from pipit.imports.commit import ImportStoreError, store
 from pipit.imports.formats import open_source
 from pipit.imports.my_data import MissingHeaderError
+from pipit.imports.scythebill_csv import UnsupportedFileError
 from pipit.imports.session import ImportOutcome, ImportRefusedError, ImportRun
 from pipit.imports.taxa import TbdTaxon
 from pipit.query.checklists import Checklists
@@ -64,6 +65,7 @@ class ImportsBackend(QObject):
         self._answers: queue.Queue[Any] = queue.Queue()
         self._stage = "idle"
         self._file_name = ""
+        self._format_name = ""
         self._error = ""
         self._details: dict[str, Any] = {}
         self._names: list[tuple[str, TbdTaxon]] = []
@@ -86,6 +88,11 @@ class ImportsBackend(QObject):
     @Property(str, notify=changed)
     def fileName(self) -> str:
         return self._file_name
+
+    @Property(str, notify=changed)
+    def formatName(self) -> str:
+        """The file's kind ("eBird My Data", "Scythebill CSV", ...), once it's read."""
+        return self._format_name
 
     @Property(str, notify=changed)
     def error(self) -> str:
@@ -138,6 +145,7 @@ class ImportsBackend(QObject):
         self._source = source
         self._file_name = source.name
         self._error = ""
+        self._format_name = ""
         self._details = {}
         self._names = []
         self._chosen = {}
@@ -163,7 +171,8 @@ class ImportsBackend(QObject):
     def _work(self, job: _Job) -> None:
         try:
             self._import(job)
-        except (ImportRefusedError, MissingHeaderError, ImportStoreError, OSError, ValueError,
+        except (ImportRefusedError, MissingHeaderError, UnsupportedFileError, ImportStoreError,
+                OSError, ValueError,
                 sqlite3.Error) as error:  # fmt: skip
             log.warning("import of %s failed: %s", job.source.name, error)
             message = str(error)
@@ -185,6 +194,8 @@ class ImportsBackend(QObject):
                         "This list has observers; Pipit can't yet ask which of them saw "
                         "imported sightings. Import the file in Scythebill instead.")  # fmt: skip
                 source = open_source(job.source)
+                name = source.format_name
+                self._dispatcher.post(lambda: self._set_format(name))
                 checklists = Checklists(pack, connection, load_query_list(connection))
                 run = ImportRun(report, source, taxonomy=job.display, pack=pack,
                                 checklists=checklists)  # fmt: skip
@@ -243,6 +254,10 @@ class ImportsBackend(QObject):
             if self._wait() == _CANCEL:
                 return _CANCEL
         return None
+
+    def _set_format(self, name: str) -> None:
+        self._format_name = name
+        self.changed.emit()
 
     def _cancelled(self) -> None:
         self._dispatcher.post(lambda: self._set_stage("idle"))

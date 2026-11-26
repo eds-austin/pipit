@@ -23,3 +23,14 @@
 {"format": "lifeList2023", "name": "life_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "life_list.csv", "duplicates": "drop", "taxa": {"Pinkish Warbler|Setophaga rosea": "spCardever"}}
 {"format": "lifeList", "name": "life_old_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "life_list_old.csv"}
 {"format": "lifeList", "name": "life_old_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "life_list_old.csv", "duplicates": "overwrite"}
+{"format": "scythebillCsv", "name": "csv_edge_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_edge_avilist", "list": "../bsxm/new_list.scythebill.bsxm", "file": "scythebill.csv", "display": "avilist"}
+{"format": "scythebillCsv", "name": "csv_edge_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "scythebill.csv", "taxa": {"Pinkish Warbler|||rosea|Setophaga": "spCardever"}}
+{"format": "scythebillCsv", "name": "csv_trip_report_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "trip_report.no_observers.scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_trip_report_back", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "trip_report.no_observers.scythebill.csv", "duplicates": "drop"}
+{"format": "scythebillCsv", "name": "csv_trip_report_avilist", "list": "../bsxm/new_list.scythebill.bsxm", "display": "avilist", "file": "trip_report.no_observers.scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_visits_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "visits.scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_locations_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "locations.scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_trips_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "trips.scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_trips_back", "list": "../bsxm/trips.bsxm", "file": "trips.scythebill.csv", "duplicates": "overwrite"}
+{"format": "scythebillCsv", "name": "csv_checklists_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists.scythebill.csv"}

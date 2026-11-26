@@ -9,7 +9,7 @@ import Pipit
 PDialog {
     id: root
     objectName: "importDialog"
-    heading: qsTr("Import from eBird")
+    heading: imports.formatName ? qsTr("Import: %1").arg(imports.formatName) : qsTr("Import sightings")
     width: Math.min(Theme.grid(680), parent ? parent.width - 2 * Theme.s7 : Theme.grid(680))
     readonly property string stage: imports.stage
     readonly property var d: imports.details || ({})

@@ -141,3 +141,25 @@ def test_import_life_list(running: Running) -> None:
     key(running.window, "Key_Return")
     wait_until(lambda: imports.stage == "done", timeout=60)
     wait_until(lambda: app.sightingCount == before + added)
+
+
+def test_import_scythebill_csv(running: Running) -> None:
+    """Scythebill CSV with a name Pipit doesn't know (left out), an unnamed trip and a place
+    it can't make (rows Scythebill doesn't import either): three rows not imported."""
+    from PySide6.QtCore import QUrl
+
+    imports = running.imports
+    app = running.app
+    wait_until(lambda: app.taxaReady, timeout=60)
+    before = app.sightingCount
+    imports.start(QUrl.fromLocalFile(str(FIXTURES / "imports" / "scythebill.csv")))
+    _dialog(running).show()
+    wait_until(lambda: imports.stage == "names", timeout=60)
+    assert imports.formatName == "Scythebill CSV"
+    ctrl(running.window, "Key_L")
+    wait_until(lambda: imports.stage == "review", timeout=60)
+    assert imports.details["failed"] == 3
+    added = imports.details["added"]
+    key(running.window, "Key_Return")
+    wait_until(lambda: imports.stage == "done", timeout=60)
+    wait_until(lambda: app.sightingCount == before + added)

@@ -254,6 +254,66 @@ LIFE_OLD = [
     ["6", "Common Ground Dove", "3", "Carara", "CR-P", "1 Feb 2025"],
     ["7", "Turdus merula", "3", "Dungeness RSPB", "GB-ENG", "10 Sep 2023"],
 ]  # fmt: skip
+SCYTHEBILL_HEADER = [
+    "Common", "Genus", "Species", "Subspecies", "Date", "Start time", "End time", "Number",
+    "Female", "Heard only", "Status", "Breeding", "Photos", "Description", "Region",
+    "Country", "State", "County", "City", "Location", "Location 2", "Latitude", "Longitude",
+    "Location Description", "Observation type", "Duration", "Distance", "Area", "Party size",
+    "Visit comments", "Visit photos", "Trip name", "Trip start date", "Trip end date",
+    "Trip notes", "Trip links",
+]  # fmt: skip
+_MADRONA = ["North America", "United States", "California", "Los Angeles", "",
+            "Madrona Marsh", ""]  # fmt: skip
+
+
+def _row(common: str, genus: str, species: str, date: str, place: list[str],
+         **extra: str) -> list[str]:  # fmt: skip
+    values = dict(zip(SCYTHEBILL_HEADER, [""] * len(SCYTHEBILL_HEADER), strict=True))
+    values.update({"Common": common, "Genus": genus, "Species": species, "Date": date})
+    values.update(zip(["Region", "Country", "State", "County", "City", "Location",
+                       "Location 2"], place, strict=True))  # fmt: skip
+    values.update({key.replace("_", " "): value for key, value in extra.items()})
+    return [values[column] for column in SCYTHEBILL_HEADER]
+
+
+SCYTHEBILL_ROWS = [
+    SCYTHEBILL_HEADER,
+    _row("Mallard", "Anas", "platyrhynchos", "2024-04-13", _MADRONA, Start_time="07:15",
+         End_time="08:45", Number="4", Female="Y", Latitude="33.825", Longitude="-118.341",
+         Observation_type="traveling", Distance="2.1", Party_size="2"),
+    _row("Anna's Hummingbird", "Calypte", "anna", "2024-04-13", _MADRONA,
+         Start_time="07:15", Number="2", Breeding="NY",
+         Photos="[* Hover \\] shot](https://example.org/a.jpg)\nhttps://example.org/b.jpg",
+         Latitude="33.825", Longitude="-118.341", Visit_comments="Windy"),
+    _row("Black Phoebe", "Sayornis", "nigricans", "2024-04-13", _MADRONA, Start_time="07:15",
+         Number="1", Description="On the fence", Latitude="33.8260001",
+         Longitude="-118.3420009", Visit_photos="https://example.org/visit.jpg"),
+    _row("", "", "", "2024-04-13", _MADRONA, Number="7", Description="Total"),
+    _row("Song Sparrow", "Melospiza", "melodia", "2024-04-14", _MADRONA,
+         Subspecies="heermanni", Number="3", Heard_only="1", Status="not by me"),
+    _row("Common Wood-Pigeon", "Columba", "palumbus", "2023-05-01",
+         ["", "Deutschland", "Bayern", "", "München", "Englischer Garten", ""], Number="5",
+         Observation_type="stationary", Duration="30", Party_size="1"),
+    _row("Eurasian Blackbird", "Turdus", "merula", "2023-05-02",
+         ["", "UK", "Lincs.", "", "", "Gibraltar Point", ""], Number="2",
+         Location_Description="Dunes and saltmarsh"),
+    _row("Steller's Jay", "Cyanocitta", "stelleri", "2024-04",
+         ["", "United States", "CA", "Marin County", "", "Muir Woods", "Cathedral Grove"]),
+    _row("Javan Kingfisher", "Halcyon", "cyanoventris", "2019-08-01",
+         ["", "Indonesia", "Bali", "", "", "Ubud", ""], Number="1"),
+    _row("Galapagos Mockingbird", "Mimus", "parvulus", "2018",
+         ["", "Ecuador", "Galápagos", "", "", "Santa Cruz", ""], Number="3"),
+    _row("Bald Eagle", "Haliaeetus", "leucocephalus", "", _MADRONA, Number="1",
+         Trip_name="Big Year", Trip_start_date="2024-01-01", Trip_end_date="2024-12-31",
+         Trip_notes="Every county", Trip_links="[Blog](https://example.org/blog)"),
+    _row("Red-tailed Hawk", "Buteo", "jamaicensis", "2024-06-01", _MADRONA, Number="1",
+         Trip_name="Big Year", Trip_start_date="2024-01-01", Trip_end_date="2024-12-31"),
+    _row("Snowy Egret", "Egretta", "thula", "", _MADRONA, Number="2",
+         Trip_start_date="2024-05-01", Trip_end_date="2024-05-03"),
+    _row("Pinkish Warbler", "Setophaga", "rosea", "2024-04-14", _MADRONA, Number="1"),
+    _row("Gray Heron", "Ardea", "cinerea", "2024-04-14",
+         ["Nowhereland", "", "", "", "", "Lake", ""], Number="1"),
+]  # fmt: skip
 UNKNOWN_PLACE_ROWS = [
     ["Mallard", "Anas", "platyrhynchos", "1", "", "Somewhere Pond", "", "", "04/13/2024",
      "", "", "", "", "", "", "", "", "", ""],
@@ -295,6 +355,7 @@ def main() -> None:
     write_record(target / "ebird_record_unknown_place.csv", UNKNOWN_PLACE_ROWS)
     write_record(target / "life_list.csv", LIFE_2023)
     write_record(target / "life_list_old.csv", LIFE_OLD)
+    write_record(target / "scythebill.csv", SCYTHEBILL_ROWS)
     cases = [
         {"name": "new_list", "list": NEW, "file": "my_data.csv"},
         {"name": "new_list_avilist", "list": NEW, "file": "my_data.csv",
@@ -346,6 +407,28 @@ def main() -> None:
          "duplicates": "overwrite", "format": "lifeList"},
     ]  # fmt: skip
     cases += life
+    scythebill = [
+        {"name": "csv_edge_new", "list": NEW, "file": "scythebill.csv"},
+        {"name": "csv_edge_avilist", "list": NEW, "file": "scythebill.csv",
+         "display": "avilist"},
+        {"name": "csv_edge_trips", "list": TRIPS, "file": "scythebill.csv",
+         "taxa": {"Pinkish Warbler|||rosea|Setophaga": "spCardever"}},
+        # Pipit's own Save as Scythebill CSV (checked against Scythebill's in tests/csvio)
+        # of fixture lists, imported into a new list and back into the list
+        {"name": "csv_trip_report_new", "list": NEW,
+         "file": "trip_report.no_observers.scythebill.csv"},
+        {"name": "csv_trip_report_back", "list": TRIPS,
+         "file": "trip_report.no_observers.scythebill.csv", "duplicates": "drop"},
+        {"name": "csv_trip_report_avilist", "list": NEW, "display": "avilist",
+         "file": "trip_report.no_observers.scythebill.csv"},
+        {"name": "csv_visits_new", "list": NEW, "file": "visits.scythebill.csv"},
+        {"name": "csv_locations_new", "list": NEW, "file": "locations.scythebill.csv"},
+        {"name": "csv_trips_new", "list": NEW, "file": "trips.scythebill.csv"},
+        {"name": "csv_trips_back", "list": "../bsxm/trips.bsxm", "file": "trips.scythebill.csv",
+         "duplicates": "overwrite"},
+        {"name": "csv_checklists_new", "list": NEW, "file": "checklists.scythebill.csv"},
+    ]  # fmt: skip
+    cases += [{**case, "format": "scythebillCsv"} for case in scythebill]
     lines = [json.dumps({"format": "myData", **case}, ensure_ascii=False) for case in cases]
     (target / "cases.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

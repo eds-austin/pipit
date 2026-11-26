@@ -26,6 +26,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import time
 from functools import cmp_to_key
+from typing import Any
 
 from pipit.datapack.pack import DataPack
 from pipit.domain.java_hash import hashmap_order, list_hash, string_hash
@@ -37,11 +38,12 @@ from pipit.domain.report import (
     ObservationType,
     ReportSet,
     Sighting,
+    Trip,
     Visit,
     VisitField,
     VisitKey,
 )
-from pipit.domain.values import ApproximateNumber, float32
+from pipit.domain.values import ApproximateNumber, LatLong, float32
 from pipit.imports.fields import DateParseError
 from pipit.imports.places import LocationShortcuts, PlaceBuilder, Places, load_aliases
 from pipit.imports.source import ImportSource, VisitFields
@@ -53,6 +55,7 @@ from pipit.imports.taxa import (
     find_match_within,
     resolve,
 )
+from pipit.imports.trips import TripImporter
 from pipit.query.checklists import Checklists
 from pipit.taxa.mapped import MappedTaxonomy
 from pipit.taxa.model import Taxonomy, TaxonType
@@ -128,15 +131,17 @@ class ImportRun:
         self._locations_before = {location.id for location in report.iter_locations()}
         self._locations_before.update(self.places.by_id)
         self._trips_before = {trip.id for trip in report.trips}
+        self._trip_importer: TripImporter | None = None
+        self._trips_by_key: dict[str, Trip] = {}
 
     # -------------------------------------------------------------- 1. check
 
     def check(self) -> None:
         """``initialCheck``: some row's fields (other than place and name) must read."""
-        for row in self.source.rows:
+        for row in self._rows():
             try:
                 self.source.map_fields(row, Sighting(SightingTaxon.single("")))
-            except DateParseError:
+            except ValueError:  # DateParseError, or a date not in Scythebill's form
                 continue
             return
         raise ImportRefusedError(self.source.unreadable_message)
@@ -172,11 +177,16 @@ class ImportRun:
             self._dates_filter = frozenset(dates)
 
     def _rows(self) -> list[list[str]]:
-        """``importLines``: the rows imported (all, or those on the chosen dates)."""
+        """``importLines`` and ``skipLine``: the rows imported (all, or those on the chosen
+        dates; without rows the format skips)."""
+        rows = self.source.rows
+        skip = getattr(self.source, "skip", None)
+        if skip is not None:
+            rows = [row for row in rows if not skip(row)]
         if self._dates_filter is None:
-            return self.source.rows
+            return rows
         chosen = self._dates_filter
-        return [row for row in self.source.rows if self.source.date(row) in chosen]
+        return [row for row in rows if self.source.date(row) in chosen]
 
     # -------------------------------------------------------------- 3. places and names
 
@@ -197,17 +207,40 @@ class ImportRun:
         for number, row in enumerate(self.source.rows, start=first_line):
             key = self.source.location_key(row)
             if key in self._location_ids:
+                self._note_coordinates(key, row)
                 continue
             try:
                 location = self.place_builder.add(
                     self.source.imported_location(row, self.shortcuts)
                 )
             except (ValueError, AssertionError) as error:
+                if getattr(self.source, "place_errors_fail_rows", False):
+                    continue  # Scythebill logs it; the place's rows won't import
                 raise ImportRefusedError(f"The import failed on line {number}: {error}") from error
             if location is None:
+                if getattr(self.source, "place_errors_fail_rows", False):
+                    continue  # no place at all: Scythebill fails the rows
                 raise ImportRefusedError(f"The import failed on line {number}: no place")
             self._location_ids[key] = location.id
             self._location_codes[key] = self._nearest_checklist_code(location)
+
+    def _note_coordinates(self, key: str, row: list[str]) -> None:
+        """A place seen again with other coordinates than it has (Scythebill CSV: they go
+        into the sightings' descriptions)."""
+        coordinates_of = getattr(self.source, "coordinates", None)
+        location_id = self._location_ids.get(key)
+        if coordinates_of is None or location_id is None:
+            return
+        coordinates = coordinates_of(row)
+        location = self.places.by_id.get(location_id)
+        if coordinates is None or location is None or location.lat_long is None:
+            return
+        try:
+            lat_long = LatLong.parse(*coordinates)
+        except ValueError:
+            return
+        if lat_long != location.lat_long:
+            self.source.multiple_coordinates.add(key)  # type: ignore[attr-defined]
 
     def _read_taxa(self) -> dict[str, TbdTaxon]:
         resolver = TaxonResolver(self.taxonomy, maximum_name_distance=self.source.name_distance)
@@ -335,12 +368,13 @@ class ImportRun:
         """``parseSightings``; returns how many imported sightings the list already has."""
         self._imports = []
         self._visits = {}
+        self._builders: dict[VisitKey, Any] = {}
         by_visit: dict[tuple[VisitKey, SightingTaxon], Sighting] = {}
         for row in self._rows():
             self.counts.found += 1
             try:
                 sighting = self._sighting(row)
-            except (DateParseError, KeyError):
+            except (ValueError, KeyError):
                 if self.source.taxon_key(row) in self._ignored:
                     self.counts.spuhs_dropped += 1
                     self.counts.found -= 1
@@ -359,11 +393,25 @@ class ImportRun:
                 by_visit[(key, sighting.taxon)] = sighting
             self._imports.append(sighting)
             if key is not None:
-                fields = self.source.visit(row)
-                visit = None if fields is None else _visit(key, fields)
-                if visit is not None:
-                    self._visits[key] = visit
+                self._visit_of(key, row)
+        builders = self._builders
+        for key, builder in builders.items():
+            visit = _visit(key, builder.fields())
+            if visit is not None:
+                self._visits[key] = visit
         return self._count_duplicates()
+
+    def _visit_of(self, key: VisitKey, row: list[str]) -> None:
+        """``lookForVisitInfo``: a row's checklist details replace the checklist's (eBird
+        files), or add to them (Scythebill CSV, kept in the file's order)."""
+        merge = getattr(self.source, "merge_visit", None)
+        if merge is not None:
+            self._builders[key] = merge(self._builders.get(key), row)
+            return
+        fields = self.source.visit(row)
+        visit = None if fields is None else _visit(key, fields)
+        if visit is not None:
+            self._visits[key] = visit
 
     def _sighting(self, row: list[str]) -> Sighting:
         location_id = self._location_ids[self.source.location_key(row)]
@@ -379,12 +427,31 @@ class ImportRun:
             self._sp_to_resolve[chosen] = None
         sighting = Sighting(chosen, location_id=location_id)
         self.source.map_fields(row, sighting)
-        if sighting.status == "none":
+        if sighting.status == "none" and getattr(self.source, "default_statuses", True):
             sighting.status = self._default_status(chosen, code)
+        self._look_for_trip(row, sighting)
         if sighting.date == NO_DATE:
             sighting.date = None
             sighting.time = None
         return sighting
+
+    def _look_for_trip(self, row: list[str], sighting: Sighting) -> None:
+        """``lookForTripInfo``: the row's trip, found or made (once per start, end and name);
+        only an undated sighting goes on it."""
+        trip_info = getattr(self.source, "trip_info", None)
+        found = None if trip_info is None else trip_info(row)
+        if found is None:
+            return
+        key, info = found
+        trip = self._trips_by_key.get(key)
+        if trip is None:
+            if self._trip_importer is None:
+                self._trip_importer = TripImporter(self.report, self.places)
+            info.location_id = sighting.location_id
+            trip = self._trip_importer.create(info)
+        self._trips_by_key[key] = trip
+        if sighting.date is None:
+            sighting.trip_id = trip.id
 
     def _default_status(self, taxon: SightingTaxon, code: str | None) -> str:
         """``DefaultSightingStatus.forTaxon``."""
@@ -455,7 +522,9 @@ class ImportRun:
         added = replaced = 0
         keys = list(self._visits)
         index = {visit.key: i for i, visit in enumerate(self.report.visits)}
-        for key in hashmap_order(keys, [_visit_key_hash(key) for key in keys], 16):
+        if not getattr(self.source, "accumulates_visits", False):  # a Java HashMap's order
+            keys = hashmap_order(keys, [_visit_key_hash(key) for key in keys], 16)
+        for key in keys:
             visit = self._visits[key]
             if key.start_time is None and VisitField.START_TIME in visit.observation_type.required:
                 visit = _with_type(visit, ObservationType.HISTORICAL)
@@ -565,7 +634,7 @@ def _visit(key: VisitKey, fields: VisitFields) -> Visit | None:
                   distance_km=None if fields.distance_km is None else float32(fields.distance_km),
                   duration_minutes=fields.duration_minutes, party_size=fields.party_size,
                   complete=fields.complete,
-                  comments=fields.comments)  # fmt: skip
+                  comments=fields.comments, photos=list(fields.photos))  # fmt: skip
     visit = _checked(visit)
     has_data = (
         visit.area_hectares is not None

@@ -68,7 +68,7 @@ list came out swapped; checked against the JDK).
 reference queries; everything in both taxonomies, at every depth, Excel-compatible) are
 byte-identical, and 74 on Eric's list (private, `PIPIT_PRIVATE_CSV`).
 
-## Import from eBird (Ctrl+K, "Import from eBird")
+## Importing sightings (Ctrl+K, "Import sightings")
 
 The file eBird's "Download My Data" sends (the .zip, or the `MyEBirdData.csv` in it), read
 as Scythebill's `EBirdMyDataImporter` reads it and imported as `ImportController` does
@@ -137,19 +137,38 @@ download in 6d.)
   may be the common name, the scientific name, or both ("Mallard - Anas platyrhynchos",
   "Mallard (Anas platyrhynchos)"). No date questions, no checklist details.
 
+- **Scythebill CSV** (`ScythebillImporter`; Save as Scythebill CSV, or a spreadsheet with
+  its headers, found ignoring case and spaces). A checklist's details are gathered from all
+  its rows, in file order, "Complete list" true when there's no such column, a duration from
+  start and end times when there's none; a place given more than one set of coordinates gets
+  them in each sighting's description ("LL:lat,long"); rows without a name are skipped; no
+  introduced or domestic status is added; a place that can't be made, or a row with no place,
+  leaves its rows not imported. Trips come from the trip columns (`TripImporter`): the existing
+  trip holding the row's dates at its place or one above (taking its name if it has none,
+  its dates if it's the only one within them, and the row's notes, links and photos), else a
+  new one (Scythebill's trip IDs); only an undated sighting goes on its trip, as in Scythebill.
+  A trip's end time isn't kept. Not yet: observers, dates not in Scythebill's own form, and
+  places given only as location text (Scythebill's `FreeformLocationResolver`); such files
+  are refused with a message.
+
 Found on the way: Scythebill dates an undated sighting on a trip by the trip's start, for
 duplicates too; and when the import's clean-up removes a new place nothing ended up using,
 its checklist details move to the place above (`ReportSet.deleteLocation`). Pipit does both.
+And one more Scythebill bug: a new trip without a name never imports (it names it after its
+place, but has walked that place up to nothing first), so those rows aren't imported; Pipit
+leaves them out too.
 
 **Checked against Scythebill.** `tools/oracle/ImportOracle.java` runs Scythebill's importer
-with the choices made in advance and saves the list. 25 cases on made-up files
+with the choices made in advance and saves the list. 36 cases on made-up files
 (`tools/oracle/make_import_fixtures.py`): My Data (every protocol, groups, forms, subspecies,
 sp., slash and hybrid names, repeated rows, an unknown name, built-in counties, a county the
 list has under another name, a bad date), the Record Format (a file of edge cases, one with a
-place without a country, and `trip_report.bsxm`'s own Save for eBird imported back) and both
-life lists, into a new list and into `trip_report.bsxm` (only new dates, all dates, drop,
+place without a country, and `trip_report.bsxm`'s own Save for eBird imported back), both
+life lists and Scythebill CSV (a file of edge cases, and five fixture lists' own Save as
+Scythebill CSV via `tools/oracle/export_scythebill_csv.py`, trips included), into a new list and into `trip_report.bsxm` (only new dates, all dates, drop,
 replace, AviList), come out byte-identical, with the same counts; each is also stored,
-exported and undone. Sixteen more on files made from Eric's list (private,
+exported and undone. 21 more on files made from Eric's list (private,
 `PIPIT_PRIVATE_IMPORT`): My Data (`tools/oracle/my_data_from_list.py`, 8,397 rows), his whole
-list through Save for eBird (23,632 rows) and his life list (`... life`, 3,546 species), into a
+list through Save for eBird (23,632 rows) and Save as Scythebill CSV, and his life list
+(`... life`, 3,546 species), into a
 new list, into his own (drop, replace, import all) and into the trip list.

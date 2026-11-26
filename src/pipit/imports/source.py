@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
 from pipit.domain.partial_date import PartialDate
-from pipit.domain.report import ObservationType, Sighting
+from pipit.domain.report import ObservationType, Photo, Sighting
 from pipit.imports.places import ImportedLocation, LocationShortcuts
 from pipit.imports.taxa import TaxonResolver
 
@@ -25,6 +25,7 @@ class VisitFields:
     party_size: int | None
     complete: bool
     comments: str | None
+    photos: list[Photo] = field(default_factory=list)
 
 
 class ImportSource(Protocol):

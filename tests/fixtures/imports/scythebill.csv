@@ -1,0 +1,17 @@
+Common,Genus,Species,Subspecies,Date,Start time,End time,Number,Female,Heard only,Status,Breeding,Photos,Description,Region,Country,State,County,City,Location,Location 2,Latitude,Longitude,Location Description,Observation type,Duration,Distance,Area,Party size,Visit comments,Visit photos,Trip name,Trip start date,Trip end date,Trip notes,Trip links
+Mallard,Anas,platyrhynchos,,2024-04-13,07:15,08:45,4,Y,,,,,,North America,United States,California,Los Angeles,,Madrona Marsh,,33.825,-118.341,,traveling,,2.1,,2,,,,,,,
+Anna's Hummingbird,Calypte,anna,,2024-04-13,07:15,,2,,,,NY,"[* Hover \] shot](https://example.org/a.jpg)
+https://example.org/b.jpg",,North America,United States,California,Los Angeles,,Madrona Marsh,,33.825,-118.341,,,,,,,Windy,,,,,,
+Black Phoebe,Sayornis,nigricans,,2024-04-13,07:15,,1,,,,,,On the fence,North America,United States,California,Los Angeles,,Madrona Marsh,,33.8260001,-118.3420009,,,,,,,,https://example.org/visit.jpg,,,,,
+,,,,2024-04-13,,,7,,,,,,Total,North America,United States,California,Los Angeles,,Madrona Marsh,,,,,,,,,,,,,,,,
+Song Sparrow,Melospiza,melodia,heermanni,2024-04-14,,,3,,1,not by me,,,,North America,United States,California,Los Angeles,,Madrona Marsh,,,,,,,,,,,,,,,,
+Common Wood-Pigeon,Columba,palumbus,,2023-05-01,,,5,,,,,,,,Deutschland,Bayern,,München,Englischer Garten,,,,,stationary,30,,,1,,,,,,,
+Eurasian Blackbird,Turdus,merula,,2023-05-02,,,2,,,,,,,,UK,Lincs.,,,Gibraltar Point,,,,Dunes and saltmarsh,,,,,,,,,,,,
+Steller's Jay,Cyanocitta,stelleri,,2024-04,,,,,,,,,,,United States,CA,Marin County,,Muir Woods,Cathedral Grove,,,,,,,,,,,,,,,
+Javan Kingfisher,Halcyon,cyanoventris,,2019-08-01,,,1,,,,,,,,Indonesia,Bali,,,Ubud,,,,,,,,,,,,,,,,
+Galapagos Mockingbird,Mimus,parvulus,,2018,,,3,,,,,,,,Ecuador,Galápagos,,,Santa Cruz,,,,,,,,,,,,,,,,
+Bald Eagle,Haliaeetus,leucocephalus,,,,,1,,,,,,,North America,United States,California,Los Angeles,,Madrona Marsh,,,,,,,,,,,,Big Year,2024-01-01,2024-12-31,Every county,[Blog](https://example.org/blog)
+Red-tailed Hawk,Buteo,jamaicensis,,2024-06-01,,,1,,,,,,,North America,United States,California,Los Angeles,,Madrona Marsh,,,,,,,,,,,,Big Year,2024-01-01,2024-12-31,,
+Snowy Egret,Egretta,thula,,,,,2,,,,,,,North America,United States,California,Los Angeles,,Madrona Marsh,,,,,,,,,,,,,2024-05-01,2024-05-03,,
+Pinkish Warbler,Setophaga,rosea,,2024-04-14,,,1,,,,,,,North America,United States,California,Los Angeles,,Madrona Marsh,,,,,,,,,,,,,,,,
+Gray Heron,Ardea,cinerea,,2024-04-14,,,1,,,,,,,Nowhereland,,,,,Lake,,,,,,,,,,,,,,,,
