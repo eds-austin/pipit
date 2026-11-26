@@ -9,6 +9,7 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
+from pipit.browse.dates import display_date
 from pipit.domain.partial_date import PartialDate, PartialField
 from pipit.output.names import PlaceNames, resolved_common_name
 from pipit.output.print_html import list_place_names
@@ -28,6 +29,8 @@ from pipit.special.splits_lumps import (
     versions_for,
 )
 from pipit.special.splits_lumps import totals as splits_totals
+from pipit.special.timeline import SORTS as TIMELINE_SORTS
+from pipit.special.timeline import Period, Timeline, decade_of, timeline
 from pipit.special.year_comparison import SORTS as YEAR_SORTS
 from pipit.special.year_comparison import (
     Half,
@@ -51,7 +54,7 @@ SORTS = [["TAXONOMIC", "Taxonomic order"], ["SPECIES_SEEN", "Species seen"],
          ["FRACTION_SEEN", "Fraction seen"], ["SPECIES_UNSEEN", "Species unseen"],
          ["TOTAL_SPECIES", "Total species"]]  # fmt: skip
 _GROUPS_OF = {"ORDER": "Orders", "FAMILY": "Families", "GENUS": "Genera"}
-REPORTS = ("family", "status", "splits", "years")
+REPORTS = ("family", "status", "splits", "years", "timeline")
 #: Countries Scythebill names with their parent in this report (``CODES_WITH_MULTIPLE_REGIONS``).
 _NAMED_WITH_PARENT = frozenset({"XX", "RU", "ID"})
 #: Scythebill's ``Species`` class: species, groups and subspecies.
@@ -88,6 +91,8 @@ class SpecialBackend(QObject):
     splitsChanged = Signal()
     yearsChanged = Signal()
     yearsSelectionChanged = Signal()
+    timelineChanged = Signal()
+    timelineSelectionChanged = Signal()
 
     def __init__(self, app: AppController, reports: ReportsBackend) -> None:
         super().__init__()
@@ -114,6 +119,17 @@ class SpecialBackend(QObject):
         self._years_rows: list[SpeciesResult] = []
         self._years_error = ""
         self.years_model = DictListModel(["name", "scientific", "buckets", "total"])
+        self._timeline: Timeline | None = None
+        self._timeline_error = ""
+        self._timeline_mode = "YEARS"
+        self._timeline_sort = "MOST_SPECIES"
+        self._timeline_lifers_only = False
+        self._timeline_shown: list[Period | None] = []  # None: a decade's heading
+        self._timeline_selected = -1
+        self._timeline_names: dict[str, str] = {}
+        self.timeline_model = DictListModel(["heading", "label", "place", "count", "lifers",
+                                             "fraction"])  # fmt: skip
+        self.period_species_model = DictListModel(["name", "lifer"])
         self.status_model = DictListModel(["heading", "placeId", "name", "scientific", "range",
                                            "custom"])  # fmt: skip
         self._group_by = "FAMILY"
@@ -143,6 +159,7 @@ class SpecialBackend(QObject):
         self._stale["family"] = True
         self._stale["splits"] = True
         self._stale["years"] = True
+        self._stale["timeline"] = True
         self._schedule()
 
     def _data_changed(self) -> None:
@@ -197,6 +214,8 @@ class SpecialBackend(QObject):
             self._run_splits()
         elif self._current_report == "years":
             self._run_years()
+        elif self._current_report == "timeline":
+            self._run_timeline()
         else:
             self._run_family()
 
@@ -709,7 +728,7 @@ class SpecialBackend(QObject):
 
     @Slot(int, int, result=str)
     def yearsCellText(self, row: int, column: int) -> str:
-        """``yearTooltip`` for a cell: "2024: 12 sightings, Apr 28 to Sep 30"."""
+        """``yearTooltip`` for a cell: "2024: 12 sightings, 28 Apr to 30 Sep"."""
         years = self._years
         if years is None or not 0 <= row < len(self._years_rows):
             return ""
@@ -755,6 +774,242 @@ class SpecialBackend(QObject):
             self._schedule()
         return True
 
+    # ------------------------------------------------------------ timeline
+
+    def _run_timeline(self) -> None:
+        self._stale["timeline"] = False
+        self._timeline = None
+        self._timeline_error = ""
+        context = self._context()
+        if context is not None:
+            try:
+                query = parse_query(self._reports.query_json(), context.query_list,
+                                    context.users)  # fmt: skip
+                self._timeline = timeline(context, query)
+            except (QueryJsonError, UnsupportedQueryError, ValueError, KeyError) as error:
+                log.info("timeline refused: %s", error)
+                self._timeline_error = str(error)
+            else:
+                taxonomy = context.taxonomy
+                self._timeline_names = {}
+                for lifer in self._timeline.lifers:
+                    taxon = taxonomy.get(lifer.species_id)
+                    if taxon is not None:
+                        self._timeline_names[lifer.species_id] = taxon.common_name or taxon.name
+                checklists = self._checklists_for(context.query_list, taxonomy.id)
+                assert checklists is not None  # the context needs a pack and a list too
+                places = list_place_names(context.query_list, checklists)
+                self._timeline_place_names = {
+                    xml_id: places.name(place) for xml_id, place in places.places.items()
+                }
+        self._show_timeline()
+        self.timelineChanged.emit()
+
+    def _show_timeline(self) -> None:
+        """The years or days, sorted, with decades between years when newest come first."""
+        found = self._timeline
+        periods: list[Period] = []
+        if found is not None:
+            periods = list(found.days if self._timeline_mode == "DAYS" else found.years)
+        if self._timeline_lifers_only:
+            periods = [p for p in periods if p.lifers > 0]
+        if self._timeline_sort == "MOST_SPECIES":
+            periods.sort(key=lambda p: (-p.count, -p.lifers))
+        elif self._timeline_sort == "MOST_NEW":
+            periods.sort(key=lambda p: (-p.lifers, -p.count))
+        else:
+            periods.reverse()
+        most = max((p.count for p in periods), default=0)
+        shown: list[Period | None] = []
+        rows: list[dict[str, Any]] = []
+        decades = (found is not None and self._timeline_mode == "YEARS"
+                   and self._timeline_sort == "NEWEST_FIRST")  # fmt: skip
+        current_decade: int | None = None
+        for period in periods:
+            if decades and found is not None:
+                decade = decade_of(period.first_day.year)
+                if decade != current_decade:
+                    current_decade = decade
+                    totals = found.decade(decade)
+                    shown.append(None)
+                    label = f"{decade}s · {totals.count:,} species · +{totals.lifers:,} new"
+                    rows.append({"heading": True, "label": label, "place": "", "count": 0,
+                                 "lifers": 0, "fraction": 0.0})  # fmt: skip
+            shown.append(period)
+            when = period.when
+            rows.append({
+                "heading": False,
+                "label": display_date(when.get(PartialField.YEAR), when.get(PartialField.MONTH),
+                                      when.get(PartialField.DAY)),
+                "place": self._timeline_place_names.get(period.place or "", "")
+                if period.is_day else "",
+                "count": period.count,
+                "lifers": period.lifers,
+                "fraction": period.count / most if most else 0.0,
+            })  # fmt: skip
+        self._timeline_shown = shown
+        self._timeline_selected = -1
+        self.timeline_model.replace_all(rows)
+        self.period_species_model.replace_all([])
+        self.timelineSelectionChanged.emit()
+
+    @Property(str, notify=timelineChanged)
+    def timelineError(self) -> str:
+        return self._timeline_error
+
+    @Property(str, notify=timelineChanged)
+    def timelineSummary(self) -> str:
+        found = self._timeline
+        if found is None:
+            return ""
+        if not found.lifers:
+            return "No dated sightings."
+        first = found.lifers[0].day
+        last = found.latest_day or first
+        return (f"Life list: {found.life_list_total:,} species · "
+                f"{display_date(first.year, first.month, first.day)} to "
+                f"{display_date(last.year, last.month, last.day)}")  # fmt: skip
+
+    @Property(str, notify=timelineSelectionChanged)
+    def timelineFootnote(self) -> str:
+        """Scythebill's footnotes: what isn't counted toward a year or day, or at all."""
+        found = self._timeline
+        if found is None:
+            return ""
+        notes = []
+        if self._timeline_mode == "YEARS" and found.sightings_in_no_year:
+            spanning = found.sightings_in_no_year
+            notes.append(f"Sightings from trips that span two years ({spanning:,}) aren't "
+                         "counted toward any year.")  # fmt: skip
+        if self._timeline_mode == "DAYS" and found.sightings_on_no_day:
+            notes.append(f"Sightings with a date range ({found.sightings_on_no_day:,}) aren't "
+                         "counted toward any day.")  # fmt: skip
+        if found.undated_species:
+            notes.append(f"{found.undated_species:,} species seen only without a date aren't "
+                         "on the timeline.")  # fmt: skip
+        return " ".join(notes)
+
+    @Property("QVariantList", notify=timelineChanged)
+    def lifeListPoints(self) -> list[list[float]]:
+        """The life list's growth: [days since the first lifer, life list] at each change."""
+        found = self._timeline
+        if found is None or not found.lifers:
+            return []
+        start = found.lifers[0].day.toordinal()
+        points: list[list[float]] = []
+        for count, lifer in enumerate(found.lifers, 1):
+            x = float(lifer.day.toordinal() - start)
+            if points and points[-1][0] == x:
+                points[-1][1] = float(count)
+            else:
+                points.append([x, float(count)])
+        last = found.latest_day
+        if last is not None and last.toordinal() - start > points[-1][0]:
+            points.append([float(last.toordinal() - start), points[-1][1]])
+        return points
+
+    @Property("QVariantList", notify=timelineChanged)
+    def milestonePoints(self) -> list[list[Any]]:
+        """[days since the first lifer, number, species, date] for each milestone."""
+        found = self._timeline
+        if found is None or not found.lifers:
+            return []
+        start = found.lifers[0].day.toordinal()
+        return [[m.lifer.day.toordinal() - start, m.number,
+                 self._timeline_names.get(m.lifer.species_id, m.lifer.species_id),
+                 display_date(m.lifer.day.year, m.lifer.day.month, m.lifer.day.day)]
+                for m in found.milestones()]  # fmt: skip
+
+    @Property("QVariantList", notify=timelineChanged)
+    def timelineYears(self) -> list[int]:
+        """The first and last years on the chart."""
+        found = self._timeline
+        if found is None or not found.lifers:
+            return []
+        last = found.latest_day or found.lifers[0].day
+        return [found.lifers[0].day.year, last.year]
+
+    @Property(str, notify=timelineSelectionChanged)
+    def timelineMode(self) -> str:
+        return self._timeline_mode
+
+    @Slot(str)
+    def setTimelineMode(self, mode: str) -> None:
+        if mode in ("YEARS", "DAYS") and mode != self._timeline_mode:
+            self._timeline_mode = mode
+            self._show_timeline()
+
+    @Property("QVariantList", constant=True)
+    def timelineSorts(self) -> list[list[str]]:
+        return [list(sort) for sort in TIMELINE_SORTS]
+
+    @Property(str, notify=timelineSelectionChanged)
+    def timelineSort(self) -> str:
+        return self._timeline_sort
+
+    @Slot(str)
+    def setTimelineSort(self, sort: str) -> None:
+        if sort != self._timeline_sort:
+            self._timeline_sort = sort
+            self._show_timeline()
+
+    @Property(bool, notify=timelineSelectionChanged)
+    def timelineLifersOnly(self) -> bool:
+        return self._timeline_lifers_only
+
+    @Slot(bool)
+    def setTimelineLifersOnly(self, only: bool) -> None:
+        if only != self._timeline_lifers_only:
+            self._timeline_lifers_only = only
+            self._show_timeline()
+
+    @Property(QObject, constant=True)
+    def timelineRows(self) -> DictListModel:
+        return self.timeline_model
+
+    @Property(QObject, constant=True)
+    def periodSpecies(self) -> DictListModel:
+        return self.period_species_model
+
+    @Property(int, notify=timelineSelectionChanged)
+    def timelineSelected(self) -> int:
+        return self._timeline_selected
+
+    @Property(str, notify=timelineSelectionChanged)
+    def timelineSelectedLabel(self) -> str:
+        if not 0 <= self._timeline_selected < len(self._timeline_shown):
+            return ""
+        return str(self.timeline_model.rows()[self._timeline_selected]["label"])
+
+    @Slot(int)
+    def selectPeriod(self, index: int) -> None:
+        """A year's or day's species, lifers first, then in taxonomic order."""
+        found = self._timeline
+        if (found is None or not 0 <= index < len(self._timeline_shown)
+                or self._timeline_shown[index] is None):  # fmt: skip
+            return
+        period = self._timeline_shown[index]
+        assert period is not None
+        self._timeline_selected = index
+        rows = []
+        for species in period.species:
+            day = found.life_list_days.get(species)
+            lifer = day is not None and period.first_day <= day <= period.last_day
+            rows.append({"name": self._timeline_names.get(species, species), "lifer": lifer})
+        rows.sort(key=lambda row: not row["lifer"])
+        self.period_species_model.replace_all(rows)
+        self.timelineSelectionChanged.emit()
+
+    @Slot(int, int)
+    def stepPeriod(self, index: int, step: int) -> None:
+        """Choose the next period from ``index`` (headings skipped)."""
+        target = index + step
+        while 0 <= target < len(self._timeline_shown):
+            if self._timeline_shown[target] is not None:
+                self.selectPeriod(target)
+                return
+            target += 1 if step > 0 else -1
+
 
 def bucket(result: YearResult | None) -> int:
     """``YearComparisonGrid.bucket``: 0 for none, then 1 (one sighting), 2 (2 to 4), 3 (5 to 19),
@@ -767,14 +1022,9 @@ def bucket(result: YearResult | None) -> int:
     return 4
 
 
-_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-
 def _month_day_text(when: PartialDate) -> str:
-    month = when.get(PartialField.MONTH)
-    day = when.get(PartialField.DAY)
-    text = _MONTHS[month - 1] if month is not None else ""
-    return f"{text} {day}" if day is not None else text
+    """ "28 Apr" (Pipit's day-month order), or "Apr" with no day."""
+    return display_date(None, when.get(PartialField.MONTH), when.get(PartialField.DAY))
 
 
 def _resolved_name(resolved: Resolved) -> str:

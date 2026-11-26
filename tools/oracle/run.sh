@@ -250,6 +250,16 @@ find "$YEARS" -name '*.json.gz' -delete
 print_oracle "$BSXM/queries.bsxm" years "$YEARS/cases.jsonl" "$YEARS"
 for f in "$YEARS"/*.json; do gzip -9 -n -f "$f"; done
 
+# The timeline (PrintOracle.java's timeline mode: TimelineData for the query), gzipped.
+TIMELINE=tests/fixtures/oracle/timeline
+mkdir -p "$TIMELINE"
+"$PY" -I tools/oracle/make_timeline_cases.py "$TIMELINE"
+find "$TIMELINE" -name '*.json.gz' -delete
+for name in queries trip_report; do
+    print_oracle "$BSXM/$name.bsxm" timeline "$TIMELINE/cases.$name.jsonl" "$TIMELINE"
+done
+for f in "$TIMELINE"/*.json; do gzip -9 -n -f "$f"; done
+
 # eBird Record Format exports (PrintOracle.java's ebird mode: EbirdExportAction and
 # EBirdCsvExport): the reference queries, and everything in two more lists (edge_cases
 # without its February 30 sighting, which Scythebill's export fails on).

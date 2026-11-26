@@ -217,3 +217,44 @@ def test_year_comparison(queries_running: Running) -> None:
     special.run_now()
     assert special.yearsSpan == list(range(2000, 2011))
     assert not special.setYearRange("2010", "2000")
+
+
+def test_timeline(queries_running: Running) -> None:
+    import gzip
+
+    from PySide6.QtCore import Qt
+
+    running = queries_running
+    window = running.window
+    special = running.special
+    ctrl(window, "Key_7")
+    wait_until(lambda: running.shell.currentKey == "special")
+    key(window, "Key_5", Qt.KeyboardModifier.AltModifier)
+    wait_until(lambda: special.report == "timeline")
+    special.run_now()
+    recorded = FIXTURES / "oracle" / "timeline" / "everything_avilist.json.gz"
+    expected = json.loads(gzip.decompress(recorded.read_bytes()))
+    assert special.timelineSummary.startswith(f"Life list: {expected['lifeListTotal']:,} species")
+    points = special.lifeListPoints
+    assert points[-1][1] == expected["lifeListTotal"]
+    assert len(special.milestonePoints) == len(expected["milestones"])
+    # Years, most species first
+    rows = special.timeline_model.rows()
+    assert len(rows) == len(expected["years"])
+    assert rows[0]["count"] == max(len(year[1]) for year in expected["years"])
+    # Days, newest first; Ctrl+R into them and a day's species, lifers first
+    special.setTimelineMode("DAYS")
+    special.setTimelineSort("NEWEST_FIRST")
+    assert len(special.timeline_model.rows()) == len(expected["days"])
+    ctrl(window, "Key_R")
+    wait_until(lambda: special.timelineSelected == 0)
+    newest = expected["days"][-1]
+    species = special.period_species_model.rows()
+    assert len(species) == len(newest[1])
+    assert sum(1 for row in species if row["lifer"]) == newest[3]
+    # Years newest first: decades between them
+    special.setTimelineMode("YEARS")
+    rows = special.timeline_model.rows()
+    assert rows[0]["heading"] and rows[0]["label"].endswith("new")
+    special.setTimelineLifersOnly(True)
+    assert all(row["lifers"] > 0 for row in special.timeline_model.rows() if not row["heading"])

@@ -3,13 +3,14 @@
 // the checklist status report lists species seen where their place's checklist gives them a
 // status (not on it, rarity, endemic, ...); splits and lumps shows how the query's species
 // would count in another taxonomy version; the year comparison shows each species' sightings
-// year by year. Keyboard map (F1):
-//   Alt+1…4         family report, checklist status, splits and lumps, year comparison
+// year by year; the timeline shows the life list growing, and the biggest years and days.
+// Keyboard map (F1):
+//   Alt+1…5         family report, checklist status, splits and lumps, year comparison, timeline
 //   Ctrl+G          (family) group by order, family, genus (cycles)
 //   Ctrl+R          into the list; Up/Down, PageUp/PageDown, Home/End choose
 //   Enter           (checklist status) show the species' place on Locations
 //   Left/Right      (year comparison) choose a year; Esc clears it
-//   Ctrl+Shift+Q    (family, splits, years) edit the query (on Reports)
+//   Ctrl+Shift+Q    (family, splits, years, timeline) edit the query (on Reports)
 import QtQuick
 import QtQuick.Controls.Basic as B
 import QtQuick.Layouts
@@ -39,8 +40,16 @@ Item {
     Shortcut { enabled: root.keysOn; sequence: "Alt+2"; onActivated: special.setReport("status") }
     Shortcut { enabled: root.keysOn; sequence: "Alt+3"; onActivated: special.setReport("splits") }
     Shortcut { enabled: root.keysOn; sequence: "Alt+4"; onActivated: special.setReport("years") }
+    Shortcut { enabled: root.keysOn; sequence: "Alt+5"; onActivated: special.setReport("timeline") }
     Shortcut { enabled: root.keysOn && root.family; sequence: "Ctrl+G"; onActivated: root.cycleGroupBy() }
-    Shortcut { enabled: root.keysOn; sequence: "Ctrl+R"; onActivated: root.family ? root.focusGroups() : root.focusStatus() }
+    Shortcut {
+        enabled: root.keysOn
+        sequence: "Ctrl+R"
+        onActivated: special.report === "family" ? root.focusGroups()
+                   : special.report === "status" ? root.focusStatus()
+                   : special.report === "timeline" ? root.focusPeriods() : undefined
+    }
+    function focusPeriods() { if (periods.count > 0) { periods.forceActiveFocus(); if (special.timelineSelected < 0) special.stepPeriod(-1, 1) } }
     Shortcut { enabled: root.keysOn && special.report !== "status"; sequence: "Ctrl+Shift+Q"; onActivated: shell.go("reports") }
 
     EmptyState {
@@ -72,7 +81,7 @@ Item {
                         { key: "status", title: qsTr("Checklist status"), icon: "badge-check", ready: true },
                         { key: "splits", title: qsTr("Splits and lumps"), icon: "git-merge", ready: true },
                         { key: "years", title: qsTr("Year comparison"), icon: "chart-column", ready: true },
-                        { key: "", title: qsTr("Timeline"), icon: "calendar", ready: false },
+                        { key: "timeline", title: qsTr("Timeline"), icon: "calendar", ready: true },
                         { key: "", title: qsTr("Ticks map"), icon: "map-pin", ready: false },
                         { key: "", title: qsTr("Lifers map"), icon: "map-pin", ready: false }
                     ]
@@ -114,7 +123,7 @@ Item {
         StackLayout {
             B.SplitView.fillWidth: true
             B.SplitView.minimumWidth: Theme.grid(560)
-            currentIndex: ["family", "status", "splits", "years"].indexOf(special.report)
+            currentIndex: ["family", "status", "splits", "years", "timeline"].indexOf(special.report)
 
             B.SplitView {
                 orientation: Qt.Horizontal
@@ -888,6 +897,351 @@ Item {
                         elide: Text.ElideRight
                         text: yearsCard.hoverText !== "" ? yearsCard.hoverText
                             : qsTr("Point at a year to see its sightings and dates.")
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------ timeline
+            Card {
+                id: timelineCard
+                objectName: "timelineReport"
+                padV: 0
+                padH: 0
+                clip: true
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 0
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Theme.headerH
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        spacing: Theme.s2
+                        Column {
+                            Layout.fillWidth: true
+                            PLabel { width: parent.width; kind: "title"; text: qsTr("Timeline"); elide: Text.ElideRight }
+                            PLabel {
+                                objectName: "timelineSummary"
+                                width: parent.width
+                                kind: "caption"
+                                elide: Text.ElideRight
+                                text: special.timelineError !== "" ? special.timelineError : special.timelineSummary
+                                color: special.timelineError !== "" ? Theme.warning : Theme.textMuted
+                            }
+                        }
+                        PButton {
+                            compact: true
+                            variant: "ghost"
+                            iconName: "sliders-horizontal"
+                            text: qsTr("Edit query")
+                            onClicked: shell.go("reports")
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+
+                    // The life list growing: a step line, milestones as dots
+                    Canvas {
+                        id: lifeChart
+                        objectName: "lifeChart"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Theme.grid(200)
+                        readonly property var points: special.lifeListPoints
+                        readonly property var milestones: special.milestonePoints
+                        readonly property var years: special.timelineYears
+                        readonly property real plotLeft: Theme.s4 + Theme.grid(40)
+                        readonly property real plotRight: width - Theme.s4
+                        readonly property real plotTop: Theme.s4
+                        readonly property real plotBottom: height - Theme.s5 - Theme.s2
+                        readonly property real spanX: points.length ? Math.max(1, points[points.length - 1][0]) : 1
+                        readonly property real spanY: points.length ? Math.max(1, points[points.length - 1][1]) : 1
+                        function xOf(x) { return plotLeft + (plotRight - plotLeft) * x / spanX }
+                        function yOf(y) { return plotBottom - (plotBottom - plotTop) * y / spanY }
+                        onPointsChanged: requestPaint()
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
+                        onPaint: {
+                            const ctx = getContext("2d")
+                            ctx.reset()
+                            if (points.length === 0)
+                                return
+                            // Gridlines at quarter heights, labeled with the life list
+                            ctx.strokeStyle = Theme.border
+                            ctx.fillStyle = Theme.textFaint
+                            ctx.lineWidth = 1
+                            ctx.font = Theme.sizeCaption + "px '" + Theme.fontNum + "'"
+                            ctx.textAlign = "right"
+                            for (let i = 0; i <= 4; i++) {
+                                const value = Math.round(spanY * i / 4)
+                                const y = Math.round(yOf(value)) + 0.5
+                                ctx.beginPath(); ctx.moveTo(plotLeft, y); ctx.lineTo(plotRight, y); ctx.stroke()
+                                ctx.fillText(value.toLocaleString(Qt.locale("en_US"), "f", 0), plotLeft - Theme.s2, y + 4)
+                            }
+                            // Area under the line: the accent at the soft tint
+                            ctx.beginPath()
+                            ctx.moveTo(xOf(0), yOf(0))
+                            let lastY = 0
+                            for (const point of points) {
+                                ctx.lineTo(xOf(point[0]), yOf(lastY))
+                                ctx.lineTo(xOf(point[0]), yOf(point[1]))
+                                lastY = point[1]
+                            }
+                            ctx.lineTo(xOf(spanX), yOf(lastY))
+                            ctx.lineTo(xOf(spanX), yOf(0))
+                            ctx.closePath()
+                            ctx.fillStyle = Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.12)
+                            ctx.fill()
+                            // The line
+                            ctx.beginPath()
+                            ctx.moveTo(xOf(0), yOf(0))
+                            lastY = 0
+                            for (const point of points) {
+                                ctx.lineTo(xOf(point[0]), yOf(lastY))
+                                ctx.lineTo(xOf(point[0]), yOf(point[1]))
+                                lastY = point[1]
+                            }
+                            ctx.lineTo(xOf(spanX), yOf(lastY))
+                            ctx.strokeStyle = Theme.accent
+                            ctx.lineWidth = 2
+                            ctx.stroke()
+                            // Milestones
+                            ctx.fillStyle = Theme.info
+                            ctx.textAlign = "left"
+                            for (const milestone of milestones) {
+                                const x = xOf(milestone[0])
+                                const y = yOf(milestone[1])
+                                ctx.beginPath(); ctx.arc(x, y, 4, 0, 2 * Math.PI); ctx.fill()
+                            }
+                            // First and last years
+                            ctx.fillStyle = Theme.textMuted
+                            ctx.textAlign = "left"
+                            ctx.fillText(String(years[0]), plotLeft, height - Theme.s2)
+                            ctx.textAlign = "right"
+                            ctx.fillText(String(years[1]), plotRight, height - Theme.s2)
+                        }
+                        // Pointing shows the life list on that day, or a milestone
+                        HoverHandler {
+                            id: chartHover
+                            onPointChanged: {
+                                const points = lifeChart.points
+                                if (points.length === 0) { chartText.text = ""; return }
+                                const x = (point.position.x - lifeChart.plotLeft) / (lifeChart.plotRight - lifeChart.plotLeft) * lifeChart.spanX
+                                let near = ""
+                                for (const milestone of lifeChart.milestones) {
+                                    if (Math.abs(lifeChart.xOf(milestone[0]) - point.position.x) < 6
+                                            && Math.abs(lifeChart.yOf(milestone[1]) - point.position.y) < 10)
+                                        near = qsTr("Species #%1: %2, %3").arg(milestone[1].toLocaleString(Qt.locale("en_US"), "f", 0)).arg(milestone[2]).arg(milestone[3])
+                                }
+                                if (near !== "") { chartText.text = near; return }
+                                let count = 0
+                                for (const p of points) { if (p[0] <= x) count = p[1]; else break }
+                                chartText.text = qsTr("Life list: %1").arg(count.toLocaleString(Qt.locale("en_US"), "f", 0))
+                            }
+                            onHoveredChanged: if (!hovered) chartText.text = ""
+                        }
+                        PLabel {
+                            id: chartText
+                            x: lifeChart.plotLeft + Theme.s2
+                            y: lifeChart.plotTop
+                            kind: "caption"
+                            color: Theme.text
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.margins: Theme.s3
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        spacing: Theme.s2
+                        Repeater {
+                            model: [{ key: "YEARS", label: qsTr("Years") }, { key: "DAYS", label: qsTr("Days") }]
+                            PButton {
+                                required property var modelData
+                                objectName: "timelineMode_" + modelData.key
+                                compact: true
+                                variant: special.timelineMode === modelData.key ? "primary" : "secondary"
+                                text: modelData.label
+                                onClicked: special.setTimelineMode(modelData.key)
+                            }
+                        }
+                        PLabel { kind: "caption"; text: qsTr("Sort"); Layout.leftMargin: Theme.s3 }
+                        PComboBox {
+                            objectName: "timelineSort"
+                            Layout.preferredWidth: Theme.grid(160)
+                            implicitHeight: Theme.controlHCompact
+                            model: special.timelineSorts.map(s => s[1])
+                            currentIndex: special.timelineSorts.findIndex(s => s[0] === special.timelineSort)
+                            onActivated: i => special.setTimelineSort(special.timelineSorts[i][0])
+                        }
+                        PCheckBox {
+                            objectName: "timelineLifersOnly"
+                            text: qsTr("Lifers only")
+                            checked: special.timelineLifersOnly
+                            onToggled: special.setTimelineLifersOnly(checked)
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        spacing: 0
+                        ListView {
+                            id: periods
+                            objectName: "timelinePeriods"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: Theme.grid(320)
+                            Layout.fillHeight: true
+                            clip: true
+                            model: special.timelineRows
+                            currentIndex: special.timelineSelected
+                            highlightMoveDuration: 0
+                            keyNavigationEnabled: false
+                            boundsBehavior: Flickable.StopAtBounds
+                            reuseItems: true
+                            B.ScrollBar.vertical: B.ScrollBar {}
+                            onCurrentIndexChanged: if (currentIndex >= 0) positionViewAtIndex(currentIndex, ListView.Contain)
+                            readonly property int page: Math.max(1, Math.floor(height / Theme.rowH) - 1)
+                            Keys.onPressed: event => {
+                                const index = special.timelineSelected
+                                if (event.key === Qt.Key_Down) special.stepPeriod(index, 1)
+                                else if (event.key === Qt.Key_Up) special.stepPeriod(index, -1)
+                                else if (event.key === Qt.Key_PageDown) special.stepPeriod(index, page)
+                                else if (event.key === Qt.Key_PageUp) special.stepPeriod(index, -page)
+                                else if (event.key === Qt.Key_Home) special.stepPeriod(-1, 1)
+                                else if (event.key === Qt.Key_End) special.stepPeriod(count, -1)
+                                else return
+                                event.accepted = true
+                            }
+                            delegate: Rectangle {
+                                id: periodRow
+                                required property int index
+                                required property bool heading
+                                required property string label
+                                required property string place
+                                required property int count
+                                required property int lifers
+                                required property real fraction
+                                readonly property bool selected: index === special.timelineSelected
+                                width: ListView.view.width
+                                height: Theme.rowH
+                                color: selected ? Theme.tint(Theme.accent, Theme.selectedAlpha, Theme.surface)
+                                     : periodHover.hovered && !heading ? Theme.tint(Theme.text, Theme.hoverAlpha, Theme.surface) : "transparent"
+                                Rectangle { visible: periodRow.selected; width: 2; height: parent.height; color: periods.activeFocus ? Theme.accent : Theme.borderStrong }
+                                HoverHandler { id: periodHover; enabled: !periodRow.heading }
+                                TapHandler { enabled: !periodRow.heading; onTapped: { special.selectPeriod(periodRow.index); periods.forceActiveFocus() } }
+                                PLabel {
+                                    visible: periodRow.heading
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: Theme.s4
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: Theme.s1
+                                    kind: "caption"
+                                    font.weight: Font.DemiBold
+                                    text: periodRow.label
+                                }
+                                RowLayout {
+                                    visible: !periodRow.heading
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.s4
+                                    anchors.rightMargin: Theme.s4
+                                    spacing: Theme.s3
+                                    PLabel {
+                                        Layout.preferredWidth: special.timelineMode === "DAYS" ? Theme.grid(104) : Theme.grid(48)
+                                        kind: "num"
+                                        text: periodRow.label
+                                    }
+                                    PLabel {
+                                        Layout.fillWidth: true
+                                        kind: "caption"
+                                        elide: Text.ElideRight
+                                        text: periodRow.place
+                                    }
+                                    PProgressBar {
+                                        Layout.preferredWidth: Theme.grid(160)
+                                        value: periodRow.fraction
+                                    }
+                                    PLabel {
+                                        Layout.preferredWidth: Theme.grid(48)
+                                        kind: "num"
+                                        horizontalAlignment: Text.AlignRight
+                                        text: periodRow.count.toLocaleString(Qt.locale("en_US"), "f", 0)
+                                    }
+                                    Item {
+                                        Layout.preferredWidth: Theme.grid(72)
+                                        Layout.preferredHeight: Theme.pillH
+                                        Badge {
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            visible: periodRow.lifers > 0
+                                            tone: Theme.positive
+                                            text: "+" + periodRow.lifers.toLocaleString(Qt.locale("en_US"), "f", 0) + " " + qsTr("new")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Rectangle { Layout.fillHeight: true; Layout.preferredWidth: 1; color: Theme.border }
+                        ColumnLayout {
+                            Layout.preferredWidth: Theme.grid(260)
+                            Layout.minimumWidth: Theme.grid(260)
+                            Layout.maximumWidth: Theme.grid(260)
+                            Layout.fillHeight: true
+                            spacing: Theme.s1
+                            SectionHeader {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: Theme.s4
+                                Layout.topMargin: Theme.s3
+                                text: special.timelineSelectedLabel !== "" ? special.timelineSelectedLabel : qsTr("Species")
+                            }
+                            PLabel {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: Theme.s4
+                                Layout.rightMargin: Theme.s4
+                                visible: special.timelineSelected < 0
+                                kind: "caption"
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Choose a year or day to see its species, lifers first.")
+                            }
+                            ListView {
+                                objectName: "periodSpecies"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
+                                model: special.periodSpecies
+                                boundsBehavior: Flickable.StopAtBounds
+                                reuseItems: true
+                                B.ScrollBar.vertical: B.ScrollBar {}
+                                delegate: Item {
+                                    id: periodSpeciesRow
+                                    required property string name
+                                    required property bool lifer
+                                    width: ListView.view.width
+                                    height: Theme.rowHDense
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: Theme.s4
+                                        anchors.rightMargin: Theme.s4
+                                        spacing: Theme.s2
+                                        PLabel { Layout.fillWidth: true; text: periodSpeciesRow.name; elide: Text.ElideRight }
+                                        Badge { visible: periodSpeciesRow.lifer; text: qsTr("Lifer"); tone: Theme.positive }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border; visible: footnote.text !== "" }
+                    PLabel {
+                        id: footnote
+                        objectName: "timelineFootnote"
+                        visible: text !== ""
+                        Layout.fillWidth: true
+                        Layout.margins: Theme.s2
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        kind: "caption"
+                        wrapMode: Text.WordWrap
+                        text: special.timelineFootnote
                     }
                 }
             }

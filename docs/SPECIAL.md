@@ -1,7 +1,7 @@
 # Special reports (Ctrl+7)
 
 The Special screen holds Scythebill's analytical reports. The report list on the left shows
-which ones exist so far (Alt+1 to Alt+4 switch between them); the others are marked
+which ones exist so far (Alt+1 to Alt+5 switch between them); the others are marked
 "Soon".
 
 ## Family report
@@ -210,3 +210,46 @@ On Eric's list (private), all 4 cases are identical:
 - up to 2010 in Clements
 
 They cover up to 3,509 species rows, and each runs in 0.2–0.7 s.
+
+## Timeline
+
+The life list growing over time, and the biggest years and days. This is Scythebill's
+`TimelineData`, with the query and sorts of `TimelinePanel`, ported in
+`pipit.special.timeline`. Like the family report, it uses the Reports screen's query.
+
+- **When a species was first seen.** A species' lifer day is the earliest last possible day
+  of its sightings. A sighting dated only by month counts on the month's last day, and one
+  dated only by year on 31 December. A trip sighting without its own date takes the trip's
+  end. A sp. or hybrid of several species is left out.
+- **The chart.** The life list as a step line, with every 100th species (every 1,000th from
+  1,000 on) as a dot. Pointing shows the life list on that day, or the milestone's species
+  and date.
+- **Years and days.** Each year (sightings dated within one year) or day (sightings dated
+  to one day) is listed with its species and how many were new. A day also shows the place
+  all its sightings share, which is their nearest common ancestor. You can sort by most
+  species, most new, or newest first. Newest first puts a line for each decade between the
+  years, with that decade's species and new ones. "Lifers only" hides the periods with no
+  new species. Choosing a period lists its species, lifers first.
+- **Footnotes.** As in Scythebill, the report says when sightings don't count toward any
+  year (trips spanning two years) or any day (date ranges), and when species were seen only
+  without a date.
+
+Not ported yet: zooming the chart, Scythebill's species browser for a period (with its
+sightings and visits), and the chart's species-seen bars.
+
+### Checked against Scythebill
+
+PrintOracle's timeline mode runs `TimelineData.fromSightings` on the query's countable
+sightings, as `TimelinePanel` does. The cases (`make_timeline_cases.py`) are:
+- on `tests/fixtures/bsxm/queries.bsxm`: the whole list, one state, and the list without
+  another state
+- on `tests/fixtures/bsxm/trip_report.bsxm`: the whole list, which has sightings recorded
+  only on a trip of several days
+
+Each case runs in both taxonomies, 8 in all. Pipit matches Scythebill exactly
+(`tests/special/test_timeline_against_scythebill.py`) in:
+- the lifers in order, and the milestones
+- every year and day: its species, shared place, and lifers
+- the decades and the undated counts
+
+On Eric's list (private), both taxonomies are identical: 31 years and 774 days, in 0.4 s.

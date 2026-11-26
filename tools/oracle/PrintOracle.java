@@ -17,6 +17,7 @@
 // (and for a synthetic place, the codes its checklist is the union of).
 // The status mode writes, for each of ChecklistStatusReportPanel's choices in both
 // taxonomies, the places it lists (id, whether the checklist is custom) with their species.
+// The timeline mode writes outDir/<name>.json: TimelineData for the case's query.
 // The years mode writes outDir/<name>.json: YearComparisonProcessor's result for the case's
 // query and year range ("from", "to").
 // The splits mode writes outDir/<name>.jsonl: SplitsAndLumpsProcessor's result for each
@@ -223,6 +224,10 @@ public class PrintOracle {
       if (mode.equals("family")) {
         writeFamily(testCase, reportSet, taxonomy, restored, fields, operations, locations,
             queryPreferences, checklists, outDir);
+        continue;
+      }
+      if (mode.equals("timeline")) {
+        writeTimeline(testCase, reportSet, taxonomy, restored, queryPreferences, outDir);
         continue;
       }
       if (mode.equals("years")) {
@@ -1005,6 +1010,85 @@ public class PrintOracle {
       }
     }
     return fields;
+  }
+
+
+  /**
+   * TimelinePanel.showQueryInList: TimelineData for the case's query, as outDir/<name>.json:
+   * the lifers in order, each year and day ([date fields, species sorted, place, lifers]),
+   * the decades from the first to the last day's, milestones, and the undated counts.
+   */
+  static void writeTimeline(JsonObject testCase, ReportSet reportSet, Taxonomy taxonomy,
+      StoredQueries.RestoredQuery restored, QueryPreferences queryPreferences, File outDir)
+      throws IOException {
+    var queryProcessor = new QueryProcessor(reportSet, taxonomy);
+    queryProcessor.onlyIncludeCountableSightings().dontIncludeFamilyNames();
+    QueryResults results = queryProcessor.runQuery(
+        restored.rawQueryDefinition(taxonomy, reportSet, Taxon.Type.species),
+        restored.countablePredicate(taxonomy, queryPreferences), Taxon.Type.species);
+    TimelineData data = TimelineData.fromSightings(
+        results.getAllSightings(), taxonomy, reportSet.getLocations()::getLocation);
+    JsonObject out = new JsonObject();
+    var lifers = new com.google.gson.JsonArray();
+    var all = new ArrayList<>(data.latestLifers(java.time.LocalDate.of(9999, 12, 31),
+        Integer.MAX_VALUE));
+    java.util.Collections.reverse(all);
+    for (var lifer : all) {
+      var row = new com.google.gson.JsonArray();
+      row.add(lifer.speciesId());
+      row.add(lifer.day().toString());
+      lifers.add(row);
+    }
+    out.add("lifers", lifers);
+    out.add("years", timelinePeriods(data.years()));
+    out.add("days", timelinePeriods(data.days()));
+    var decades = new com.google.gson.JsonArray();
+    if (data.firstDay().isPresent()) {
+      int first = TimelineData.decadeOf(data.firstDay().get().getYear()) - 100;
+      int last = TimelineData.decadeOf(data.lastDay().get().getYear()) + 100;
+      for (int decade = first; decade <= last; decade += 10) {
+        var totals = data.decade(decade);
+        if (totals.count() > 0) {
+          var row = new com.google.gson.JsonArray();
+          row.add(decade);
+          row.add(totals.count());
+          row.add(totals.lifers());
+          decades.add(row);
+        }
+      }
+    }
+    out.add("decades", decades);
+    var milestones = new com.google.gson.JsonArray();
+    for (var milestone : data.milestones()) {
+      var row = new com.google.gson.JsonArray();
+      row.add(milestone.number());
+      row.add(milestone.lifer().speciesId());
+      row.add(milestone.lifer().day().toString());
+      milestones.add(row);
+    }
+    out.add("milestones", milestones);
+    out.addProperty("lifeListTotal", data.lifeListTotal());
+    out.addProperty("undatedSpecies", data.undatedSpeciesCount());
+    out.addProperty("sightingsInNoYear", data.sightingsInNoYear());
+    out.addProperty("sightingsOnNoDay", data.sightingsOnNoDay());
+    out.addProperty("latestDay", data.lastDay().map(Object::toString).orElse(null));
+    Files.writeString(new File(outDir, testCase.get("name").getAsString() + ".json").toPath(),
+        out.toString());
+  }
+
+  private static com.google.gson.JsonArray timelinePeriods(List<TimelineData.Period> periods) {
+    var array = new com.google.gson.JsonArray();
+    for (var period : periods) {
+      var row = new com.google.gson.JsonArray();
+      row.add(partialDate(period.date()));
+      var species = new com.google.gson.JsonArray();
+      period.species().stream().sorted().forEach(species::add);
+      row.add(species);
+      row.add(period.location() == null ? null : period.location().getId());
+      row.add(period.lifers());
+      array.add(row);
+    }
+    return array;
   }
 
 }

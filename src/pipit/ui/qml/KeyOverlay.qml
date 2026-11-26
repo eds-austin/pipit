@@ -59,12 +59,12 @@ PDialog {
         ["Ctrl+L", qsTr("Saved reports: Enter loads, F2 renames, Delete deletes, Alt+Up/Down move")]
     ]
     readonly property var specialKeys: [
-        ["Alt+1…4", qsTr("Family report, checklist status, splits and lumps, year comparison")],
+        ["Alt+1…5", qsTr("Family report, checklist status, splits and lumps, year comparison, timeline")],
         ["← · →", qsTr("Year comparison: choose a year (Esc clears it)")],
         ["Ctrl+G", qsTr("Family report: group by order, family or genus")],
         ["Ctrl+R", qsTr("Into the list; Up/Down choose (a group lists its species)")],
         ["Enter", qsTr("Checklist status: show the species' place on Locations")],
-        ["Ctrl+Shift+Q", qsTr("Family, splits and years: edit the query (on Reports)")]
+        ["Ctrl+Shift+Q", qsTr("Family, splits, years and timeline: edit the query (on Reports)")]
     ]
     readonly property var tripKeys: [
         ["Ctrl+F · /", qsTr("Filter trips by name or notes")],
