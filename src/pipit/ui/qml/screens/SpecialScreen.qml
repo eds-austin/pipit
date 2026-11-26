@@ -2,12 +2,14 @@
 // genus against the checklist of its places (the world without one), as Scythebill's does;
 // the checklist status report lists species seen where their place's checklist gives them a
 // status (not on it, rarity, endemic, ...); splits and lumps shows how the query's species
-// would count in another taxonomy version. Keyboard map (F1):
-//   Alt+1…3         family report, checklist status, splits and lumps
+// would count in another taxonomy version; the year comparison shows each species' sightings
+// year by year. Keyboard map (F1):
+//   Alt+1…4         family report, checklist status, splits and lumps, year comparison
 //   Ctrl+G          (family) group by order, family, genus (cycles)
 //   Ctrl+R          into the list; Up/Down, PageUp/PageDown, Home/End choose
 //   Enter           (checklist status) show the species' place on Locations
-//   Ctrl+Shift+Q    (family, splits) edit the query (on Reports)
+//   Left/Right      (year comparison) choose a year; Esc clears it
+//   Ctrl+Shift+Q    (family, splits, years) edit the query (on Reports)
 import QtQuick
 import QtQuick.Controls.Basic as B
 import QtQuick.Layouts
@@ -36,6 +38,7 @@ Item {
     Shortcut { enabled: root.keysOn; sequence: "Alt+1"; onActivated: special.setReport("family") }
     Shortcut { enabled: root.keysOn; sequence: "Alt+2"; onActivated: special.setReport("status") }
     Shortcut { enabled: root.keysOn; sequence: "Alt+3"; onActivated: special.setReport("splits") }
+    Shortcut { enabled: root.keysOn; sequence: "Alt+4"; onActivated: special.setReport("years") }
     Shortcut { enabled: root.keysOn && root.family; sequence: "Ctrl+G"; onActivated: root.cycleGroupBy() }
     Shortcut { enabled: root.keysOn; sequence: "Ctrl+R"; onActivated: root.family ? root.focusGroups() : root.focusStatus() }
     Shortcut { enabled: root.keysOn && special.report !== "status"; sequence: "Ctrl+Shift+Q"; onActivated: shell.go("reports") }
@@ -68,8 +71,8 @@ Item {
                         { key: "family", title: qsTr("Family report"), icon: "list-tree", ready: true },
                         { key: "status", title: qsTr("Checklist status"), icon: "badge-check", ready: true },
                         { key: "splits", title: qsTr("Splits and lumps"), icon: "git-merge", ready: true },
+                        { key: "years", title: qsTr("Year comparison"), icon: "chart-column", ready: true },
                         { key: "", title: qsTr("Timeline"), icon: "calendar", ready: false },
-                        { key: "", title: qsTr("Year comparison"), icon: "chart-column", ready: false },
                         { key: "", title: qsTr("Ticks map"), icon: "map-pin", ready: false },
                         { key: "", title: qsTr("Lifers map"), icon: "map-pin", ready: false }
                     ]
@@ -111,7 +114,7 @@ Item {
         StackLayout {
             B.SplitView.fillWidth: true
             B.SplitView.minimumWidth: Theme.grid(560)
-            currentIndex: ["family", "status", "splits"].indexOf(special.report)
+            currentIndex: ["family", "status", "splits", "years"].indexOf(special.report)
 
             B.SplitView {
                 orientation: Qt.Horizontal
@@ -593,6 +596,298 @@ Item {
                                 text: splitsRow.text
                             }
                         }
+                    }
+                }
+            }
+
+            // ------------------------------------------------------------ year comparison
+            Card {
+                id: yearsCard
+                objectName: "yearsReport"
+                padV: 0
+                padH: 0
+                clip: true
+                readonly property var span: special.yearsSpan
+                readonly property int nameWidth: Theme.grid(240)
+                readonly property real cellWidth: span.length === 0 ? 0
+                    : Math.max(4, Math.min(Theme.grid(28), (width - nameWidth - Theme.s4 * 2 - Theme.s3) / span.length))
+                readonly property int selectedIndex: special.selectedYear === 0 ? -1 : span.indexOf(special.selectedYear)
+                property string hoverText: ""
+                function bucketColor(level) {
+                    return level === 1 ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.5)
+                         : level === 2 ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.75)
+                         : level === 3 ? Theme.accent
+                         : level >= 4 ? Qt.tint(Theme.accent, Qt.rgba(Theme.text.r, Theme.text.g, Theme.text.b, 0.35)) : "transparent"
+                }
+                Keys.onPressed: event => {
+                    if (span.length === 0) return
+                    if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+                        const step = event.key === Qt.Key_Left ? -1 : 1
+                        const at = selectedIndex < 0 ? (step < 0 ? span.length - 1 : 0)
+                                                     : Math.max(0, Math.min(span.length - 1, selectedIndex + step))
+                        special.selectYear(span[at])
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_Escape && selectedIndex >= 0) {
+                        special.selectYear(0)
+                        event.accepted = true
+                    }
+                }
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 0
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Theme.headerH
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        spacing: Theme.s2
+                        Column {
+                            Layout.fillWidth: true
+                            PLabel { width: parent.width; kind: "title"; text: qsTr("Year comparison"); elide: Text.ElideRight }
+                            PLabel {
+                                objectName: "yearsSummary"
+                                width: parent.width
+                                kind: "caption"
+                                elide: Text.ElideRight
+                                text: special.yearsError !== "" ? special.yearsError : special.yearsSummary
+                                color: special.yearsError !== "" ? Theme.warning : Theme.textMuted
+                            }
+                        }
+                        PLabel { kind: "caption"; text: qsTr("From") }
+                        PTextField {
+                            id: fromYear
+                            objectName: "yearsFrom"
+                            num: true
+                            Layout.preferredWidth: Theme.grid(72)
+                            implicitHeight: Theme.controlHCompact
+                            placeholderText: qsTr("Year")
+                            text: special.yearsFrom
+                            validator: IntValidator { bottom: 1; top: 9999 }
+                            onEditingFinished: if (!special.setYearRange(fromYear.text, toYear.text)) fromYear.text = special.yearsFrom
+                        }
+                        PLabel { kind: "caption"; text: qsTr("to") }
+                        PTextField {
+                            id: toYear
+                            objectName: "yearsTo"
+                            num: true
+                            Layout.preferredWidth: Theme.grid(72)
+                            implicitHeight: Theme.controlHCompact
+                            placeholderText: qsTr("Year")
+                            text: special.yearsTo
+                            validator: IntValidator { bottom: 1; top: 9999 }
+                            onEditingFinished: if (!special.setYearRange(fromYear.text, toYear.text)) toYear.text = special.yearsTo
+                        }
+                        PLabel { kind: "caption"; text: qsTr("Sort"); Layout.leftMargin: Theme.s2 }
+                        PComboBox {
+                            objectName: "yearsSort"
+                            Layout.preferredWidth: Theme.grid(160)
+                            implicitHeight: Theme.controlHCompact
+                            model: special.yearsSorts.map(s => s[1])
+                            currentIndex: special.yearsSorts.findIndex(s => s[0] === special.yearsSort)
+                            onActivated: i => special.setYearsSort(special.yearsSorts[i][0])
+                        }
+                        PButton {
+                            compact: true
+                            variant: "ghost"
+                            iconName: "sliders-horizontal"
+                            text: qsTr("Edit query")
+                            onClicked: shell.go("reports")
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+
+                    // Species per year: a bar for each year, aligned with the grid's columns
+                    Item {
+                        id: strip
+                        objectName: "yearsStrip"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Theme.grid(112)
+                        readonly property var counts: special.speciesPerYear
+                        readonly property int most: counts.length ? Math.max.apply(null, counts) : 0
+                        PLabel {
+                            x: Theme.s4
+                            y: Theme.s3
+                            width: yearsCard.nameWidth - Theme.s3
+                            kind: "overline"
+                            text: qsTr("Species per year")
+                        }
+                        PLabel {
+                            x: Theme.s4
+                            y: Theme.s3 + Theme.s5
+                            width: yearsCard.nameWidth - Theme.s3
+                            kind: "caption"
+                            wrapMode: Text.WordWrap
+                            visible: special.selectedYear === 0
+                            text: qsTr("Click a year (or use Left and Right) to see what was new or missing.")
+                        }
+                        PLabel {
+                            x: Theme.s4
+                            y: Theme.s3 + Theme.s5
+                            kind: "kpi"
+                            visible: special.selectedYear !== 0
+                            text: yearsCard.selectedIndex >= 0 ? special.selectedYear + ": " + strip.counts[yearsCard.selectedIndex] : ""
+                        }
+                        Repeater {
+                            model: yearsCard.span.length
+                            Item {
+                                id: bar
+                                required property int index
+                                readonly property bool chosen: index === yearsCard.selectedIndex
+                                x: Theme.s4 + yearsCard.nameWidth + index * yearsCard.cellWidth
+                                y: Theme.s3
+                                width: yearsCard.cellWidth
+                                height: strip.height - Theme.s3 - Theme.s5
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: Math.max(2, parent.width - 2)
+                                    height: strip.most > 0 ? Math.max(1, parent.height * strip.counts[bar.index] / strip.most) : 0
+                                    radius: 2
+                                    color: bar.chosen ? Theme.accent : barHover.hovered ? Theme.borderStrong : Theme.surface3
+                                }
+                                HoverHandler { id: barHover }
+                                TapHandler {
+                                    onTapped: {
+                                        special.selectYear(bar.chosen ? 0 : yearsCard.span[bar.index])
+                                        yearsCard.forceActiveFocus()
+                                    }
+                                }
+                                PLabel {
+                                    anchors.top: parent.bottom
+                                    anchors.topMargin: 2
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    kind: "caption"
+                                    font.family: Theme.fontNum
+                                    visible: bar.chosen || (yearsCard.selectedIndex < 0 && (bar.index === 0 || bar.index === yearsCard.span.length - 1
+                                             || (yearsCard.span[bar.index] % 10 === 0 && bar.index > 1 && bar.index < yearsCard.span.length - 2)))
+                                    color: bar.chosen ? Theme.text : Theme.textMuted
+                                    text: yearsCard.span[bar.index]
+                                }
+                            }
+                        }
+                    }
+
+                    // All, or new or missing in the chosen year
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        Layout.bottomMargin: Theme.s2
+                        spacing: Theme.s2
+                        Repeater {
+                            model: [
+                                { key: "ALL", label: qsTr("All species") },
+                                { key: "NEW", label: special.selectedYear ? qsTr("New in %1").arg(special.selectedYear) : qsTr("New in the year") },
+                                { key: "MISSING", label: special.selectedYear ? qsTr("Missing in %1").arg(special.selectedYear) : qsTr("Missing in the year") }
+                            ]
+                            PButton {
+                                required property var modelData
+                                objectName: "yearsFilter_" + modelData.key
+                                compact: true
+                                enabled: modelData.key === "ALL" || special.selectedYear !== 0
+                                variant: special.yearsFilter === modelData.key ? "primary" : "secondary"
+                                text: modelData.label
+                                onClicked: special.setYearsFilter(modelData.key)
+                            }
+                        }
+                        Item { Layout.fillWidth: true }
+                        PLabel {
+                            kind: "caption"
+                            text: qsTr("%1 rows").arg(Number(special.yearsRowCount).toLocaleString(Qt.locale("en_US"), "f", 0))
+                        }
+                        // Legend: Scythebill's buckets
+                        Repeater {
+                            model: [[1, "1"], [2, "2–4"], [3, "5–19"], [4, "20+"]]
+                            Row {
+                                required property var modelData
+                                spacing: Theme.s1
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Theme.s3; height: Theme.s3; radius: 2
+                                    color: yearsCard.bucketColor(modelData[0])
+                                }
+                                PLabel { kind: "caption"; text: modelData[1] }
+                            }
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+                    ListView {
+                        id: yearsGrid
+                        objectName: "yearsGrid"
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        model: special.yearsRows
+                        boundsBehavior: Flickable.StopAtBounds
+                        reuseItems: true
+                        B.ScrollBar.vertical: B.ScrollBar {}
+                        // The chosen year's column
+                        Rectangle {
+                            visible: yearsCard.selectedIndex >= 0
+                            x: Theme.s4 + yearsCard.nameWidth + yearsCard.selectedIndex * yearsCard.cellWidth
+                            y: 0
+                            z: -1
+                            width: yearsCard.cellWidth
+                            height: yearsGrid.height
+                            color: Theme.tint(Theme.accent, Theme.rowAlpha, Theme.surface)
+                        }
+                        delegate: Item {
+                            id: yearsRow
+                            required property int index
+                            required property string name
+                            required property var buckets
+                            required property int total
+                            width: ListView.view.width
+                            height: Theme.rowHDense
+                            Rectangle {
+                                anchors.fill: parent
+                                color: rowHover.hovered ? Theme.tint(Theme.text, Theme.hoverAlpha, Theme.surface) : "transparent"
+                            }
+                            HoverHandler {
+                                id: rowHover
+                                onPointChanged: {
+                                    const column = Math.floor((point.position.x - Theme.s4 - yearsCard.nameWidth) / yearsCard.cellWidth)
+                                    yearsCard.hoverText = column >= 0 && column < yearsCard.span.length
+                                        ? special.yearsCellText(yearsRow.index, column) : yearsRow.name
+                                }
+                                onHoveredChanged: if (!hovered) yearsCard.hoverText = ""
+                            }
+                            PLabel {
+                                x: Theme.s4
+                                width: yearsCard.nameWidth - Theme.s3
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: yearsRow.name
+                                elide: Text.ElideRight
+                            }
+                            Repeater {
+                                model: yearsRow.buckets
+                                Rectangle {
+                                    required property int index
+                                    required property int modelData
+                                    x: Theme.s4 + yearsCard.nameWidth + index * yearsCard.cellWidth + 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.max(2, yearsCard.cellWidth - 2)
+                                    height: Math.min(width, Theme.rowHDense - Theme.s2)
+                                    radius: 2
+                                    color: modelData > 0 ? yearsCard.bucketColor(modelData) : "transparent"
+                                    border.width: modelData > 0 ? 0 : 1
+                                    border.color: Qt.rgba(Theme.border.r, Theme.border.g, Theme.border.b, 0.6)
+                                }
+                            }
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border }
+                    PLabel {
+                        objectName: "yearsHover"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Theme.s4
+                        Layout.rightMargin: Theme.s4
+                        Layout.preferredHeight: Theme.rowHDense
+                        verticalAlignment: Text.AlignVCenter
+                        kind: "caption"
+                        elide: Text.ElideRight
+                        text: yearsCard.hoverText !== "" ? yearsCard.hoverText
+                            : qsTr("Point at a year to see its sightings and dates.")
                     }
                 }
             }

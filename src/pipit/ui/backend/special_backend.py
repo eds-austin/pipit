@@ -9,7 +9,8 @@ from typing import Any
 
 from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
-from pipit.output.names import PlaceNames
+from pipit.domain.partial_date import PartialDate, PartialField
+from pipit.output.names import PlaceNames, resolved_common_name
 from pipit.output.print_html import list_place_names
 from pipit.query.checklists import Checklists
 from pipit.query.engine import EngineContext, parse_query
@@ -27,7 +28,17 @@ from pipit.special.splits_lumps import (
     versions_for,
 )
 from pipit.special.splits_lumps import totals as splits_totals
+from pipit.special.year_comparison import SORTS as YEAR_SORTS
+from pipit.special.year_comparison import (
+    Half,
+    SpeciesResult,
+    YearComparison,
+    YearResult,
+    compare_years,
+    sorted_species,
+)
 from pipit.taxa.model import Taxon, TaxonType, full_name
+from pipit.taxa.sighting_taxon import Resolved, SightingTaxonType
 from pipit.ui.backend.app_controller import AppController
 from pipit.ui.backend.list_model import DictListModel
 from pipit.ui.backend.reports_backend import ReportsBackend
@@ -40,7 +51,7 @@ SORTS = [["TAXONOMIC", "Taxonomic order"], ["SPECIES_SEEN", "Species seen"],
          ["FRACTION_SEEN", "Fraction seen"], ["SPECIES_UNSEEN", "Species unseen"],
          ["TOTAL_SPECIES", "Total species"]]  # fmt: skip
 _GROUPS_OF = {"ORDER": "Orders", "FAMILY": "Families", "GENUS": "Genera"}
-REPORTS = ("family", "status", "splits")
+REPORTS = ("family", "status", "splits", "years")
 #: Countries Scythebill names with their parent in this report (``CODES_WITH_MULTIPLE_REGIONS``).
 _NAMED_WITH_PARENT = frozenset({"XX", "RU", "ID"})
 #: Scythebill's ``Species`` class: species, groups and subspecies.
@@ -75,6 +86,8 @@ class SpecialBackend(QObject):
     reportChanged = Signal()
     statusChanged = Signal()
     splitsChanged = Signal()
+    yearsChanged = Signal()
+    yearsSelectionChanged = Signal()
 
     def __init__(self, app: AppController, reports: ReportsBackend) -> None:
         super().__init__()
@@ -92,6 +105,15 @@ class SpecialBackend(QObject):
         self._splits_totals = ""
         self._splits_error = ""
         self.splits_model = DictListModel(["heading", "text"])
+        self._years: YearComparison | None = None
+        self._years_from: int | None = None
+        self._years_to: int | None = None
+        self._years_sort = "MOST_SIGHTINGS"
+        self._years_filter = "ALL"
+        self._years_selected: int | None = None
+        self._years_rows: list[SpeciesResult] = []
+        self._years_error = ""
+        self.years_model = DictListModel(["name", "scientific", "buckets", "total"])
         self.status_model = DictListModel(["heading", "placeId", "name", "scientific", "range",
                                            "custom"])  # fmt: skip
         self._group_by = "FAMILY"
@@ -120,6 +142,7 @@ class SpecialBackend(QObject):
     def _query_changed(self) -> None:
         self._stale["family"] = True
         self._stale["splits"] = True
+        self._stale["years"] = True
         self._schedule()
 
     def _data_changed(self) -> None:
@@ -172,6 +195,8 @@ class SpecialBackend(QObject):
             self._run_status()
         elif self._current_report == "splits":
             self._run_splits()
+        elif self._current_report == "years":
+            self._run_years()
         else:
             self._run_family()
 
@@ -559,3 +584,201 @@ class SpecialBackend(QObject):
                                     for result in results)  # fmt: skip
         self.splits_model.replace_all(rows)
         self.splitsChanged.emit()
+
+    # ------------------------------------------------------------ year comparison
+
+    def _run_years(self) -> None:
+        self._stale["years"] = False
+        self._years = None
+        self._years_error = ""
+        context = self._context()
+        if context is not None:
+            try:
+                query = parse_query(self._reports.query_json(), context.query_list,
+                                    context.users)  # fmt: skip
+                self._years = compare_years(context, query, from_year=self._years_from,
+                                            to_year=self._years_to)  # fmt: skip
+            except (QueryJsonError, UnsupportedQueryError, ValueError, KeyError) as error:
+                log.info("year comparison refused: %s", error)
+                self._years_error = str(error)
+        years = self._years
+        if years is not None and self._years_selected not in years.years:
+            self._years_selected = None
+            self._years_filter = "ALL"
+        self._show_years()
+        self.yearsChanged.emit()
+
+    def _show_years(self) -> None:
+        """The grid's rows: filtered by the chosen year, then sorted."""
+        years = self._years
+        rows: list[SpeciesResult] = []
+        if years is not None:
+            chosen = self._years_selected
+            for species in sorted_species(years, self._years_sort):
+                if self._years_filter == "NEW" and species.first_year_ever != chosen:
+                    continue
+                if self._years_filter == "MISSING" and (
+                        chosen is None or species.year(Half.WHOLE_YEAR, chosen) is not None
+                        or species.resolved.type in (SightingTaxonType.SP,
+                                                     SightingTaxonType.HYBRID)):  # fmt: skip
+                    continue
+                rows.append(species)
+        self._years_rows = rows
+        span = [] if years is None else list(years.years)
+        self.years_model.replace_all([
+            {"name": _resolved_name(species.resolved), "scientific": "",
+             "buckets": [bucket(species.year(Half.WHOLE_YEAR, year)) for year in span],
+             "total": species.total_sightings}
+            for species in rows
+        ])  # fmt: skip
+        self.yearsSelectionChanged.emit()
+
+    @Property(str, notify=yearsChanged)
+    def yearsError(self) -> str:
+        return self._years_error
+
+    @Property("QVariantList", notify=yearsChanged)
+    def yearsSpan(self) -> list[int]:
+        return [] if self._years is None else list(self._years.years)
+
+    @Property("QVariantList", notify=yearsChanged)
+    def speciesPerYear(self) -> list[int]:
+        years = self._years
+        if years is None:
+            return []
+        return [years.species_count(Half.WHOLE_YEAR, year) for year in years.years]
+
+    @Property(str, notify=yearsChanged)
+    def yearsSummary(self) -> str:
+        years = self._years
+        if years is None:
+            return ""
+        if not years.species:
+            return "No sightings with a year."
+        count = years.species_count_all_years(Half.WHOLE_YEAR)
+        span = (str(years.first_year) if years.first_year == years.last_year
+                else f"{years.first_year}\u2013{years.last_year}")  # fmt: skip
+        return f"{count:,} species · {span}"
+
+    @Property("QVariantList", constant=True)
+    def yearsSorts(self) -> list[list[str]]:
+        return [list(sort) for sort in YEAR_SORTS]
+
+    @Property(str, notify=yearsSelectionChanged)
+    def yearsSort(self) -> str:
+        return self._years_sort
+
+    @Slot(str)
+    def setYearsSort(self, sort: str) -> None:
+        if sort != self._years_sort:
+            self._years_sort = sort
+            self._show_years()
+
+    @Property(str, notify=yearsSelectionChanged)
+    def yearsFilter(self) -> str:
+        return self._years_filter
+
+    @Slot(str)
+    def setYearsFilter(self, choice: str) -> None:
+        if choice != self._years_filter and (choice == "ALL" or self._years_selected is not None):
+            self._years_filter = choice
+            self._show_years()
+
+    @Property(int, notify=yearsSelectionChanged)
+    def selectedYear(self) -> int:
+        return 0 if self._years_selected is None else self._years_selected
+
+    @Slot(int)
+    def selectYear(self, year: int) -> None:
+        """Choose a year (0: none) for the "new" and "missing" filters."""
+        chosen = year if self._years is not None and year in self._years.years else None
+        if chosen == self._years_selected:
+            return
+        self._years_selected = chosen
+        if chosen is None:
+            self._years_filter = "ALL"
+        self._show_years()
+
+    @Property(int, notify=yearsSelectionChanged)
+    def yearsRowCount(self) -> int:
+        return len(self._years_rows)
+
+    @Property(QObject, constant=True)
+    def yearsRows(self) -> DictListModel:
+        return self.years_model
+
+    @Slot(int, int, result=str)
+    def yearsCellText(self, row: int, column: int) -> str:
+        """``yearTooltip`` for a cell: "2024: 12 sightings, Apr 28 to Sep 30"."""
+        years = self._years
+        if years is None or not 0 <= row < len(self._years_rows):
+            return ""
+        span = list(years.years)
+        if not 0 <= column < len(span):
+            return ""
+        species = self._years_rows[row]
+        year = span[column]
+        name = _resolved_name(species.resolved)
+        result = species.year(Half.WHOLE_YEAR, year)
+        if result is None:
+            return f"{name}: not seen in {year}"
+        sightings = "1 sighting" if result.frequency == 1 else f"{result.frequency:,} sightings"
+        if result.earliest is None or result.latest is None:
+            return f"{name}: {year}: {sightings}"
+        earliest = _month_day_text(result.earliest)
+        latest = _month_day_text(result.latest)
+        dates = earliest if earliest == latest else f"{earliest}\u2013{latest}"
+        return f"{name}: {year}: {sightings}, {dates}"
+
+    @Property(str, notify=yearsChanged)
+    def yearsFrom(self) -> str:
+        return "" if self._years_from is None else str(self._years_from)
+
+    @Property(str, notify=yearsChanged)
+    def yearsTo(self) -> str:
+        return "" if self._years_to is None else str(self._years_to)
+
+    @Slot(str, str, result=bool)
+    def setYearRange(self, from_text: str, to_text: str) -> bool:
+        """The years to compare (blank: no limit); refused when "from" is after "to"."""
+        try:
+            from_year = int(from_text) if from_text.strip() else None
+            to_year = int(to_text) if to_text.strip() else None
+        except ValueError:
+            return False
+        if from_year is not None and to_year is not None and from_year > to_year:
+            return False
+        if (from_year, to_year) != (self._years_from, self._years_to):
+            self._years_from = from_year
+            self._years_to = to_year
+            self._stale["years"] = True
+            self._schedule()
+        return True
+
+
+def bucket(result: YearResult | None) -> int:
+    """``YearComparisonGrid.bucket``: 0 for none, then 1 (one sighting), 2 (2 to 4), 3 (5 to 19),
+    4 (20 or more)."""
+    if result is None or result.frequency <= 0:
+        return 0
+    for index, maximum in enumerate((1, 4, 19)):
+        if result.frequency <= maximum:
+            return index + 1
+    return 4
+
+
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _month_day_text(when: PartialDate) -> str:
+    month = when.get(PartialField.MONTH)
+    day = when.get(PartialField.DAY)
+    text = _MONTHS[month - 1] if month is not None else ""
+    return f"{text} {day}" if day is not None else text
+
+
+def _resolved_name(resolved: Resolved) -> str:
+    try:
+        return resolved_common_name(resolved)
+    except ValueError:
+        return resolved.taxon.name

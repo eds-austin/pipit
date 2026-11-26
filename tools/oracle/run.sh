@@ -241,6 +241,15 @@ java -cp "$UI_CLASSPATH:$SCYTHEBILL/app/src/main/resources" \
     "$FILES/taxon.xml" "$SCYTHEBILL/model/src/main/resources/avilist-taxon.xml" \
     "$SCYTHEBILL/app/src/main/resources" "$BSXM/queries.bsxm" splits "$SPLITS/cases.jsonl" "$SPLITS"
 
+# The year comparison (PrintOracle.java's years mode: YearComparisonProcessor with the panel's
+# year range), gzipped (each case lists every species' years).
+YEARS=tests/fixtures/oracle/years
+mkdir -p "$YEARS"
+"$PY" -I tools/oracle/make_years_cases.py "$YEARS/cases.jsonl"
+find "$YEARS" -name '*.json.gz' -delete
+print_oracle "$BSXM/queries.bsxm" years "$YEARS/cases.jsonl" "$YEARS"
+for f in "$YEARS"/*.json; do gzip -9 -n -f "$f"; done
+
 # eBird Record Format exports (PrintOracle.java's ebird mode: EbirdExportAction and
 # EBirdCsvExport): the reference queries, and everything in two more lists (edge_cases
 # without its February 30 sighting, which Scythebill's export fails on).

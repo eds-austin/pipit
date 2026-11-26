@@ -702,11 +702,14 @@ def run_query(
     only_countable: bool = False,
     *,
     include_incompatible: bool = False,
+    additional: Callable[[QSighting], bool] | None = None,
 ) -> QueryResults:
     """``QueryProcessor.runQuery`` as the Reports screen calls it (``only_countable``:
     ``onlyIncludeCountableSightings``, as Print and Save as may ask;
     ``include_incompatible``: ``includingIncompatibleSightings``, keeping the matching
-    sightings of other taxonomies apart, as trip reports ask, for their visits)."""
+    sightings of other taxonomies apart, as trip reports ask, for their visits;
+    ``additional``: ``withAdditionalPredicate``, a further test of each sighting, not seen
+    by the query's preprocessors)."""
     preferences = preferences or CountingPreferences()
     definition = composite(list(query.fields), context)
     undescribed = context.undescribed()
@@ -727,6 +730,12 @@ def run_query(
 
         def predicate(sighting: QSighting) -> bool:
             return query_predicate(sighting) and countable(sighting)
+
+    if additional is not None:
+        before_additional = predicate
+
+        def predicate(sighting: QSighting) -> bool:
+            return before_additional(sighting) and additional(sighting)
 
     for sighting in sightings:
         if not predicate(sighting):

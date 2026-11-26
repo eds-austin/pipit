@@ -17,6 +17,8 @@
 // (and for a synthetic place, the codes its checklist is the union of).
 // The status mode writes, for each of ChecklistStatusReportPanel's choices in both
 // taxonomies, the places it lists (id, whether the checklist is custom) with their species.
+// The years mode writes outDir/<name>.json: YearComparisonProcessor's result for the case's
+// query and year range ("from", "to").
 // The splits mode writes outDir/<name>.jsonl: SplitsAndLumpsProcessor's result for each
 // version the case's taxonomy offers (app resources must be on the classpath).
 // The family mode writes outDir/<name>.json: the checklist's places (sorted ids), whether there
@@ -221,6 +223,10 @@ public class PrintOracle {
       if (mode.equals("family")) {
         writeFamily(testCase, reportSet, taxonomy, restored, fields, operations, locations,
             queryPreferences, checklists, outDir);
+        continue;
+      }
+      if (mode.equals("years")) {
+        writeYears(testCase, reportSet, taxonomy, restored, queryPreferences, outDir);
         continue;
       }
       if (mode.equals("splits")) {
@@ -879,6 +885,126 @@ public class PrintOracle {
       array.add(item);
     }
     return array;
+  }
+
+
+  /**
+   * YearComparisonProcessor.process with the case's year range ("from", "to"), as the year
+   * comparison panel runs it: outDir/<name>.json with the years, each species (its sighting
+   * taxon, first year ever, and per whole year and half: [year, sightings, earliest, latest];
+   * the days it's drawn on per year, sorted), and the species counted per year.
+   */
+  static void writeYears(JsonObject testCase, ReportSet reportSet, Taxonomy taxonomy,
+      StoredQueries.RestoredQuery restored, QueryPreferences queryPreferences, File outDir)
+      throws IOException {
+    var queryDefinition = restored.rawQueryDefinition(taxonomy, reportSet, Taxon.Type.species);
+    var countablePredicate = restored.countablePredicate(taxonomy, queryPreferences);
+    java.util.function.Predicate<com.scythebill.birdlist.model.sighting.Sighting> range = null;
+    if (testCase.has("from")) {
+      range = com.scythebill.birdlist.model.query.SightingPredicates.afterOrEquals(
+          com.scythebill.birdlist.model.date.PartialDate.of(
+              com.scythebill.birdlist.model.date.PartialField.YEAR,
+              testCase.get("from").getAsInt()));
+    }
+    if (testCase.has("to")) {
+      var to = com.scythebill.birdlist.model.query.SightingPredicates.beforeOrEquals(
+          com.scythebill.birdlist.model.date.PartialDate.of(
+              com.scythebill.birdlist.model.date.PartialField.YEAR,
+              testCase.get("to").getAsInt()));
+      range = range == null ? to : range.and(to);
+    }
+    var result = new YearComparisonProcessor(reportSet, taxonomy, queryDefinition,
+        countablePredicate).process(range);
+    JsonObject out = new JsonObject();
+    out.addProperty("firstYear", result.getEarliestYear());
+    out.addProperty("lastYear", result.getLatestYear());
+    var species = new com.google.gson.JsonArray();
+    for (var speciesResult : result.speciesResults()) {
+      JsonObject item = new JsonObject();
+      var taxon = speciesResult.getResolved().getSightingTaxon();
+      item.addProperty("taxon", taxon.getType() + ":" + String.join(",", taxon.getIds()));
+      item.addProperty("firstYearEver", speciesResult.firstYearEver());
+      item.addProperty("yearsPresent", speciesResult.yearsPresent());
+      item.addProperty("totalSightings", speciesResult.totalSightings());
+      for (var half : YearComparisonProcessor.SplitYearKey.values()) {
+        var years = new com.google.gson.JsonArray();
+        for (int year = result.getEarliestYear(); year <= result.getLatestYear(); year++) {
+          var yearResult = speciesResult.getYearResult(half, year);
+          if (yearResult == null) {
+            continue;
+          }
+          var row = new com.google.gson.JsonArray();
+          row.add(year);
+          row.add(yearResult.frequency());
+          row.add(partialDate(yearResult.earliest()));
+          row.add(partialDate(yearResult.latest()));
+          years.add(row);
+        }
+        item.add(half.name(), years);
+        var total = speciesResult.total(half);
+        var totalRow = new com.google.gson.JsonArray();
+        totalRow.add(total.frequency());
+        totalRow.add(partialDate(total.earliest()));
+        totalRow.add(partialDate(total.latest()));
+        item.add(half.name() + "_total", totalRow);
+      }
+      var days = new com.google.gson.JsonArray();
+      for (int year = result.getEarliestYear(); year <= result.getLatestYear(); year++) {
+        var yearDays = new ArrayList<>(speciesResult.sightingDays(year));
+        if (yearDays.isEmpty()) {
+          continue;
+        }
+        java.util.Collections.sort(yearDays);
+        var row = new com.google.gson.JsonArray();
+        row.add(year);
+        var list = new com.google.gson.JsonArray();
+        yearDays.forEach(list::add);
+        row.add(list);
+        days.add(row);
+      }
+      item.add("days", days);
+      species.add(item);
+    }
+    out.add("species", species);
+    var counts = new JsonObject();
+    for (var half : YearComparisonProcessor.SplitYearKey.values()) {
+      var perYear = new com.google.gson.JsonArray();
+      for (int year = result.getEarliestYear(); year <= result.getLatestYear(); year++) {
+        perYear.add(result.speciesCount(half, year));
+      }
+      counts.add(half.name(), perYear);
+      counts.addProperty(half.name() + "_all", result.speciesCountAllYears(half));
+    }
+    out.add("counts", counts);
+    var firstSeen = new com.google.gson.JsonArray();
+    for (int[] days : result.firstSeenDaysByYear()) {
+      var list = new com.google.gson.JsonArray();
+      for (int day : days) {
+        list.add(day);
+      }
+      firstSeen.add(list);
+    }
+    out.add("firstSeenDays", firstSeen);
+    Files.writeString(new File(outDir, testCase.get("name").getAsString() + ".json").toPath(),
+        out.toString());
+  }
+
+  private static com.google.gson.JsonElement partialDate(
+      com.scythebill.birdlist.model.date.PartialDate date) {
+    if (date == null) {
+      return com.google.gson.JsonNull.INSTANCE;
+    }
+    var fields = new com.google.gson.JsonArray();
+    for (var field : List.of(com.scythebill.birdlist.model.date.PartialField.YEAR,
+        com.scythebill.birdlist.model.date.PartialField.MONTH,
+        com.scythebill.birdlist.model.date.PartialField.DAY)) {
+      if (date.isSupported(field)) {
+        fields.add(date.get(field));
+      } else {
+        fields.add(com.google.gson.JsonNull.INSTANCE);
+      }
+    }
+    return fields;
   }
 
 }

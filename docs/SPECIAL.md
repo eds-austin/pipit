@@ -1,7 +1,7 @@
 # Special reports (Ctrl+7)
 
 The Special screen holds Scythebill's analytical reports. The report list on the left shows
-which ones exist so far (Alt+1 to Alt+3 switch between them); the others are marked
+which ones exist so far (Alt+1 to Alt+4 switch between them); the others are marked
 "Soon".
 
 ## Family report
@@ -153,3 +153,60 @@ All 16 Clements versions take 1.7 s together, about 0.1 s each.
 The fixtures have no bundle that may be either a lump or a split.
 `tests/special/test_splits_parts.py` checks that case, the fewest species unresolved sp.'s
 stand for, and the sentences.
+
+## Year comparison
+
+Each species the query finds, year by year. This is Scythebill's `YearComparisonProcessor`,
+with the year range and sorts of `YearComparisonPanel`, ported in
+`pipit.special.year_comparison`. Like the family report, it uses the Reports screen's query.
+
+- **Years.** The years run from the first sighting with a year to the last, at most a
+  century. A sighting counts in a year when both its dates fall in that year. A trip
+  sighting without a date of its own takes the trip's dates.
+- **From and to.** The fields limit the sightings to a range of years, as Scythebill's
+  panel does. A species' first year ever still comes from the whole query, so a species
+  seen before the range isn't "new" in its first year within it.
+- **Species per year.** The strip above the grid has a bar per year, counting single
+  species only (sp.'s and hybrids are rows in the grid, but don't count). Click a year, or
+  use Left and Right, to choose it. Esc clears it.
+- **The grid.** Each species' cells are shaded by Scythebill's buckets: 1 sighting, 2–4,
+  5–19, and 20 or more. Pointing at a cell shows that year's sightings and their earliest
+  and latest dates.
+- **Filters.** With a year chosen, you can show only species new that year (first seen
+  ever), or only those missing that year (sp.'s and hybrids are left out of "missing").
+- **Sorts.** Most sightings (the default), most years, newest, longest unseen, or
+  taxonomic order. Ties keep taxonomic order.
+
+Half years (H1 and H2) and the days each sighting is drawn on are computed and checked,
+but not shown yet.
+
+Not ported yet:
+- the strip's "year lists" mode (each year's first-seen days)
+- the species detail pane
+- saving as a spreadsheet
+- the suggested places to compare
+
+### Checked against Scythebill
+
+PrintOracle's years mode runs `YearComparisonProcessor.process` with the panel's year range
+(`SightingPredicates.afterOrEquals` and `beforeOrEquals`). It runs on
+`tests/fixtures/bsxm/queries.bsxm`: forty years of sightings, some dated only by month or
+year. There are 12 cases (`make_years_cases.py`):
+- the whole list and one state
+- a range of years, a start year only, and an end year only
+- a state within a range
+
+Each case runs in both taxonomies. For every species, Pipit's years match exactly:
+- sightings, earliest and latest dates per whole year and half year
+- totals and first year ever
+- drawn days
+
+The species counted per year and the first-seen days match too
+(`tests/special/test_years_against_scythebill.py`; the recorded results are gzipped).
+
+On Eric's list (private), all 4 cases are identical:
+- the whole list, in both taxonomies
+- 2015–2024 in AviList
+- up to 2010 in Clements
+
+They cover up to 3,509 species rows, and each runs in 0.2–0.7 s.

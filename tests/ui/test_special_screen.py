@@ -173,3 +173,47 @@ def test_splits_and_lumps(queries_running: Running) -> None:
     second = expected[1]
     assert special.splitsTotals.startswith(f"Gained: {second['knownSplitCount']} ")
     assert special.splitsError == ""
+
+
+def test_year_comparison(queries_running: Running) -> None:
+    import gzip
+
+    from PySide6.QtCore import Qt
+
+    running = queries_running
+    window = running.window
+    special = running.special
+    ctrl(window, "Key_7")
+    wait_until(lambda: running.shell.currentKey == "special")
+    key(window, "Key_4", Qt.KeyboardModifier.AltModifier)
+    wait_until(lambda: special.report == "years")
+    special.run_now()
+    recorded = FIXTURES / "oracle" / "years" / "everything_avilist.json.gz"
+    expected = json.loads(gzip.decompress(recorded.read_bytes()))
+    span = list(range(expected["firstYear"], expected["lastYear"] + 1))
+    assert special.yearsSpan == span
+    assert special.speciesPerYear == expected["counts"]["WHOLE_YEAR"]
+    assert special.yearsRowCount == len(expected["species"])
+    # Most sightings first (ties in taxonomic order)
+    most = max(s["totalSightings"] for s in expected["species"])
+    assert special.years_model.rows()[0]["total"] == most
+
+    # A year: new and missing species in it
+    year = span[-1]
+    special.selectYear(year)
+    special.setYearsFilter("NEW")
+    assert special.yearsRowCount == sum(
+        1 for s in expected["species"] if s["firstYearEver"] == year
+    )
+    special.setYearsFilter("MISSING")
+    missing = [s for s in expected["species"]
+               if not any(row[0] == year for row in s["WHOLE_YEAR"])
+               and not s["taxon"].startswith(("SP:", "HYBRID:"))]  # fmt: skip
+    assert special.yearsRowCount == len(missing)
+    assert special.yearsCellText(0, len(span) - 1).endswith(f"not seen in {year}")
+
+    # A range of years: counted again
+    assert special.setYearRange("2000", "2010")
+    special.run_now()
+    assert special.yearsSpan == list(range(2000, 2011))
+    assert not special.setYearRange("2010", "2000")

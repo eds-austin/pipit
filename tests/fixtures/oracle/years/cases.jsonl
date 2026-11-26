@@ -1,0 +1,12 @@
+{"name": "everything_clements", "query": {"fields": []}, "display": "clements", "depth": "species"}
+{"name": "washington_clements", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "clements", "depth": "species"}
+{"name": "range_clements", "query": {"fields": []}, "display": "clements", "depth": "species", "from": 2000, "to": 2010}
+{"name": "from_2015_clements", "query": {"fields": []}, "display": "clements", "depth": "species", "from": 2015}
+{"name": "to_1990_clements", "query": {"fields": []}, "display": "clements", "depth": "species", "to": 1990}
+{"name": "washington_range_clements", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "clements", "depth": "species", "from": 1995, "to": 2005}
+{"name": "everything_avilist", "query": {"fields": []}, "display": "avilist", "depth": "species"}
+{"name": "washington_avilist", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species"}
+{"name": "range_avilist", "query": {"fields": []}, "display": "avilist", "depth": "species", "from": 2000, "to": 2010}
+{"name": "from_2015_avilist", "query": {"fields": []}, "display": "avilist", "depth": "species", "from": 2015}
+{"name": "to_1990_avilist", "query": {"fields": []}, "display": "avilist", "depth": "species", "to": 1990}
+{"name": "washington_range_avilist", "query": {"fields": [{"type": "LOCATION", "value": {"type": "IN", "id": "wa"}, "bool": "ALL"}]}, "display": "avilist", "depth": "species", "from": 1995, "to": 2005}
