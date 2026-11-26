@@ -3,6 +3,7 @@
 //   PrintOracle taxon.xml avilist.xml appResources in.bsxm print cases.jsonl outDir
 //   PrintOracle taxon.xml avilist.xml appResources in.bsxm xlsx cases.jsonl outDir
 //   PrintOracle taxon.xml avilist.xml appResources in.bsxm checklists out.jsonl
+//   PrintOracle taxon.xml avilist.xml appResources in.bsxm family cases.jsonl outDir
 // Each print case is one line of JSON:
 //   {"name", "query": {stored query}, "display": "clements"|"avilist", "depth",
 //    "fileName", "date", "namesOrder": ScientificOrCommon, "options": ReportPrintPreferences}
@@ -14,6 +15,9 @@
 // The checklists mode writes, for every place in use in the list and every synthetic place,
 // in both taxonomies, the checklist's size and a SHA-256 of its sorted "taxon=STATUS" lines
 // (and for a synthetic place, the codes its checklist is the union of).
+// The family mode writes outDir/<name>.json: the checklist's places (sorted ids), whether there
+// is a checklist, [id, seen, total] for each ORDER, FAMILY and GENUS in taxonomic order, and the
+// seen and total species.
 // Compiled into Scythebill's reports package (it uses package-private classes); see run.sh.
 package com.scythebill.birdlist.ui.panels.reports;
 
@@ -205,6 +209,12 @@ public class PrintOracle {
       com.google.common.base.Optional<String> reportAbbreviation = joinedAbbreviations.isEmpty()
           ? com.google.common.base.Optional.absent()
           : com.google.common.base.Optional.of(joinedAbbreviations);
+
+      if (mode.equals("family")) {
+        writeFamily(testCase, reportSet, taxonomy, restored, fields, operations, locations,
+            queryPreferences, checklists, outDir);
+        continue;
+      }
 
       JsonObject options = testCase.getAsJsonObject("options");
       Checklist singleChecklist = null;
@@ -595,4 +605,91 @@ public class PrintOracle {
     for (byte b : digest) hex.append(String.format("%02x", b));
     return hex.toString();
   }
+
+  /**
+   * The family report's counts (FamilyReportPanel.recompute and rebuildTotals, with default
+   * preferences: extinct species shown, undescribed ones not counted) at each group level.
+   */
+  static void writeFamily(JsonObject testCase, ReportSet reportSet, Taxonomy taxonomy,
+      StoredQueries.RestoredQuery restored, List<QueryFieldFactory.QueryFieldValue> fields,
+      List<CompositeQueryDefinition.BooleanOperation> operations, Set<Location> locations,
+      QueryPreferences queryPreferences, Checklists checklists, File outDir) throws IOException {
+    var queryDefinition = restored.rawQueryDefinition(taxonomy, reportSet, Taxon.Type.species);
+    var countablePredicate = restored.countablePredicate(taxonomy, queryPreferences);
+    var excludedStatuses = FamilyReportComputation.excludedStatuses(
+        queryPreferences.excludedChecklistStatuses(), true);
+    // QueryPanel.getTaxonEligibilityPredicate, over the restored fields
+    com.google.common.collect.Multimap<Class<?>, java.util.function.Predicate<Taxon>> included =
+        com.google.common.collect.ArrayListMultimap.create();
+    com.google.common.collect.Multimap<Class<?>, java.util.function.Predicate<Taxon>> excluded =
+        com.google.common.collect.ArrayListMultimap.create();
+    for (int i = 0; i < fields.size(); i++) {
+      var field = fields.get(i);
+      com.google.common.base.Optional<java.util.function.Predicate<Taxon>> predicate =
+          com.google.common.base.Optional.absent();
+      if (field instanceof FamilyQueryField.Value value) {
+        predicate = value.taxonPredicate();
+      } else if (field instanceof SpeciesStatusQueryField.Value value) {
+        predicate = value.taxonPredicate();
+      }
+      if (!predicate.isPresent()) {
+        continue;
+      }
+      var operation = operations.get(i);
+      if (operation == CompositeQueryDefinition.BooleanOperation.NEVER
+          || operation == CompositeQueryDefinition.BooleanOperation.NEVER_ALL) {
+        excluded.put(field.getClass(), predicate.get());
+      } else {
+        included.put(field.getClass(), predicate.get());
+      }
+    }
+    List<java.util.function.Predicate<Taxon>> perType = new ArrayList<>();
+    for (Class<?> type : com.google.common.collect.Sets.union(included.keySet(), excluded.keySet())) {
+      List<java.util.function.Predicate<Taxon>> in = new ArrayList<>(included.get(type));
+      List<java.util.function.Predicate<Taxon>> out = new ArrayList<>(excluded.get(type));
+      perType.add(taxon -> (in.isEmpty() || in.stream().anyMatch(p -> p.test(taxon)))
+          && out.stream().noneMatch(p -> p.test(taxon)));
+    }
+    java.util.function.Predicate<Taxon> eligibility =
+        taxon -> perType.stream().allMatch(p -> p.test(taxon));
+
+    var synthesizer = new com.scythebill.birdlist.model.checklist.ChecklistSynthesizer(
+        checklists, reportSet, PredefinedLocations.loadAndParse());
+    List<Location> queryLocations = new ArrayList<>();
+    for (Location location : locations) {
+      if (location != null) {
+        queryLocations.add(location);
+      }
+    }
+    var scope = FamilyReportComputation.resolveScope(
+        checklists, synthesizer, reportSet, taxonomy, queryLocations);
+    var seen = FamilyReportComputation.seenSpeciesIds(
+        reportSet, taxonomy, queryDefinition, countablePredicate);
+    var speciesFilter = FamilyReportComputation.speciesFilter(false, true, eligibility, seen);
+
+    JsonObject out = new JsonObject();
+    out.addProperty("name", testCase.get("name").getAsString());
+    var scopeIds = new com.google.gson.JsonArray();
+    scope.checklistLocations().stream().map(Location::getId).sorted().forEach(scopeIds::add);
+    out.add("scope", scopeIds);
+    out.addProperty("checklist", scope.checklist() != null);
+    for (Taxon.Type type : List.of(Taxon.Type.order, Taxon.Type.family, Taxon.Type.genus)) {
+      FamilyReportTotals totals = FamilyReportTotals.compute(taxonomy, type, scope.checklist(),
+          excludedStatuses, speciesFilter, seen);
+      var groups = new com.google.gson.JsonArray();
+      for (var group : totals.groups()) {
+        var row = new com.google.gson.JsonArray();
+        row.add(group.group().getId());
+        row.add(group.seen());
+        row.add(group.total());
+        groups.add(row);
+      }
+      out.add(type.name().toUpperCase(Locale.ROOT), groups);
+      out.addProperty("seen", totals.seenSpecies());
+      out.addProperty("total", totals.totalSpecies());
+    }
+    Files.writeString(new File(outDir, testCase.get("name").getAsString() + ".json").toPath(),
+        out.toString());
+  }
+
 }

@@ -52,6 +52,7 @@ class Running:
     home: Any = None
     imports: Any = None
     settings: Any = None
+    special: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -67,6 +68,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     from pipit.ui.backend.reports_backend import ReportsBackend
     from pipit.ui.backend.settings_backend import SettingsBackend
     from pipit.ui.backend.shell import Shell
+    from pipit.ui.backend.special_backend import SpecialBackend
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider
     from pipit.ui.backend.trips_backend import TripsBackend
@@ -81,6 +83,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     trips = TripsBackend(app)
     checklist = ChecklistBackend(app)
     reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
+    special = SpecialBackend(app, reports)
     home = HomeBackend(app)
     imports = ImportsBackend(app)
     # Never the real keyring in tests
@@ -92,7 +95,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     for name, value in (("shell", shell), ("app", app), ("entry", entry),
                         ("locations", locations), ("species", species),
                         ("trips", trips), ("checklist", checklist),
-                        ("reports", reports), ("home", home),
+                        ("reports", reports), ("special", special), ("home", home),
                         ("imports", imports),
                         ("settings", settings_backend)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
@@ -120,6 +123,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
         home,
         imports,
         settings_backend,
+        special,
     )
     running.errors = errors  # type: ignore[attr-defined]
     return running

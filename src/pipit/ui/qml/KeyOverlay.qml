@@ -58,6 +58,11 @@ PDialog {
         ["Ctrl+Shift+C", qsTr("Save as Scythebill CSV: every detail of the sightings")],
         ["Ctrl+L", qsTr("Saved reports: Enter loads, F2 renames, Delete deletes, Alt+Up/Down move")]
     ]
+    readonly property var specialKeys: [
+        ["Ctrl+G", qsTr("Family report: group by order, family or genus")],
+        ["Ctrl+R", qsTr("Into the groups; Up/Down list a group's species")],
+        ["Ctrl+Shift+Q", qsTr("Edit the query (on Reports)")]
+    ]
     readonly property var tripKeys: [
         ["Ctrl+F · /", qsTr("Filter trips by name or notes")],
         ["Enter · Esc", qsTr("Into the trip's species, and back")],
@@ -165,6 +170,17 @@ PDialog {
             SectionHeader { text: qsTr("Reports"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
             Repeater {
                 model: root.reportKeys
+                RowLayout {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    spacing: Theme.s3
+                    PLabel { Layout.fillWidth: true; text: modelData[1] }
+                    KeyHint { keys: modelData[0] }
+                }
+            }
+            SectionHeader { text: qsTr("Special reports"); Layout.columnSpan: 2; Layout.topMargin: Theme.s3 }
+            Repeater {
+                model: root.specialKeys
                 RowLayout {
                     required property var modelData
                     Layout.fillWidth: true

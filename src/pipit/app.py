@@ -83,6 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     from pipit.ui.backend.reports_backend import ReportsBackend
     from pipit.ui.backend.settings_backend import SettingsBackend
     from pipit.ui.backend.shell import Shell
+    from pipit.ui.backend.special_backend import SpecialBackend
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider, apply_theme
     from pipit.ui.backend.trips_backend import TripsBackend
@@ -123,6 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     trips = TripsBackend(controller)
     checklist = ChecklistBackend(controller)
     reports = ReportsBackend(controller)
+    special = SpecialBackend(controller, reports)
     home = HomeBackend(controller)
     imports = ImportsBackend(controller)
     settings_backend = SettingsBackend(controller)
@@ -142,6 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     context.setContextProperty("trips", trips)
     context.setContextProperty("checklist", checklist)
     context.setContextProperty("reports", reports)
+    context.setContextProperty("special", special)
     context.setContextProperty("home", home)
     context.setContextProperty("imports", imports)
     context.setContextProperty("settings", settings_backend)

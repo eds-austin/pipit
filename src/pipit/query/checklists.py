@@ -227,6 +227,28 @@ class Checklists:
             place = self._places.get(place.parent) if place.parent else None
         return None
 
+    def place(self, xml_id: str) -> _Place | None:
+        return self._places.get(xml_id)
+
+    def synthesized_codes(self, xml_id: str) -> list[str] | None:
+        """``TransposedChecklistSynthesizer.synthesizeChecklist``'s codes for one place (to
+        merge several places' checklists): a synthetic or aggregate place's members; the
+        United States outside North America and the Caribbean Netherlands outside the West
+        Indies, their parts; else its checklist code (None without one)."""
+        transposed = self._transposed_codes(xml_id)
+        if transposed is not None:
+            return sorted(transposed)
+        place = self._places.get(xml_id)
+        if place is None:
+            return None
+        parent_name = self._parent_name(place)
+        if (place.ebird_code == "US" and parent_name != "North America") or (
+                place.ebird_code == "BQ" and parent_name != "West Indies"):  # fmt: skip
+            return [code for child in self._children.get(xml_id, [])
+                    if (code := self.checklist_code(self._places[child])) is not None]  # fmt: skip
+        code = self.checklist_code(place)
+        return None if code is None else [code]
+
     def _ancestor_of_type(self, xml_id: str, place_type: str) -> str | None:
         place = self._places.get(xml_id)
         while place is not None and place.type != place_type:

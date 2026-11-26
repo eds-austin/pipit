@@ -18,8 +18,8 @@ def wait_until(predicate: Callable[[], bool], timeout: float = 10.0) -> None:
 
 
 def add_app_context(engine: object, tmp: object) -> list[object]:
-    """The ``app``, ``entry``, ``locations`` and ``species`` objects Main.qml expects, with
-    no data pack and no list. Returns them so the caller keeps them alive."""
+    """The objects Main.qml expects (``app`` and each screen's backend), with no data pack
+    and no list. Returns them so the caller keeps them alive."""
     from pathlib import Path
 
     from pipit.config.settings import AppSettings
@@ -31,6 +31,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.reports_backend import ReportsBackend
     from pipit.ui.backend.settings_backend import SettingsBackend
+    from pipit.ui.backend.special_backend import SpecialBackend
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.trips_backend import TripsBackend
 
@@ -46,6 +47,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     trips = TripsBackend(app)
     checklist = ChecklistBackend(app)
     reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
+    special = SpecialBackend(app, reports)
     home = HomeBackend(app)
     imports = ImportsBackend(app)
     # Never the real keyring in tests
@@ -58,6 +60,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     context.setContextProperty("trips", trips)
     context.setContextProperty("checklist", checklist)
     context.setContextProperty("reports", reports)
+    context.setContextProperty("special", special)
     context.setContextProperty("home", home)
     context.setContextProperty("imports", imports)
     context.setContextProperty("settings", settings_backend)
@@ -69,6 +72,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
         trips,
         checklist,
         reports,
+        special,
         home,
         imports,
         settings_backend,

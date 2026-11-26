@@ -216,6 +216,14 @@ print_oracle "$BSXM/trip_report.bsxm" trip "$TRIP/cases.jsonl" "$WORK/trip"
 "$PY" -I tools/oracle/summarize_pages.py "$TRIP/cases.jsonl" "$WORK/trip" txt > "$TRIP/text.jsonl"
 "$PY" -I tools/oracle/summarize_docx.py "$TRIP/cases.jsonl" "$WORK/trip" > "$TRIP/docx.jsonl"
 
+# Family reports (PrintOracle.java's family mode: FamilyReportPanel's computation with default
+# preferences) on the same trip: each order's, family's and genus's seen and possible species.
+FAMILY=tests/fixtures/oracle/family
+mkdir -p "$FAMILY"
+"$PY" -I tools/oracle/make_family_cases.py "$FAMILY/cases.jsonl"
+find "$FAMILY" -name '*.json' -delete
+print_oracle "$BSXM/trip_report.bsxm" family "$FAMILY/cases.jsonl" "$FAMILY"
+
 # eBird Record Format exports (PrintOracle.java's ebird mode: EbirdExportAction and
 # EBirdCsvExport): the reference queries, and everything in two more lists (edge_cases
 # without its February 30 sighting, which Scythebill's export fails on).
