@@ -21,9 +21,11 @@ columns (``lookForTripInfo``): a row's trip is found or made (``pipit.imports.tr
 only an undated sighting is put on it, as in Scythebill. A trip's end time isn't kept (Pipit,
 like Scythebill once a file is reopened, has none).
 
-Not yet imported (refused with a message): observers, dates in other forms than
-Scythebill's own, and places given only as location text without a region, country, state,
-county or city.
+Dates are read in Scythebill's own form, then in forms guessed from the file's other dates
+(``pipit.imports.date_formats``).
+
+Not yet imported (refused with a message): observers, and places given only as location
+text without a region, country, state, county or city.
 """
 
 from __future__ import annotations
@@ -40,7 +42,10 @@ from pipit.domain.values import (
     is_valid_uri,
     normalize_file_localhost,
 )
+from pipit.imports.date_formats import choose_formats
 from pipit.imports.fields import (
+    DateParseError,
+    JodaDateParser,
     bool_at,
     breeding_code,
     float_at,
@@ -189,7 +194,37 @@ class ScythebillCsvFile:
         self._place_description = get("locationdescription")
         #: Location keys written with more than one set of coordinates (``read_places``).
         self.multiple_coordinates: set[str] = set()
+        self._date_parsers = self._choose_date_parsers(rows)
         self._check_supported()
+
+    def _choose_date_parsers(self, rows: list[list[str]]) -> list[JodaDateParser]:
+        """``computeExtendedMappings``: the dates (the header's "Date" among them, as in
+        Scythebill) that aren't in Scythebill's own form choose patterns for the others."""
+        other: dict[str, None] = {}
+        for row in rows:
+            text = string_at(row, self._date)
+            if text:
+                try:
+                    parse_partial_date(text)
+                except ValueError:
+                    other[text] = None
+        return [JodaDateParser(pattern) for pattern in choose_formats(other)]
+
+    def parse_date(self, text: str | None) -> PartialDate | None:
+        """``parseDate``: Scythebill's own form ("2024-04-13", "2024-04", "2024"), then the
+        chosen patterns; ValueError if none reads it."""
+        if not text:
+            return None
+        try:
+            return parse_partial_date(text)
+        except ValueError:
+            pass
+        for parser in self._date_parsers:
+            try:
+                return parser.parse(text)
+            except DateParseError:
+                continue
+        raise ValueError(f"Could not parse date {text} with any known format")
 
     # -------------------------------------------------------------- what isn't ported yet
 
@@ -198,14 +233,6 @@ class ScythebillCsvFile:
         for row in self.rows:
             if self.skip(row):
                 continue
-            date = string_at(row, self._date)
-            if date:
-                try:
-                    parse_partial_date(date)
-                except ValueError as error:
-                    raise UnsupportedFileError(
-                        f"Pipit can only read dates like 2024-04-13 so far, not {date!r}."
-                    ) from error
             if any(string_at(row, index.get(name)) for name in ("observers", "observernames")):
                 raise UnsupportedFileError("Pipit can't import observers yet.")
             if self._freeform(row):
@@ -235,8 +262,7 @@ class ScythebillCsvFile:
         return "|".join(string_at(row, i) or "" for i in columns)
 
     def date(self, row: list[str]) -> PartialDate | None:
-        text = string_at(row, self._date)
-        return parse_partial_date(text) if text else None
+        return self.parse_date(string_at(row, self._date))
 
     def coordinates(self, row: list[str]) -> tuple[str, str] | None:
         latitude = string_at(row, self._latitude)
@@ -343,8 +369,8 @@ class ScythebillCsvFile:
         start_text, end_text = string_at(row, start_column), string_at(row, end_column)
         if start_text is None or end_text is None:
             return None
-        start = parse_partial_date(start_text) if start_text else None
-        end = parse_partial_date(end_text) if end_text else None
+        start = self.parse_date(start_text)
+        end = self.parse_date(end_text)
         if start is None or end is None:
             return None
         name = string_at(row, get("tripname")) if get("tripname") is not None else None

@@ -314,6 +314,19 @@ SCYTHEBILL_ROWS = [
     _row("Gray Heron", "Ardea", "cinerea", "2024-04-14",
          ["Nowhereland", "", "", "", "", "Lake", ""], Number="1"),
 ]  # fmt: skip
+SCYTHEBILL_DATES = [
+    SCYTHEBILL_HEADER,
+    _row("Mallard", "Anas", "platyrhynchos", "4/13/2024", _MADRONA, Number="1"),
+    _row("Gadwall", "Mareca", "strepera", "4/14/2024", _MADRONA, Number="2"),
+    _row("Snowy Egret", "Egretta", "thula", "1/2/2017", _MADRONA, Number="1"),
+    _row("Western Gull", "Larus", "occidentalis", "Dec 5, 2005", _MADRONA, Number="3"),
+    _row("Black Phoebe", "Sayornis", "nigricans", "Jan 30, 2006", _MADRONA),
+    _row("Song Sparrow", "Melospiza", "melodia", "05-Mar-2024", _MADRONA),
+    _row("House Finch", "Haemorhous", "mexicanus", "2024.04.13", _MADRONA),
+    _row("Anna's Hummingbird", "Calypte", "anna", "2024-04-20", _MADRONA),
+    _row("Bald Eagle", "Haliaeetus", "leucocephalus", "", _MADRONA, Trip_name="Spring",
+         Trip_start_date="3/1/2024", Trip_end_date="5/31/2024"),
+]  # fmt: skip
 UNKNOWN_PLACE_ROWS = [
     ["Mallard", "Anas", "platyrhynchos", "1", "", "Somewhere Pond", "", "", "04/13/2024",
      "", "", "", "", "", "", "", "", "", ""],
@@ -356,6 +369,7 @@ def main() -> None:
     write_record(target / "life_list.csv", LIFE_2023)
     write_record(target / "life_list_old.csv", LIFE_OLD)
     write_record(target / "scythebill.csv", SCYTHEBILL_ROWS)
+    write_record(target / "scythebill_dates.csv", SCYTHEBILL_DATES)
     cases = [
         {"name": "new_list", "list": NEW, "file": "my_data.csv"},
         {"name": "new_list_avilist", "list": NEW, "file": "my_data.csv",
@@ -427,6 +441,7 @@ def main() -> None:
         {"name": "csv_trips_back", "list": "../bsxm/trips.bsxm", "file": "trips.scythebill.csv",
          "duplicates": "overwrite"},
         {"name": "csv_checklists_new", "list": NEW, "file": "checklists.scythebill.csv"},
+        {"name": "csv_dates_new", "list": NEW, "file": "scythebill_dates.csv"},
     ]  # fmt: skip
     cases += [{**case, "format": "scythebillCsv"} for case in scythebill]
     lines = [json.dumps({"format": "myData", **case}, ensure_ascii=False) for case in cases]

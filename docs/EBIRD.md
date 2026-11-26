@@ -147,9 +147,13 @@ download in 6d.)
   trip holding the row's dates at its place or one above (taking its name if it has none,
   its dates if it's the only one within them, and the row's notes, links and photos), else a
   new one (Scythebill's trip IDs); only an undated sighting goes on its trip, as in Scythebill.
-  A trip's end time isn't kept. Not yet: observers, dates not in Scythebill's own form, and
-  places given only as location text (Scythebill's `FreeformLocationResolver`); such files
-  are refused with a message.
+  A trip's end time isn't kept. Dates not in Scythebill's own form are read in forms guessed
+  from the file (`LocalDateFormatterChooser`, `pipit/imports/date_formats.py`: dates grouped by
+  separators, patterns narrowed on each group, ties by month-before-day order); as in
+  Scythebill, the header's own "Date" takes part (so a month name alone reads as a month), and
+  "05-Mar-2024" reads as March 2024, its "05" taken for a month. Not yet: observers, and
+  places given only as location text (Scythebill's `FreeformLocationResolver`); such files are
+  refused with a message.
 
 Found on the way: Scythebill dates an undated sighting on a trip by the trip's start, for
 duplicates too; and when the import's clean-up removes a new place nothing ended up using,
@@ -159,12 +163,12 @@ place, but has walked that place up to nothing first), so those rows aren't impo
 leaves them out too.
 
 **Checked against Scythebill.** `tools/oracle/ImportOracle.java` runs Scythebill's importer
-with the choices made in advance and saves the list. 36 cases on made-up files
+with the choices made in advance and saves the list. 37 cases on made-up files
 (`tools/oracle/make_import_fixtures.py`): My Data (every protocol, groups, forms, subspecies,
 sp., slash and hybrid names, repeated rows, an unknown name, built-in counties, a county the
 list has under another name, a bad date), the Record Format (a file of edge cases, one with a
 place without a country, and `trip_report.bsxm`'s own Save for eBird imported back), both
-life lists and Scythebill CSV (a file of edge cases, and five fixture lists' own Save as
+life lists and Scythebill CSV (files of edge cases and of dates in other forms, and five fixture lists' own Save as
 Scythebill CSV via `tools/oracle/export_scythebill_csv.py`, trips included), into a new list and into `trip_report.bsxm` (only new dates, all dates, drop,
 replace, AviList), come out byte-identical, with the same counts; each is also stored,
 exported and undone. 21 more on files made from Eric's list (private,

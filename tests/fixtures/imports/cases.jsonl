@@ -34,3 +34,4 @@
 {"format": "scythebillCsv", "name": "csv_trips_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "trips.scythebill.csv"}
 {"format": "scythebillCsv", "name": "csv_trips_back", "list": "../bsxm/trips.bsxm", "file": "trips.scythebill.csv", "duplicates": "overwrite"}
 {"format": "scythebillCsv", "name": "csv_checklists_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists.scythebill.csv"}
+{"format": "scythebillCsv", "name": "csv_dates_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "scythebill_dates.csv"}
