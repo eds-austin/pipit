@@ -51,6 +51,7 @@ class Running:
     reports: Any = None
     home: Any = None
     imports: Any = None
+    settings: Any = None
 
 
 def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
@@ -64,6 +65,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     from pipit.ui.backend.imports_backend import ImportsBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.reports_backend import ReportsBackend
+    from pipit.ui.backend.settings_backend import SettingsBackend
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider
@@ -81,6 +83,8 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
     reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
     home = HomeBackend(app)
     imports = ImportsBackend(app)
+    # Never the real keyring in tests
+    settings_backend = SettingsBackend(app, read_key=lambda: None, write_key=lambda _key: None)
     shell = Shell(settings, save=lambda _s: None)
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -89,7 +93,8 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
                         ("locations", locations), ("species", species),
                         ("trips", trips), ("checklist", checklist),
                         ("reports", reports), ("home", home),
-                        ("imports", imports)):  # fmt: skip
+                        ("imports", imports),
+                        ("settings", settings_backend)):  # fmt: skip
         engine.rootContext().setContextProperty(name, value)
     engine.setInitialProperties({"appVersion": "test", "maximized": False})
     errors: list[str] = []
@@ -114,6 +119,7 @@ def _start(list_path: Path, pack_path: Path, backups: Path) -> Running:
         reports,
         home,
         imports,
+        settings_backend,
     )
     running.errors = errors  # type: ignore[attr-defined]
     return running

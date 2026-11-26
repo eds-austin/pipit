@@ -393,7 +393,12 @@ class ImportRun:
                 by_visit[(key, sighting.taxon)] = sighting
             self._imports.append(sighting)
             if key is not None:
-                self._visit_of(key, row)
+                try:
+                    self._visit_of(key, row)
+                except ValueError:
+                    # Scythebill: the row fails, though its sighting is already in
+                    self.counts.failed += 1
+                    self.counts.failed_rows.append(row)
         builders = self._builders
         for key, builder in builders.items():
             visit = _visit(key, builder.fields())

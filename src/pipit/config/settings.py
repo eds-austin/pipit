@@ -57,6 +57,9 @@ class AppSettings:
     distance_unit: str = "auto"
     #: Scythebill CSV with spaces for line breaks (Scythebill's import preference)
     csv_excel_compatible: bool = False
+    #: Ask eBird's web service (with the user's API key, in the system keyring) where a
+    #: downloaded checklist was. Off until the user turns it on: no network otherwise.
+    ebird_online: bool = False
 
     def validated(self) -> AppSettings:
         """Clamp or replace invalid values (hand-edited files)."""

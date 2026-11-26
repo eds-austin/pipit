@@ -3,7 +3,7 @@
 //   ImportOracle taxon.xml avilist.xml appResources in.bsxm cases.jsonl outDir
 // Each case is one line of JSON:
 //   {"name", "format": "myData"|"ebirdRecord"|"lifeList2023"|"lifeList"|"scythebillCsv",
-//    "file": path (relative to cases.jsonl), "list": the .bsxm to
+//    "file", "ebirdApi": for checklists, recorded eBird answers (relative to cases.jsonl): path (relative to cases.jsonl), "list": the .bsxm to
 //    import into (relative to cases.jsonl; in.bsxm if not given),
 //    "display": "clements"|"avilist", "onlyNewDates": true|false (the "import only the new
 //    dates?" question; default true), "taxa": {taxon key: base taxon ID} (as chosen while
@@ -121,6 +121,7 @@ public class ImportOracle {
       }
       System.out.println(name + ": " + summary);
     }
+    System.exit(0);  // the local eBird servers' threads would keep the JVM running
   }
 
   static ReportSet load(String path) throws Exception {
@@ -154,8 +155,17 @@ public class ImportOracle {
       case "lifeList2023" -> new EBird2023LifeListImporter(reportSet, taxonomy, checklists, predefined, file);
       case "lifeList" -> new EBirdLifeListImporter(reportSet, taxonomy, checklists, predefined, file);
       case "scythebillCsv" -> new ScythebillImporter(reportSet, taxonomy, checklists, predefined, file);
+      case "ebirdChecklist" -> new EBirdChecklistImporter(reportSet, taxonomy, checklists,
+          predefined, file, checklistApi(base.resolve(testCase.get("ebirdApi").getAsString())));
       default -> throw new IllegalArgumentException(testCase.get("format").getAsString());
     };
+
+    // ImportController.doImport: the importer's long-running task first (for a checklist:
+    // asking eBird where it was)
+    Runnable longRunning = importer.longRunningTask();
+    if (longRunning != null) {
+      longRunning.run();
+    }
 
     // ImportController.beginImport
     Optional<String> initialCheck = Optional.ofNullable(importer.initialCheck().orNull());
@@ -390,6 +400,34 @@ public class ImportOracle {
       }
     }
     return existing;
+  }
+
+  /**
+   * Scythebill's EBirdChecklistApi, against a local server answering from recorded responses:
+   * {dir}/product/checklist/view/S1.json for /ebird/v2/product/checklist/view/S1 (a missing
+   * file is a 404, an empty one an empty answer).
+   */
+  static EBirdChecklistApi checklistApi(Path responses) throws IOException {
+    com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(
+        new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext("/ebird/v2/", exchange -> {
+      String path = exchange.getRequestURI().getPath().substring("/ebird/v2/".length());
+      java.nio.file.Path file = responses.resolve(path + ".json");
+      if (java.nio.file.Files.exists(file)) {
+        byte[] body = java.nio.file.Files.readAllBytes(file);
+        exchange.sendResponseHeaders(200, body.length == 0 ? -1 : body.length);
+        if (body.length > 0) {
+          exchange.getResponseBody().write(body);
+        }
+      } else {
+        exchange.sendResponseHeaders(404, -1);
+      }
+      exchange.close();
+    });
+    server.start();
+    return new EBirdChecklistApi(new Gson(),
+        org.apache.http.impl.client.HttpClients.createDefault(),
+        "http://127.0.0.1:" + server.getAddress().getPort(), "oracle");
   }
 
   static Reader reader(String path) throws IOException {

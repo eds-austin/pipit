@@ -30,6 +30,7 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     from pipit.ui.backend.imports_backend import ImportsBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.reports_backend import ReportsBackend
+    from pipit.ui.backend.settings_backend import SettingsBackend
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.trips_backend import TripsBackend
 
@@ -47,6 +48,8 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     reports = ReportsBackend(app, open_url=lambda _url: True)  # never a real browser
     home = HomeBackend(app)
     imports = ImportsBackend(app)
+    # Never the real keyring in tests
+    settings_backend = SettingsBackend(app, read_key=lambda: None, write_key=lambda _key: None)
     context = engine.rootContext()  # type: ignore[attr-defined]
     context.setContextProperty("app", app)
     context.setContextProperty("entry", entry)
@@ -57,4 +60,16 @@ def add_app_context(engine: object, tmp: object) -> list[object]:
     context.setContextProperty("reports", reports)
     context.setContextProperty("home", home)
     context.setContextProperty("imports", imports)
-    return [app, entry, locations, species, trips, checklist, reports, home, imports]
+    context.setContextProperty("settings", settings_backend)
+    return [
+        app,
+        entry,
+        locations,
+        species,
+        trips,
+        checklist,
+        reports,
+        home,
+        imports,
+        settings_backend,
+    ]

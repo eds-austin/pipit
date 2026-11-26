@@ -24,6 +24,7 @@ dependencies = [
     "openpyxl>=3.1",      # spreadsheets (Save as spreadsheet)
     "python-docx>=1.1",   # Word documents (trip reports)
     "rapidfuzz>=3",       # edit distances (matching imported names)
+    "keyring>=24",        # the eBird API key, in the system keyring
 ]
 
 [project.optional-dependencies]

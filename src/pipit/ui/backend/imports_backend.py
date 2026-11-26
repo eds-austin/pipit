@@ -14,6 +14,7 @@ import csv
 import logging
 import queue
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,9 @@ from pipit.datapack.pack import DataPack
 from pipit.domain.locations import is_built_in
 from pipit.domain.partial_date import format_partial_date
 from pipit.domain.report import Location
+from pipit.ebird import api
 from pipit.imports.commit import ImportStoreError, store
+from pipit.imports.ebird_checklist import header_names
 from pipit.imports.formats import open_source
 from pipit.imports.my_data import MissingHeaderError
 from pipit.imports.scythebill_csv import UnsupportedFileError
@@ -52,15 +55,20 @@ class _Job:
     pack_path: Path
     display: Taxonomy
     backups_root: Path
+    ebird_online: bool
 
 
 class ImportsBackend(QObject):
     changed = Signal()
     matchesChanged = Signal()
 
-    def __init__(self, app: Any) -> None:
+    def __init__(self, app: Any, *,
+                 make_api: Callable[[], api.EBirdApi | None] | None = None) -> None:  # fmt: skip
+        """``make_api``: eBird's API with the stored key, or None without one (tests give
+        a recorded one)."""
         super().__init__()
         self._app = app
+        self._make_api = make_api or _stored_api
         self._dispatcher = Dispatcher()
         self._answers: queue.Queue[Any] = queue.Queue()
         self._stage = "idle"
@@ -140,7 +148,14 @@ class ImportsBackend(QObject):
             self._app.message.emit(f"{database.path.name} is open read-only")
             return
         source = Path(url.toLocalFile())
-        job = _Job(source, Path(database.path), pack.path, taxa.display, self._app.backups_root)
+        job = _Job(
+            source,
+            Path(database.path),
+            pack.path,
+            taxa.display,
+            self._app.backups_root,
+            bool(self._app.settings.ebird_online),
+        )
         self._answers = queue.Queue()
         self._source = source
         self._file_name = source.name
@@ -193,7 +208,15 @@ class ImportsBackend(QObject):
                     raise ImportRefusedError(
                         "This list has observers; Pipit can't yet ask which of them saw "
                         "imported sightings. Import the file in Scythebill instead.")  # fmt: skip
-                source = open_source(job.source)
+                source = open_source(
+                    job.source,
+                    checklist_headers=header_names(
+                        pack.location_rows("ebird-checklist-headers.csv")
+                    ),
+                )
+                prepare = getattr(source, "prepare", None)
+                if prepare is not None:  # a checklist download: ask eBird, if allowed
+                    prepare(self._make_api() if job.ebird_online else None)
                 name = source.format_name
                 self._dispatcher.post(lambda: self._set_format(name))
                 checklists = Checklists(pack, connection, load_query_list(connection))
@@ -411,6 +434,11 @@ class ImportsBackend(QObject):
             return ""
         found = run.base.get(taxon.ids[0])
         return (found.common_name or found.name) if found is not None else taxon.ids[0]
+
+
+def _stored_api() -> api.EBirdApi | None:
+    key = api.stored_key()
+    return api.EBirdApi(key) if key else None
 
 
 def _path(location: Location) -> str:

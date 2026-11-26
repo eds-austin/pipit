@@ -327,6 +327,62 @@ SCYTHEBILL_DATES = [
     _row("Bald Eagle", "Haliaeetus", "leucocephalus", "", _MADRONA, Trip_name="Spring",
          Trip_start_date="3/1/2024", Trip_end_date="5/31/2024"),
 ]  # fmt: skip
+CHECKLIST_HEADER = ["Species", "Count", "Location", "Observation type", "Observation date",
+                    "Start Time", "Duration", "Distance", "Area", "Elevation", "Party Size",
+                    "Complete Checklist", "# of species", "Details"]  # fmt: skip
+GERMAN_HEADER = ["Arten", "Anzahl", "Ort", "Beobachtungsart", "Beobachtungsdatum",
+                 "Anfangszeit", "Dauer", "Distanz", "Gebiet", "Höhe", "Anzahl Beobachtende",
+                 "vollständige Checkliste", "# Arten", "Details"]  # fmt: skip
+
+
+def _checklist(place: str, date: str, time: str, protocol: str, duration: str,  # noqa: PLR0917
+               distance: str, area: str, party: str, complete: str,
+               birds: list[tuple[str, str, str]]) -> list[list[str]]:  # fmt: skip
+    return [[name, count, place, protocol, date, time, duration, distance, area, "", party,
+             complete, str(len(birds)), details] for name, count, details in birds]  # fmt: skip
+
+
+CHECKLISTS = {
+    "S1001.csv": [CHECKLIST_HEADER, *_checklist(
+        "Madrona Marsh Preserve", "13 Apr 2024", "7:15 AM", "Traveling",
+        "1 hour(s), 35 minute(s)", "1.3 mile(s)", "", "2", "Yes", [
+            ("Mallard (Anas platyrhynchos)", "4", ""),
+            ("Anna's Hummingbird", "2", "Hovering at the sage"),
+            ("Melospiza melodia", "3", ""),
+            ("Rock Pigeon (Feral Pigeon) (Columba livia (Domestic type))", "12", ""),
+            ("duck sp. (Anatidae sp.)", "2", ""),
+            ("Pinkish Warbler", "1", "")])],
+    "S1002.csv": [CHECKLIST_HEADER, *_checklist(
+        "Backyard (33.66, -117.9)", "15 Apr 2024", "08:00", "Stationary", "45 minute(s)", "",
+        "", "1", "Yes", [("Dark-eyed Junco (Oregon)", "1", ""),
+                         ("Red-tailed Hawk", "X", "")])],
+    "S1003.csv": [GERMAN_HEADER, *_checklist(
+        "Englischer Garten", "01.05.2023", "09:00", "Strecke", "2 Stunde(n)", "3.0 Kilometer",
+        "", "1", "Ja", [("Ringeltaube (Columba palumbus)", "5", ""),
+                        ("Columba palumbus", "1", "")])],
+    "S1004.csv": [CHECKLIST_HEADER, *_checklist(
+        "Ballona Wetlands", "Apr 14, 2024", "4:30 PM", "Exhaustive Area Count",
+        "1 hour(s)", "", "2.5 ha", "3", "Yes", [("Snowy Egret", "2", ""),
+                                                ("Western Gull", "10", "")])],
+    "S1099.csv": [CHECKLIST_HEADER, *_checklist(
+        "Somewhere Pond", "13 Apr 2024", "", "Incidental", "", "", "", "1", "No",
+        [("Mallard", "1", "")])],
+}  # fmt: skip
+#: eBird API answers, as Pipit and the oracle's local server read them: path -> JSON text.
+EBIRD_API = {
+    "product/checklist/view/S1001": {"subnational1Code": "US-CA", "locId": "L1001",
+                                     "numObservers": 2, "obs": []},
+    "ref/hotspot/info/L1001": {"subnational1Code": "US-CA", "subnational2Name": "Los Angeles"},
+    "product/checklist/view/S1002": {"subnational1Code": "US-CA", "locId": "L9002",
+                                     "numObservers": 1, "obs": []},
+    "ref/hotspot/info/L9002": None,
+    "product/checklist/view/S1003": {"subnational1Code": "DE-BY", "locId": "L3003",
+                                     "numObservers": 1, "obs": []},
+    "ref/hotspot/info/L3003": {"subnational1Code": "DE-BY", "subnational2Name": "München"},
+    "product/checklist/view/S1004": {"subnational1Code": "US-CA", "locId": "L1002",
+                                     "numObservers": 3, "obs": []},
+    "ref/hotspot/info/L1002": {"subnational1Code": "US-CA", "subnational2Name": "Los Angeles"},
+}  # fmt: skip
 UNKNOWN_PLACE_ROWS = [
     ["Mallard", "Anas", "platyrhynchos", "1", "", "Somewhere Pond", "", "", "04/13/2024",
      "", "", "", "", "", "", "", "", "", ""],
@@ -370,6 +426,14 @@ def main() -> None:
     write_record(target / "life_list_old.csv", LIFE_OLD)
     write_record(target / "scythebill.csv", SCYTHEBILL_ROWS)
     write_record(target / "scythebill_dates.csv", SCYTHEBILL_DATES)
+    checklists = target / "checklists"
+    checklists.mkdir(exist_ok=True)
+    for name, rows in CHECKLISTS.items():
+        write_record(checklists / name, rows)
+    for path, answer in EBIRD_API.items():
+        target_file = target / "ebird_api" / f"{path}.json"
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        target_file.write_text("" if answer is None else json.dumps(answer), encoding="utf-8")
     cases = [
         {"name": "new_list", "list": NEW, "file": "my_data.csv"},
         {"name": "new_list_avilist", "list": NEW, "file": "my_data.csv",
@@ -444,6 +508,17 @@ def main() -> None:
         {"name": "csv_dates_new", "list": NEW, "file": "scythebill_dates.csv"},
     ]  # fmt: skip
     cases += [{**case, "format": "scythebillCsv"} for case in scythebill]
+    checklist_cases = [
+        {"name": "checklist_hotspot", "list": NEW, "file": "checklists/S1001.csv"},
+        {"name": "checklist_personal", "list": NEW, "file": "checklists/S1002.csv"},
+        {"name": "checklist_german", "list": NEW, "file": "checklists/S1003.csv"},
+        {"name": "checklist_area", "list": NEW, "file": "checklists/S1004.csv"},
+        {"name": "checklist_hotspot_trips", "list": TRIPS, "file": "checklists/S1001.csv",
+         "display": "avilist", "taxa": {"Pinkish Warbler": "spCardever"}},
+        {"name": "checklist_unknown_place", "list": NEW, "file": "checklists/S1099.csv"},
+    ]  # fmt: skip
+    cases += [{**case, "format": "ebirdChecklist", "ebirdApi": "ebird_api"}
+              for case in checklist_cases]  # fmt: skip
     lines = [json.dumps({"format": "myData", **case}, ensure_ascii=False) for case in cases]
     (target / "cases.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

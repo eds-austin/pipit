@@ -35,3 +35,9 @@
 {"format": "scythebillCsv", "name": "csv_trips_back", "list": "../bsxm/trips.bsxm", "file": "trips.scythebill.csv", "duplicates": "overwrite"}
 {"format": "scythebillCsv", "name": "csv_checklists_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists.scythebill.csv"}
 {"format": "scythebillCsv", "name": "csv_dates_new", "list": "../bsxm/new_list.scythebill.bsxm", "file": "scythebill_dates.csv"}
+{"format": "ebirdChecklist", "name": "checklist_hotspot", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists/S1001.csv", "ebirdApi": "ebird_api"}
+{"format": "ebirdChecklist", "name": "checklist_personal", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists/S1002.csv", "ebirdApi": "ebird_api"}
+{"format": "ebirdChecklist", "name": "checklist_german", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists/S1003.csv", "ebirdApi": "ebird_api"}
+{"format": "ebirdChecklist", "name": "checklist_area", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists/S1004.csv", "ebirdApi": "ebird_api"}
+{"format": "ebirdChecklist", "name": "checklist_hotspot_trips", "list": "../bsxm/trip_report.no_observers.bsxm", "file": "checklists/S1001.csv", "display": "avilist", "taxa": {"Pinkish Warbler": "spCardever"}, "ebirdApi": "ebird_api"}
+{"format": "ebirdChecklist", "name": "checklist_unknown_place", "list": "../bsxm/new_list.scythebill.bsxm", "file": "checklists/S1099.csv", "ebirdApi": "ebird_api"}

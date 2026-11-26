@@ -81,6 +81,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     from pipit.ui.backend.imports_backend import ImportsBackend
     from pipit.ui.backend.locations_backend import LocationsBackend
     from pipit.ui.backend.reports_backend import ReportsBackend
+    from pipit.ui.backend.settings_backend import SettingsBackend
     from pipit.ui.backend.shell import Shell
     from pipit.ui.backend.species_backend import SpeciesBackend
     from pipit.ui.backend.theme import IconProvider, apply_theme
@@ -124,6 +125,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     reports = ReportsBackend(controller)
     home = HomeBackend(controller)
     imports = ImportsBackend(controller)
+    settings_backend = SettingsBackend(controller)
 
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(QML_DIR))
@@ -142,6 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:  # noqa: PLR0915
     context.setContextProperty("reports", reports)
     context.setContextProperty("home", home)
     context.setContextProperty("imports", imports)
+    context.setContextProperty("settings", settings_backend)
     engine.setInitialProperties({"appVersion": __version__, "maximized": not args.size})
     engine.warnings.connect(
         lambda warnings: [print(w.toString(), file=sys.stderr) for w in warnings]

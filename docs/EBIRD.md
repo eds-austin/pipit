@@ -155,6 +155,18 @@ download in 6d.)
   places given only as location text (Scythebill's `FreeformLocationResolver`); such files are
   refused with a message.
 
+- **A checklist downloaded from eBird** (`EBirdChecklistImporter`; "Download" on a
+  checklist's page, S123….csv, with headers and dates in any of eBird's languages; durations
+  like "1 hour(s), 35 minute(s)", distances in miles or kilometers, areas in acres or
+  hectares). The file doesn't say where the checklist was, so — only when eBird access is on
+  in Settings, with the user's own API key (kept in the system keyring, never in Pipit's
+  settings) — Pipit asks api.ebird.org for the checklist (its state and location) and then the
+  location (its county), sending nothing but the checklist and location IDs and the key.
+  Scythebill asks through its own server; Pipit asks eBird directly, the same two requests
+  (`pipit/ebird/api.py`). Without an answer, Scythebill finds the country from coordinates in
+  the place's name or asks where the place is; Pipit refuses the file, saying to turn eBird
+  access on.
+
 Found on the way: Scythebill dates an undated sighting on a trip by the trip's start, for
 duplicates too; and when the import's clean-up removes a new place nothing ended up using,
 its checklist details move to the place above (`ReportSet.deleteLocation`). Pipit does both.
@@ -163,13 +175,16 @@ place, but has walked that place up to nothing first), so those rows aren't impo
 leaves them out too.
 
 **Checked against Scythebill.** `tools/oracle/ImportOracle.java` runs Scythebill's importer
-with the choices made in advance and saves the list. 37 cases on made-up files
+with the choices made in advance and saves the list. 43 cases on made-up files
 (`tools/oracle/make_import_fixtures.py`): My Data (every protocol, groups, forms, subspecies,
 sp., slash and hybrid names, repeated rows, an unknown name, built-in counties, a county the
 list has under another name, a bad date), the Record Format (a file of edge cases, one with a
 place without a country, and `trip_report.bsxm`'s own Save for eBird imported back), both
 life lists and Scythebill CSV (files of edge cases and of dates in other forms, and five fixture lists' own Save as
-Scythebill CSV via `tools/oracle/export_scythebill_csv.py`, trips included), into a new list and into `trip_report.bsxm` (only new dates, all dates, drop,
+Scythebill CSV via `tools/oracle/export_scythebill_csv.py`, trips included) and checklist downloads (English and German, a hotspot, a personal location,
+an area count, and one eBird can't place; eBird's answers recorded in
+`tests/fixtures/imports/ebird_api`, which the oracle serves to Scythebill's own API code from a
+local server), into a new list and into `trip_report.bsxm` (only new dates, all dates, drop,
 replace, AviList), come out byte-identical, with the same counts; each is also stored,
 exported and undone. 21 more on files made from Eric's list (private,
 `PIPIT_PRIVATE_IMPORT`): My Data (`tools/oracle/my_data_from_list.py`, 8,397 rows), his whole

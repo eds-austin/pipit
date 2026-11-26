@@ -2,13 +2,14 @@
 first row: My Data has a "Checklist Comments" column, life lists start "Row #" and have
 "S/P" and "LocID" (and "Countable" since 2023), Scythebill's CSV has Common or Scientific and
 Date columns, anything else is the Record Format. (eBird's
-checklist download, starting "Species", isn't imported yet.)"""
+checklist download starts with "Species", in one of eBird's languages.)"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
 
+from pipit.imports.ebird_checklist import EBirdChecklistFile
 from pipit.imports.ebird_life_list import EBirdLifeList2023File, EBirdLifeListFile
 from pipit.imports.ebird_record import EBirdRecordFile
 from pipit.imports.fields import read_rows
@@ -25,13 +26,12 @@ FORMATS: dict[str, Callable[[Path], ImportSource]] = {
 }
 
 
-def detect(path: Path) -> str:
+def detect(path: Path, checklist_headers: dict[str, list[str]] | None = None) -> str:
     rows = read_rows(path)
     first = rows[0] if rows else []
-    if first and first[0].lower() in ("species", "espèce", "especie", "art"):
-        raise MissingHeaderError(
-            "This is an eBird checklist download; Pipit can't import those yet."
-        )
+    species = (checklist_headers or {}).get("Species", ["Species"])
+    if first and first[0] in species:
+        return "ebirdChecklist"
     if "Checklist Comments" in first:
         return "myData"
     if first and first[0].lower() == "row #" and "S/P" in first and "LocID" in first:
@@ -42,5 +42,13 @@ def detect(path: Path) -> str:
     return "ebirdRecord"
 
 
-def open_source(path: Path, format_key: str | None = None) -> ImportSource:
-    return FORMATS[format_key or detect(path)](path)
+def open_source(path: Path, format_key: str | None = None, *,
+                checklist_headers: dict[str, list[str]] | None = None) -> ImportSource:  # fmt: skip
+    """The file's importer; a checklist download needs ``checklist_headers`` (the pack's
+    ``ebird-checklist-headers.csv``, through ``header_names``)."""
+    key = format_key or detect(path, checklist_headers)
+    if key == "ebirdChecklist":
+        if checklist_headers is None:
+            raise MissingHeaderError("eBird checklist headers are needed for this file.")
+        return EBirdChecklistFile(path, checklist_headers)
+    return FORMATS[key](path)

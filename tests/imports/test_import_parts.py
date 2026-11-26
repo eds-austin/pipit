@@ -137,3 +137,58 @@ def test_repeated_names_are_one_taxon(pack: Any) -> None:
     near = resolver.map("Malard", "Anas platyrhynchos", None)
     assert near is not None
     assert near.primary == SightingTaxon.single("spAnaspla")
+
+
+def test_checklist_fields() -> None:
+    from pipit.imports.ebird_checklist import area_hectares, distance_km, duration_minutes
+
+    assert duration_minutes("1 hour(s), 35 minute(s)") == 95
+    assert duration_minutes("2 Stunde(n)") == 120
+    assert duration_minutes("45 minute(s)") == 45
+    assert duration_minutes("an afternoon") is None
+    assert distance_km("3.0 Kilometer") == 3.0
+    assert distance_km("1.3 mile(s)") == pytest.approx(2.092142, abs=1e-6)
+    assert distance_km("12 furlongs") is None
+    assert area_hectares("2.5 ha") == 2.5
+    assert area_hectares("1 ac") == pytest.approx(0.404686, abs=1e-6)
+
+
+def test_ebird_api_asks_for_the_checklist_then_its_location() -> None:
+    from pipit.ebird.api import EBirdApi, EBirdApiError
+
+    asked: list[str] = []
+    answers = {
+        "checklist/view/S1": b'{"subnational1Code": "US-CA", "locId": "L1"}',
+        "hotspot/info/L1": b'{"subnational1Code": "US-OR", "subnational2Name": "Lane"}',
+        "checklist/view/S2": b'{"subnational1Code": "GB-ENG", "locId": "L2"}',
+        "hotspot/info/L2": b"",  # a personal location
+        "checklist/view/S3": b'{"subnational1Code": "CR-P", "locId": "L3"}',
+    }
+
+    def transport(url: str, headers: dict[str, str]) -> bytes:
+        assert headers == {"X-eBirdApiToken": "key"}
+        asked.append(url)
+        key = url.split("/v2/")[1].split("/", 1)[1]
+        if key not in answers:
+            raise EBirdApiError("404")
+        return answers[key]
+
+    api = EBirdApi("key", transport)
+    place = api.checklist_place("S1")
+    assert (place.country_code, place.state_code, place.county, place.hotspot_id) == (
+        "US", "OR", "Lane", "L1")  # fmt: skip
+    assert asked == ["https://api.ebird.org/v2/product/checklist/view/S1",
+                     "https://api.ebird.org/v2/ref/hotspot/info/L1"]  # fmt: skip
+    personal = api.checklist_place("S2")
+    assert (personal.country_code, personal.state_code, personal.county) == ("GB", "ENG", None)
+    no_hotspot = api.checklist_place("S3")  # the hotspot request fails: the state is enough
+    assert (no_hotspot.country_code, no_hotspot.state_code) == ("CR", "P")
+    with pytest.raises(EBirdApiError):
+        api.checklist_place("S4")
+
+
+def test_ebird_api_only_over_https() -> None:
+    from pipit.ebird.api import EBirdApiError, http_transport
+
+    with pytest.raises(EBirdApiError, match="non-https"):
+        http_transport("http://api.ebird.org/v2/x", {})

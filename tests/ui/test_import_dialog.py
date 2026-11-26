@@ -6,6 +6,7 @@ in tests/imports."""
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -163,3 +164,57 @@ def test_import_scythebill_csv(running: Running) -> None:
     key(running.window, "Key_Return")
     wait_until(lambda: imports.stage == "done", timeout=60)
     wait_until(lambda: app.sightingCount == before + added)
+
+
+def test_import_checklist_download(running: Running) -> None:
+    """A checklist downloaded from eBird: refused while eBird access is off (Pipit can't tell
+    where it is), imported once it's on (eBird answering from recordings)."""
+    from PySide6.QtCore import QUrl
+
+    sys.path.insert(0, str(Path(__file__).parents[1] / "imports"))
+    from test_my_data_against_scythebill import recorded_api
+
+    imports = running.imports
+    app = running.app
+    wait_until(lambda: app.taxaReady, timeout=60)
+    before = app.sightingCount
+    checklist = QUrl.fromLocalFile(str(FIXTURES / "imports" / "checklists" / "S1004.csv"))
+    imports.start(checklist)
+    _dialog(running).show()
+    wait_until(lambda: imports.stage == "failed", timeout=60)
+    assert "eBird access" in imports.error
+    key(running.window, "Key_Escape")
+    wait_until(lambda: imports.stage == "idle")
+
+    app.update_settings(ebird_online=True)
+    imports._make_api = lambda: recorded_api(FIXTURES / "imports" / "ebird_api")
+    imports.start(checklist)
+    _dialog(running).show()
+    wait_until(lambda: imports.stage == "review", timeout=60)
+    assert imports.formatName == "eBird checklist"
+    assert imports.details["added"] == 2
+    key(running.window, "Key_Return")
+    wait_until(lambda: imports.stage == "done", timeout=60)
+    wait_until(lambda: app.sightingCount == before + 2)
+
+
+def _item(running: Running, name: str) -> Any:
+    """A screen's item by object name (screens load in Loaders: walk the visual tree)."""
+    stack = [running.window.contentItem()]
+    while stack:
+        item = stack.pop()
+        if item.objectName() == name:
+            return item
+        stack.extend(item.childItems())
+    return None
+
+
+def test_settings_turns_ebird_on(running: Running) -> None:
+    running.shell.go("settings")
+    wait_until(lambda: _item(running, "ebirdOnline") is not None)
+    switch = _item(running, "ebirdOnline")
+    assert not switch.property("checked")
+    switch.setProperty("checked", True)
+    switch.toggled.emit()
+    wait_until(lambda: running.app.settings.ebird_online)
+    assert _item(running, "ebirdKey") is not None

@@ -16,7 +16,9 @@ from typing import Any
 import pytest
 
 from pipit.bsxm.writer import write_bsxm
+from pipit.ebird.api import EBirdApi, EBirdApiError
 from pipit.imports.commit import store
+from pipit.imports.ebird_checklist import header_names
 from pipit.imports.formats import open_source
 from pipit.imports.session import ImportOutcome, ImportRefusedError, ImportRun
 from pipit.query.checklists import Checklists
@@ -29,6 +31,7 @@ from pipit.taxa.sighting_taxon import SightingTaxon
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 IMPORTS = FIXTURES / "imports"
 ORACLE = FIXTURES / "oracle" / "imports"
+RECORDED_BASE = "https://api.ebird.test/v2"
 
 
 def _jsonl(path: Path) -> list[dict[str, Any]]:
@@ -41,6 +44,20 @@ class Imported:
     database: ListDatabase
     run: ImportRun | None = None
     outcome: ImportOutcome | None = None
+
+
+def recorded_api(folder: Path) -> EBirdApi:
+    """eBird's API answering from recorded responses (as ImportOracle's local server does):
+    a missing file is a failure, an empty one an empty answer."""
+
+    def transport(url: str, headers: dict[str, str]) -> bytes:
+        assert headers == {"X-eBirdApiToken": "test-key"}
+        recorded = folder / f"{url.removeprefix(RECORDED_BASE + '/')}.json"
+        if not recorded.exists():
+            raise EBirdApiError(f"eBird answered 404 for {url}")
+        return recorded.read_bytes()
+
+    return EBirdApi("test-key", transport, RECORDED_BASE)
 
 
 def run_case(pack: Any, case: dict[str, Any], base: Path, tmp_path: Path) -> Imported:
@@ -60,7 +77,12 @@ def _run_case(pack: Any, case: dict[str, Any], base: Path, tmp_path: Path) -> Im
     connection = database.connection
     clements, avilist = pack.load_base_and_avilist()
     taxonomy = avilist if case.get("display") == "avilist" else clements
-    run = ImportRun(load_report(connection), open_source(base / case["file"], case["format"]),
+    source = open_source(base / case["file"], case["format"],
+                         checklist_headers=header_names(pack.location_rows(
+                             "ebird-checklist-headers.csv")))  # fmt: skip
+    if case.get("ebirdApi"):
+        source.prepare(recorded_api(base / case["ebirdApi"]))  # type: ignore[attr-defined]
+    run = ImportRun(load_report(connection), source,
                     taxonomy=taxonomy,
                     pack=pack, checklists=Checklists(pack, connection,
                                                      load_query_list(connection)))  # fmt: skip

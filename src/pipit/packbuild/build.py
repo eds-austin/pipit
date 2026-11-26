@@ -35,7 +35,7 @@ _SYNTHETIC_NAMES = re.compile(r"^synthetic-locations-(?P<locale>.+)\.csv$")
 LOCATION_CSVS = ("countries.csv", "all-states.csv", "us-states.csv", "us-counties.csv")
 #: Importers' tables (``LocationAliases``, ``LocationShortcuts``), kept as rows like the above.
 IMPORT_CSVS = ("location-aliases.csv", "imported-countries-de.csv", "imported-countries-fr.csv",
-               "imported-countries-nl.csv")  # fmt: skip
+               "imported-countries-nl.csv", "ebird-checklist-headers.csv")  # fmt: skip
 ATTRIBUTIONS = (
     "eBird/Clements Checklist of Birds of the World, Cornell Lab of Ornithology.",
     "AviList: the global avian checklist, AviList Core Team (CC BY 4.0).",
