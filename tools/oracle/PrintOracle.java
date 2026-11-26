@@ -220,6 +220,11 @@ public class PrintOracle {
             new File(outDir, testCase.get("name").getAsString() + ".xlsx"));
         continue;
       }
+      if (mode.equals("ebird")) {
+        writeEBird(reportSet, clements, restored, queryPreferences, singleChecklist, outDir,
+            testCase.get("name").getAsString());
+        continue;
+      }
       if (mode.equals("trip")) {
         String caseName = testCase.get("name").getAsString();
         try {
@@ -476,6 +481,37 @@ public class PrintOracle {
     try (OutputStream out = new FileOutputStream(new File(outDir, name + ".docx"))) {
       output.writeWordDocument(out);
     }
+  }
+
+  /**
+   * EbirdExportAction.actionPerformed: the query run in Clements at group depth (as the
+   * Reports screen runs it), sightings newest first then in taxonomic order, written with
+   * EBirdCsvExport to name.csv, then name-1.csv... past 900K each.
+   */
+  static void writeEBird(ReportSet reportSet, Taxonomy clements,
+      StoredQueries.RestoredQuery restored, QueryPreferences queryPreferences,
+      Checklist checklist, File outDir, String name) throws Exception {
+    QueryProcessor processor = new QueryProcessor(reportSet, clements, checklist, null);
+    processor.keepInvalidSightingsAfterUpdate();
+    QueryResults queryResults = processor.runQuery(
+        restored.rawQueryDefinition(clements, reportSet, Taxon.Type.group),
+        restored.countablePredicate(clements, queryPreferences), Taxon.Type.group);
+    List<com.scythebill.birdlist.model.sighting.Sighting> sightings =
+        com.google.common.collect.Lists.newArrayList(queryResults.getAllSightings());
+    java.util.Collections.sort(sightings,
+        com.scythebill.birdlist.model.query.SightingComparators.preferEarlier().compound(
+            com.scythebill.birdlist.model.query.SightingComparators.inTaxonomicOrder(clements))
+            .reversed());
+    var iterator = sightings.iterator();
+    int loopCount = 0;
+    var namesPreferences = new com.scythebill.birdlist.model.taxa.names.NamesPreferences();
+    do {
+      File out = new File(outDir, loopCount == 0 ? name + ".csv" : name + "-" + loopCount + ".csv");
+      new com.scythebill.birdlist.model.export.EBirdCsvExport(clements, namesPreferences)
+          .writeSpeciesList(com.google.common.io.Files.asByteSink(out), iterator, queryResults,
+              reportSet);
+      loopCount++;
+    } while (iterator.hasNext());
   }
 
   /** ReportPrintDialog (and ReportXlsDialog).getScientificOrCommonFromConfiguration. */

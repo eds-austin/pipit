@@ -54,6 +54,7 @@ PDialog {
         ["Ctrl+P", qsTr("Print: options, then your browser prints the page")],
         ["Ctrl+E", qsTr("Save as spreadsheet: options, then where (it opens once saved)")],
         ["Ctrl+T", qsTr("Trip report: copied, opened in your browser, then Save as Word")],
+        ["Ctrl+Shift+E", qsTr("Save for eBird: Record Format CSV (split past 900K)")],
         ["Ctrl+L", qsTr("Saved reports: Enter loads, F2 renames, Delete deletes, Alt+Up/Down move")]
     ]
     readonly property var tripKeys: [

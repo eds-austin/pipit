@@ -318,3 +318,23 @@ def test_trip_report_from_trips(costa_rica: Running) -> None:
     wait_focus(running, "tripSaveWord")
     assert QGuiApplication.clipboard().text().startswith("Costa Rica 2025 Part 2\n")
     QGuiApplication.clipboard().clear()  # see test_trip_report
+
+
+def test_save_for_ebird(running: Running, tmp_path: Path) -> None:
+    """Save for eBird: the file chooser's result goes to ``saveForEBird``; the Record
+    Format CSV is written (its content is checked against Scythebill in tests/ebird)."""
+    from PySide6.QtCore import QUrl
+
+    window = running.window
+    reports = running.reports
+    ctrl(window, "Key_6")
+    wait_until(lambda: running.shell.currentKey == "reports")
+    reports.setRowValue(0, "id", "wa")
+    reports.run_now()
+    wait_until(lambda: reports.sightingCount > 0)
+    assert reports.ebirdFileName() == "eBird-export-Washington.csv"
+    reports.saveForEBird(QUrl.fromLocalFile(str(tmp_path / "wa")))
+    wait_until(lambda: reports.last_ebird is not None and not reports.savingEBird, timeout=60)
+    text = (tmp_path / "wa.csv").read_text(encoding="utf-8")
+    assert text.count("\n") > 100
+    assert text.startswith('"Ornate Tinamou","Nothoprocta","ornata","X",,"Site 11"')

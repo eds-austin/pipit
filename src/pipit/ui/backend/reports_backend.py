@@ -26,12 +26,14 @@ from pipit.browse.species import place_labels
 from pipit.datapack.pack import DataPack
 from pipit.domain import gson
 from pipit.domain.partial_date import PartialDate
+from pipit.ebird.record_format import export, is_acceptable, load_ebird_data
 from pipit.output.names import display_names
 from pipit.output.print_html import (
     NameSources,
     PrintOptions,
     print_report,
     report_abbreviation,
+    run_report_query,
     safe_file_name,
     short_date,
 )
@@ -209,6 +211,8 @@ class ReportsBackend(QObject):
         self.last_printed: Path | None = None
         self._saving_spreadsheet = False
         self.last_spreadsheet: Path | None = None
+        self._saving_ebird = False
+        self.last_ebird: Path | None = None
         self._making_trip_report = False
         self._trip_report: _MadeTripReport | None = None
         self.last_trip_report_word: Path | None = None
@@ -870,6 +874,51 @@ class ReportsBackend(QObject):
             self._open_url(QUrl.fromLocalFile(str(path)))
         self._app.message.emit(message)
 
+    # ------------------------------------------------------------ eBird
+
+    @Property(bool, notify=printingChanged)
+    def savingEBird(self) -> bool:
+        return self._saving_ebird
+
+    @Slot(result=str)
+    def ebirdFileName(self) -> str:
+        """``EbirdExportAction``'s suggestion: "eBird-export-<abbreviation>.csv"."""
+        name = str(self.spreadsheetFileName())  # "report-<abbreviation>.xlsx" or "report.xlsx"
+        if name == "report.xlsx":
+            return "eBird-export.csv"
+        return "eBird-export-" + name.removeprefix("report-").removesuffix(".xlsx") + ".csv"
+
+    @Slot(QUrl)
+    def saveForEBird(self, url: QUrl) -> None:
+        """Save for eBird, as Scythebill does: Record Format CSV, split past 900K into
+        "name-1.csv" and so on."""
+        database = self._app.database
+        pack = self._app.pack
+        if database is None or pack is None or self._saving_ebird:
+            return
+        path = Path(url.toLocalFile())
+        if path.suffix.lower() != ".csv":
+            path = path.with_name(path.name + ".csv")
+        job = _EBirdJob(Path(database.path), pack.path, self.query_json(), path)
+        self._saving_ebird = True
+        self.printingChanged.emit()
+        run_in_thread("ebird-export", lambda: self._save_ebird(job))
+
+    def _save_ebird(self, job: _EBirdJob) -> None:
+        try:
+            message = _write_ebird(job)
+        except (OSError, sqlite3.Error, ValueError, KeyError, QueryJsonError,
+                UnsupportedQueryError) as error:  # fmt: skip
+            log.warning("the eBird export failed: %s", error)
+            message = f"Could not save for eBird: {error}"
+        self._dispatcher.post(lambda: self._ebird_saved(job.path, message))
+
+    def _ebird_saved(self, path: Path, message: str) -> None:
+        self._saving_ebird = False
+        self.last_ebird = path
+        self.printingChanged.emit()
+        self._app.message.emit(message)
+
     # ------------------------------------------------------------ trip reports
 
     @Property("QVariantMap", notify=tripReportChanged)
@@ -1121,6 +1170,57 @@ def _write_spreadsheet(job: _SpreadsheetJob) -> None:
     finally:
         connection.close()
     job.path.write_bytes(data)
+
+
+@dataclass(frozen=True)
+class _EBirdJob:
+    list_path: Path
+    pack_path: Path
+    query_json: str
+    path: Path
+
+
+def _write_ebird(job: _EBirdJob) -> str:
+    """The export, written; returns what to tell the user."""
+    connection = sqlite3.connect(f"file:{job.list_path}?mode=ro", uri=True)
+    try:
+        with DataPack(job.pack_path) as pack:
+            query_list = load_query_list(connection)
+            users = _users(connection)
+            clements, _avilist = pack.load_base_and_avilist()
+            # Always Clements (eBird's taxonomy), with groups but not subspecies
+            context = EngineContext(query_list, clements, TaxonType.GROUP,
+                                    users=frozenset(users))  # fmt: skip
+            _query, results, _root = run_report_query(
+                context,
+                Checklists(pack, connection, query_list),
+                job.query_json,
+                users,
+                only_countable=False,
+            )
+            data = load_ebird_data(connection, query_list)
+            if not any(is_acceptable(s, data) for s in results.all_sightings()):
+                return (
+                    "No sightings to export: none of these are detailed enough for eBird "
+                    "(a place more precise than a region, not private)."
+                )
+            exported = export(results, data)
+    finally:
+        connection.close()
+    names = []
+    for index, content in enumerate(exported.files):
+        path = job.path if index == 0 else job.path.with_name(
+            f"{job.path.stem}-{index}{job.path.suffix}")  # fmt: skip
+        path.write_bytes(content)
+        names.append(path.name)
+    files = names[0] if len(names) == 1 else f"{len(names)} files ({', '.join(names)})"
+    message = f"Saved {exported.lines:,d} records for eBird in {files}"
+    if exported.impossible_dates:
+        message += (
+            f"; {exported.impossible_dates:,d} with an impossible date left out "
+            "(Scythebill would fail on them)"
+        )
+    return message
 
 
 @dataclass(frozen=True)

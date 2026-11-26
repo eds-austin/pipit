@@ -5,11 +5,14 @@
 //   Ctrl+P          print (options, then the browser prints the page)
 //   Ctrl+E          save as spreadsheet (options, then where; it opens once saved)
 //   Ctrl+T          trip report (options; copied, opened in the browser; Save as Word)
+//   Ctrl+Shift+E    save for eBird (Record Format CSV; where, then written)
 //   Ctrl+L          into the saved reports: Enter loads, F2 renames, Delete, Alt+Up/Down
 //   Ctrl+R          into the results; Up/Down choose (family headings skipped)
 //   Esc             (in the results) back to the query
+import QtCore
 import QtQuick
 import QtQuick.Controls.Basic as B
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import Pipit
 import "reports"
@@ -33,6 +36,22 @@ Item {
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0; sequence: "Ctrl+P"; onActivated: printDialog.show() }
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.savingSpreadsheet; sequence: "Ctrl+E"; onActivated: spreadsheetDialog.show() }
     Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.makingTripReport; sequence: "Ctrl+T"; onActivated: tripReportDialog.show() }
+    Shortcut { enabled: root.keysOn && reports.sightingCount > 0 && !reports.savingEBird; sequence: "Ctrl+Shift+E"; onActivated: root.saveForEBird() }
+
+    function saveForEBird() {
+        ebirdDialog.selectedFile = ebirdDialog.currentFolder + "/" + reports.ebirdFileName()
+        ebirdDialog.open()
+    }
+    // Save for eBird: Record Format CSV, in Clements (eBird's taxonomy), split past 900K
+    FileDialog {
+        id: ebirdDialog
+        title: qsTr("Save for eBird")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "csv"
+        nameFilters: [qsTr("CSV files (*.csv)")]
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation)
+        onAccepted: reports.saveForEBird(selectedFile)
+    }
 
     // The result opens when a report asked for here is ready.
     property bool awaitingTripReport: false
@@ -105,6 +124,15 @@ Item {
                         implicitWidth: Theme.controlHCompact
                         implicitHeight: Theme.controlHCompact
                         onClicked: spreadsheetDialog.show()
+                    }
+                    PIconButton {
+                        objectName: "saveForEBird"
+                        enabled: reports.sightingCount > 0 && !reports.savingEBird
+                        iconName: "arrow-up-from-line"
+                        tip: qsTr("Save for eBird (Ctrl+Shift+E)")
+                        implicitWidth: Theme.controlHCompact
+                        implicitHeight: Theme.controlHCompact
+                        onClicked: root.saveForEBird()
                     }
                     PIconButton {
                         objectName: "tripReport"

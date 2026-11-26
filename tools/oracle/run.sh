@@ -215,3 +215,20 @@ print_oracle "$BSXM/trip_report.bsxm" trip "$TRIP/cases.jsonl" "$WORK/trip"
 "$PY" -I tools/oracle/summarize_pages.py "$TRIP/cases.jsonl" "$WORK/trip" > "$TRIP/html.jsonl"
 "$PY" -I tools/oracle/summarize_pages.py "$TRIP/cases.jsonl" "$WORK/trip" txt > "$TRIP/text.jsonl"
 "$PY" -I tools/oracle/summarize_docx.py "$TRIP/cases.jsonl" "$WORK/trip" > "$TRIP/docx.jsonl"
+
+# eBird Record Format exports (PrintOracle.java's ebird mode: EbirdExportAction and
+# EBirdCsvExport): the reference queries, and everything in two more lists (edge_cases
+# without its February 30 sighting, which Scythebill's export fails on).
+EBIRD=tests/fixtures/oracle/ebird
+mkdir -p "$EBIRD"
+"$PY" -I tools/oracle/make_ebird_cases.py "$FIXTURES/queries.txt" "$EBIRD/cases.jsonl"
+tail -1 "$EBIRD/cases.jsonl" > "$EBIRD/cases.everything.jsonl"
+grep -v '2025-02-30' "$BSXM/edge_cases.bsxm" > "$BSXM/edge_cases.ebird.bsxm"
+for list in queries:cases trip_report:cases.everything edge_cases.ebird:cases.everything; do
+    name=${list%%:*}
+    cases=${list##*:}
+    rm -rf "$WORK/ebird-$name"
+    print_oracle "$BSXM/$name.bsxm" ebird "$EBIRD/$cases.jsonl" "$WORK/ebird-$name"
+    "$PY" -I tools/oracle/summarize_ebird.py "$EBIRD/$cases.jsonl" "$WORK/ebird-$name" \
+        > "$EBIRD/$name.jsonl"
+done
