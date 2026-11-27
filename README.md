@@ -2,7 +2,10 @@
 
 *Bird Listing.*
 
-A modern, keyboard-first bird list app for Linux desktops, compatible with Scythebill .bsxm files.
+A modern, keyboard-first bird list app for Linux desktops, compatible with eBird and Scythebill:
+it imports your eBird data and saves sightings ready to upload to eBird (see
+[docs/EBIRD.md](docs/EBIRD.md)), and opens and saves Scythebill .bsxm files exactly as Scythebill
+writes them.
 
 See [docs/PLAN.md](docs/PLAN.md) and [docs/BUILD_PROMPT.md](docs/BUILD_PROMPT.md).
 
